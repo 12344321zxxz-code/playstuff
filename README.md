@@ -19,7 +19,8 @@ npm run serve     # then open http://localhost:8080
 ## Playing
 
 Drag to move, scroll to zoom, tap anything with Look to read it. Pick a power on the left and
-use it on the map. Nothing tells you what to do. The Almanac tab fills in as your world produces
+use it on the map. Keys: arrows or WASD move, + and - zoom, space pauses, 1 to 4 set the speed,
+Esc goes back to Look. Nothing tells you what to do. The Almanac tab fills in as your world produces
 things for the first time.
 
 Some things to try:

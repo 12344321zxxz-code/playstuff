@@ -32,9 +32,9 @@ export function createRenderer(glc) {
       const up = (unit, tex, data) => { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, data); };
       up(1, tA, bA); up(2, tB, bB); up(3, tC, bC);
     },
-    draw(w, cam, lens, time, pal) {
+    draw(w, cam, lens, time, pal, q) {
       gl.viewport(0, 0, glc.width, glc.height);
-      gl.uniform2f(U.uRes, glc.width, glc.height); gl.uniform2f(U.uCenter, cam.x, cam.y); gl.uniform1f(U.uZoom, cam.z * cam.dpr);
+      gl.uniform2f(U.uRes, glc.width, glc.height); gl.uniform2f(U.uCenter, cam.x, cam.y); gl.uniform1f(U.uZoom, cam.z * cam.dpr * (q || 1));
       gl.uniform1f(U.uSea, w.params.sea); gl.uniform1f(U.uTime, time); gl.uniform1f(U.uPhase, w.phase); gl.uniform1i(U.uLens, lens); gl.uniform3fv(U.uPal, pal);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },

@@ -13,7 +13,7 @@ if (!R) $('nogl').hidden = false;
 
 const cam = { x: W / 2, y: H / 2, z: 3, dpr: 1, w: 0, h: 0, minZ: 1 };
 const pal = new Float32Array(96);
-const S = { w: null, tool: null, brush: 5, lens: 0, speed: 2, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {}, touched: false, ref: null, ghost: null, perf: { sim: 0, gl: 0, ov: 0, ticks: 0 } };
+const S = { w: null, tool: null, brush: 5, lens: 0, speed: 2, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {}, touched: false, ref: null, ghost: null, perf: { sim: 0, gl: 0, ov: 0, ticks: 0, frame: 16 }, q: 1, qT: 0, adapt: true };
 const TPS = [0, 8, 32, 96];
 const LENSES = [[0, 'Land'], [1, 'Heat'], [2, 'Rain'], [8, 'Wind'], [3, 'Soil'], [5, 'Height'], [4, 'Plates']];
 const SEASONS = ['midwinter', 'late winter', 'spring', 'early summer', 'midsummer', 'late summer', 'autumn', 'early winter'];
@@ -42,7 +42,8 @@ export const state = S, camera = cam, palette = pal;
 function fit() {
   cam.dpr = Math.min(window.devicePixelRatio || 1, 2);
   const cw = jar.clientWidth, ch = jar.clientHeight; if (!cw || !ch) return;
-  glc.width = ov.width = Math.round(cw * cam.dpr); glc.height = ov.height = Math.round(ch * cam.dpr); cam.w = glc.width; cam.h = glc.height;
+  ov.width = Math.round(cw * cam.dpr); ov.height = Math.round(ch * cam.dpr); cam.w = ov.width; cam.h = ov.height;
+  glc.width = Math.round(cam.w * S.q); glc.height = Math.round(cam.h * S.q);   // the terrain can be drawn coarser than the labels on top of it
   cam.minZ = cw / W; cam.fitZ = Math.max(ch / H, cw / W); clampCam();
 }
 function clampCam() {
@@ -147,7 +148,7 @@ function bindInput() {
     if (e.target.closest && e.target.closest('input,textarea,select')) return; const k = e.key, st = 40 / cam.z;
     if (k === 'ArrowLeft' || k === 'a') cam.x -= st; else if (k === 'ArrowRight' || k === 'd') cam.x += st; else if (k === 'ArrowUp' || k === 'w') cam.y -= st; else if (k === 'ArrowDown' || k === 's') cam.y += st;
     else if (k === '+' || k === '=') zoomAt(jar.clientWidth / 2, jar.clientHeight / 2, 1.3); else if (k === '-') zoomAt(jar.clientWidth / 2, jar.clientHeight / 2, 1 / 1.3);
-    else if (k === ' ' && e.target === document.body) setSpeed(S.speed ? 0 : 2); else return;
+    else if (k === ' ' && e.target === document.body) setSpeed(S.speed ? 0 : 2); else if (k >= '1' && k <= '4') setSpeed(+k - 1); else if (k === 'Escape') setTool(TOOLS[0]); else return;
     e.preventDefault(); clampCam();
   });
   $('zin').addEventListener('click', () => zoomAt(jar.clientWidth / 2, jar.clientHeight / 2, 1.5)); $('zout').addEventListener('click', () => zoomAt(jar.clientWidth / 2, jar.clientHeight / 2, 1 / 1.5));
@@ -240,14 +241,17 @@ function overlay(now) {
 
 /* ---------- loop ---------- */
 function frame(now) {
-  const dt = Math.min(0.1, (now - S.last) / 1000); S.last = now; const w = S.w, P = S.perf, t0 = performance.now(); let ran = 0;
+  const raw = now - S.last, dt = Math.min(0.1, raw / 1000); S.last = now; const w = S.w, P = S.perf, t0 = performance.now(); let ran = 0;
+  // a slow graphics card gets a coarser terrain rather than a slideshow
+  if (raw < 400) P.frame += (raw - P.frame) * 0.06;
+  if (S.adapt && now > S.qT) { S.qT = now + 2500; if (P.frame > 36 && P.sim < P.frame * 0.5 && S.q > 0.5) { S.q = Math.max(0.5, S.q * 0.8); P.frame = 20; fit(); } }
   if (S.speed && !(S.press && !S.press.pan)) { S.acc += dt * TPS[S.speed]; while (S.acc >= 1 && ran < 10 && performance.now() - t0 < 12) { tick(w); for (const fn of hooks.tick) fn(w); S.acc -= 1; ran++; } if (ran) S.dirty = true; if (S.acc > 3) S.acc = 0; }
   if (S.climT && now > S.climT && !S.press) { S.climT = 0; queueClimate(w); }
   if (!ran && w.job && !(S.press && !S.press.pan)) { const st = w.stamp.land; background(w, 8); if (w.stamp.land !== st) S.dirty = true; }
   const t1 = performance.now(); P.sim += (t1 - t0 - P.sim) * 0.05; P.ticks += (ran - P.ticks) * 0.05;
   if (S.press && !S.press.pan && w.need.water && now > S.waterT) { S.waterT = now + 320; refreshWater(w); }
   climateWatch(now);
-  if (R) { if (S.dirty) { R.upload(w, S.lens); S.dirty = false; } R.draw(w, cam, S.lens === 8 ? 0 : S.lens, now / 1000, pal); }
+  if (R) { if (S.dirty) { R.upload(w, S.lens); S.dirty = false; } R.draw(w, cam, S.lens === 8 ? 0 : S.lens, now / 1000, pal, S.q); }
   const t2 = performance.now(); overlay(now); const t3 = performance.now(); P.gl += (t2 - t1 - P.gl) * 0.05; P.ov += (t3 - t2 - P.ov) * 0.05;
   if (now - S.hudT > 500) { S.hudT = now; vitals(); if (S.sel && S.sel.info) { const inf = S.sel.info(); if (inf) showInfo(inf); else { S.sel = null; } } }
   requestAnimationFrame(frame);
@@ -265,7 +269,7 @@ function buildUI() {
   const lr = $('lenses'); lr.textContent = '';
   for (const [id, label] of LENSES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.lens = id; b.id = 'lens-' + id; b.textContent = label; b.addEventListener('click', () => setLens(id)); lr.appendChild(b); }
   for (let k = 0; k < 4; k++) $('sp' + k).addEventListener('click', () => setSpeed(k));
-  $('newworld').addEventListener('click', () => start({ seed: (Math.random() * 1e9) | 0 }));
+  $('newworld').addEventListener('click', () => startSoon({ seed: (Math.random() * 1e9) | 0 }));
   bindInput();
   if (window.ResizeObserver) new ResizeObserver(fit).observe(jar); window.addEventListener('resize', fit);
 }
@@ -278,4 +282,6 @@ export function start(data) {
   if (!built) { built = true; buildUI(); fit(); setTool(TOOLS[0]); setLens(0); setBrush(5); if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) S.speed = 1; setSpeed(S.speed); S.last = performance.now(); requestAnimationFrame(frame); }
   cam.x = W / 2; cam.y = H / 2; cam.z = cam.fitZ || cam.minZ; clampCam(); dials(); showInfo(null); vitals();
 }
+// Making a world takes a second or two; say so first.
+export function startSoon(data) { $('making').hidden = false; setTimeout(() => { try { start(data); } finally { $('making').hidden = true; } }, 30); }
 window.__f = { S, cam, start, setTool: (id) => setTool(TOOLS.find((t) => t.id === id)), setLens, setSpeed, tick };

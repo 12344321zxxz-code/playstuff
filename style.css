@@ -49,6 +49,8 @@ button[aria-pressed="true"],button[aria-selected="true"]{background:var(--accent
 .zoomer{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:4px}
 .zoomer button{width:34px;height:34px;padding:0;font-size:18px;background:color-mix(in srgb,var(--panel) 88%,transparent)}
 .nogl{position:absolute;inset:0;display:grid;place-items:center;margin:0;color:#dde6de;padding:24px;text-align:center}
+.nogl[hidden]{display:none}
+#making{background:var(--frame);font-family:var(--display);font-size:20px}
 .hint{margin:0;min-height:1.42em}
 .side{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;overflow-y:auto}
 .card{border-top:1px solid var(--line);padding-top:10px}
