@@ -58,7 +58,7 @@ export function vegetation(w, part) {
 }
 
 export function ignite(w, i) {
-  if (w.water[i] || w.fireT[i] || w.ash[i] > 0.5 || w.snow[i] > 0.5) return false;
+  if (w.water[i] || w.fireT[i] || w.ash[i] > 0.5 || w.snow[i] > 0.5 || (w.magic[i] > 0.55 && w.t[i] > 0.5)) return false;
   w.fireT[i] = 3; w.burning.push(i); return true;
 }
 export function fireStep(w) {
@@ -75,5 +75,5 @@ export function fireStep(w) {
     }
     if (--fireT[c] > 0) next.push(c); else { ash[c] = 1; soil[c] = Math.min(1.3, soil[c] + 0.12); if (rnd() < 0.35) t[c] = Math.max(t[c], 0.03); }
   }
-  w.burnedThisYear = (w.burnedThisYear || 0) + cur.length;
+  w.burnedThisYear = (w.burnedThisYear || 0) + cur.length; if (cur.length) w.burnAt = cur[0];
 }

@@ -1,5 +1,8 @@
 // Entry point: pull in every system, then start a world.
 import { start } from './main.js';
+import './entities.js';
+import './hands.js';
+import './book.js';
 
 const hot = window.claude && window.claude.hot;
 let seed = null;

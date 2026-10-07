@@ -38,13 +38,15 @@ export function computeHydro(w) {
     if (filled[i] > h[i] + 0.004 && flow[i] > 9) water[i] = 2;
   }
   // puddles are not lakes: keep only hollows a few cells across
-  const q0 = order; seen.fill(0);
+  const q0 = order; seen.fill(0); let big = null;
   for (let i = 0; i < N; i++) {
     if (water[i] !== 2 || seen[i]) continue; let qn = 0, deep = 0; q0[qn++] = i; seen[i] = 1;
     for (let hd = 0; hd < qn; hd++) { const c = q0[hd], x = c % W, y = (c / W) | 0; if (filled[c] - h[c] > deep) deep = filled[c] - h[c];
       for (let k = 0; k < 4; k++) { const yy = y + (k === 2 ? -1 : k === 3 ? 1 : 0); if (yy < 0 || yy >= H) continue; const n = yy * W + wx(x + (k === 0 ? 1 : k === 1 ? -1 : 0)); if (water[n] === 2 && !seen[n]) { seen[n] = 1; q0[qn++] = n; } } }
     if (qn < 7 && deep < 0.035) for (let k = 0; k < qn; k++) water[q0[k]] = 0;
+    else if (!big || qn > big.n) big = { n: qn, x: i % W, y: (i / W) | 0 };
   }
+  w.bigLake = big;
   for (let i = 0; i < N; i++) { if (water[i]) continue; const f = flow[i]; river[i] = f > 1500 ? 4 : f > 480 ? 3 : f > 150 ? 2 : f > 48 ? 1 : 0; }
   // distance to fresh water (rivers, lakes) and to the sea, both capped
   const q = order; let qn = 0; fresh.fill(7);
@@ -53,6 +55,15 @@ export function computeHydro(w) {
   qn = 0; dSea.fill(60);
   for (let i = 0; i < N; i++) if (water[i] === 1) { dSea[i] = 0; q[qn++] = i; }
   bfs(q, qn, dSea, 60);
+  // landmasses: which continent or island each land cell belongs to
+  const mass = w.mass, sizes = [0]; mass.fill(0); let id = 0;
+  for (let i = 0; i < N; i++) {
+    if (water[i] === 1 || mass[i]) continue; id++; let n = 0; qn = 0; q[qn++] = i; mass[i] = id;
+    for (let hd = 0; hd < qn; hd++) { const c = q[hd], x = c % W, y = (c / W) | 0; n++;
+      for (let k = 0; k < 8; k++) { const yy = y + NB8[k][1]; if (yy < 0 || yy >= H) continue; const m = yy * W + wx(x + NB8[k][0]); if (water[m] !== 1 && !mass[m]) { mass[m] = id; q[qn++] = m; } } }
+    sizes.push(n);
+  }
+  w.massSize = sizes;
   // list of river cells for drawing
   let rn = 0; for (let i = 0; i < N; i++) if (river[i]) rn++;
   const list = new Int32Array(rn); rn = 0; for (let i = 0; i < N; i++) if (river[i]) list[rn++] = i;
@@ -74,6 +85,6 @@ export function erode(w, amount) {
     const drop = h[i] - h[d]; if (drop <= 0) continue;
     const cut = Math.min(drop * 0.5, amount * lv * (0.3 + drop * 6));
     h[i] -= cut;
-    if (water[d] === 1 && lv >= 2) { h[d] = Math.min(sea + 0.004, h[d] + cut * 6 + amount * lv * 0.6); if (h[d] >= sea) soil[d] = 1.3; }
+    if (water[d] === 1 && lv >= 2) { h[d] = Math.min(sea + 0.004, h[d] + cut * 6 + amount * lv * 0.6); if (h[d] >= sea) { soil[d] = 1.3; w.deltaAt = d; } }
   }
 }

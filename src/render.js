@@ -60,6 +60,7 @@ export function drawRivers(ctx, w, cam) {
       const cx = jx(c), cy = jy(c); if (Math.abs(wrapDx(cx - cam.x)) > halfW || Math.abs(cy - cam.y) > halfH) continue;
       const wet = water[d] !== 0, dx = wet ? (d % W) + 0.5 : jx(d), dy = wet ? ((d / W) | 0) + 0.5 : jy(d), e = down[d];
       toScreen(cam, cx, cy, P); toScreen(cam, dx, dy, Q);
+      if (Math.abs(P[0] - Q[0]) > cam.w * 0.5) continue;
       const mx = (P[0] + Q[0]) / 2, my = (P[1] + Q[1]) / 2;
       if (e >= 0 && !wet && river[d]) { const we = water[e] !== 0; toScreen(cam, we ? (e % W) + 0.5 : jx(e), we ? ((e / W) | 0) + 0.5 : jy(e), Rr); ctx.moveTo(mx, my); ctx.quadraticCurveTo(Q[0], Q[1], (Q[0] + Rr[0]) / 2, (Q[1] + Rr[1]) / 2); }
       else { ctx.moveTo(mx, my); ctx.lineTo(Q[0], Q[1]); }

@@ -37,12 +37,12 @@ function rainBelts(a) {       // how readily air gives up its water, by distance
 function season(w, s, out) {
   const P = w.params, tiltF = P.tilt / 23.5, phiI = s * P.tilt * 0.42, spin = P.spin;
   const { elev, land, cont, ts, tb, u, v, curl, psi, cu, cv, sst, base, ta, q, acc, a: A, b: B } = C;
-  const cool = w.aerosol * 9;
+  const cool = w.aerosol * 9, warm = w.greenhouse || 0;
   // 1. heat at the surface
   for (let y = 0; y < CH; y++) {
     const phi = C.lat[y], sp = Math.sin(phi * RAD), seas = s * Math.sign(phi) * tiltF * Math.pow(Math.abs(sp), 0.8);
     for (let x = 0; x < CW; x++) {
-      const i = y * CW + x, b0 = TEQ - 38 * Math.pow(Math.abs(sp), 2.4) + P.sun - cool - C.ice[i] * 5;
+      const i = y * CW + x, b0 = TEQ - 38 * Math.pow(Math.abs(sp), 2.4) + P.sun + warm - cool - C.ice[i] * 5;
       base[i] = b0 + seas * 3.5; ts[i] = land[i] ? b0 + seas * (5 + 21 * cont[i]) : base[i];
     }
   }
@@ -115,7 +115,11 @@ function up(src, x, y) {          // bilinear read of a coarse field at a full-r
 }
 export const sampleCoarse = up;
 
-export function computeClimate(w) {
+export function computeClimate(w) { climateStage(w, 0); climateStage(w, 1); climateStage(w, 2); }
+// The same work in three pieces, so a running game can spread it over three ticks.
+export function climateStage(w, stage) {
+  if (stage === 1) { season(w, -1, C.out[0]); return; }
+  if (stage === 2) { season(w, 1, C.out[1]); upsample(w); return; }
   const { h, g, t } = w, sea = w.params.sea, { elev, land, et, cont } = C;
   for (let cy = 0; cy < CH; cy++) for (let cx = 0; cx < CW; cx++) {
     const i = cy * CW + cx; let e = 0, ln = 0, ev = 0, ic = 0;
@@ -128,7 +132,9 @@ export function computeClimate(w) {
   for (let i = 0; i < CN; i++) if (!land[i]) { cont[i] = 0; q[qn++] = i; }
   for (let hd = 0; hd < qn; hd++) { const c = q[hd], nd = cont[c] + 1; if (nd > 12) continue; const x = c % CW, y = (c / CW) | 0; for (let k = 0; k < 4; k++) { const yy = y + (k === 2 ? -1 : k === 3 ? 1 : 0); if (yy < 0 || yy >= CH) continue; const n = yy * CW + (x + (k === 0 ? 1 : k === 1 ? CW - 1 : 0)) % CW; if (cont[n] > nd) { cont[n] = nd; q[qn++] = n; } } }
   for (let i = 0; i < CN; i++) cont[i] = Math.min(1, cont[i] / 8);
-  season(w, -1, C.out[0]); season(w, 1, C.out[1]);
+}
+function upsample(w) {
+  const { h } = w, sea = w.params.sea;
   // back to full resolution, with the fine detail of real slopes
   const { tJan, tJul, rJan, rJul, wetBias } = w, o0 = C.out[0], o1 = C.out[1];
   for (let y = 0; y < H; y++) { const ym = y > 0 ? y - 1 : 0, yp = y < H - 1 ? y + 1 : H - 1;
@@ -145,20 +151,22 @@ export function computeClimate(w) {
 
 // What the land can carry, worked out from climate, water and soil.
 export function derive(w) {
-  const { tJan, tJul, rJan, rJul, tMean, rMean, mi, gCap, tCap, soil, ice, water, fresh, h, river } = w, sea = w.params.sea;
-  let iceN = 0;
+  const { tJan, tJul, rJan, rJul, tMean, rMean, mi, gCap, tCap, soil, ice, water, fresh, h, river, crop } = w, sea = w.params.sea;
+  let iceN = 0, landN = 0, landIce = 0;
   for (let i = 0; i < N; i++) {
     const a = tJan[i], b = tJul[i], tm = (a + b) * 0.5, tw = a > b ? a : b, pm = (rJan[i] + rJul[i]) * 0.5;
     tMean[i] = tm; rMean[i] = pm;
-    const pet = 0.2 + 0.042 * Math.max(0, tm + 2); let m = pm / pet;
+    const pet = 0.2 + 0.042 * Math.max(0, tm + 2); let m = pm / pet; const dryM = m;
     if (water[i] !== 1) { const f = fresh[i]; if (f < 4) m += (river[i] >= 2 || water[i] === 2 ? 0.75 : 0.4) * (1 - f / 4); }
     mi[i] = m;
     const wasIce = ice[i]; ice[i] = (water[i] === 1 ? tw < -2.5 : tw < (wasIce ? 0.5 : -1)) ? 1 : 0; if (ice[i]) iceN++;
-    if (water[i] === 1) { gCap[i] = 0; tCap[i] = 0; continue; }
+    if (water[i] === 1) { gCap[i] = 0; tCap[i] = 0; crop[i] = 0; continue; }
+    landN++; if (ice[i]) landIce++;
     const lo = Math.min(rJan[i], rJul[i]), hi = Math.max(rJan[i], rJul[i]) + 1e-4, dry = 1 - lo / hi, sf = 0.45 + 0.55 * Math.min(1, soil[i]);
     const rock = smooth(0.42, 0.7, h[i] - sea);
     gCap[i] = ice[i] ? 0 : smooth(0.07, 0.55, m) * smooth(-7, 5, tw) * (1 - rock * 0.8) * (0.6 + 0.4 * sf);
+    crop[i] = ice[i] ? 0 : smooth(0.36, 0.95, dryM) * smooth(8, 15, tw) * (1 - rock);
     tCap[i] = ice[i] ? 0 : smooth(0.5, 1.05, m) * smooth(7, 13, tw) * (1 - 0.45 * dry * (m < 1.5 ? 1 : 0.3)) * (1 - rock) * sf;
   }
-  w.iceFrac = iceN / N;
+  w.iceFrac = iceN / N; w.landIce = landN ? landIce / landN : 0;
 }

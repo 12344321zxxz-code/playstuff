@@ -141,12 +141,13 @@ void main(){
     else if(uLens == 4){ float id = floor(Cc.b*255. + .5); vec3 pc = .45 + .4*cos(6.2832*(id*.137 + vec3(0.,.33,.67))); lc = isSea ? pc*.55 : pc;
       vec4 r1 = cellAt(wc + vec2(1.,0.)), r2 = cellAt(wc + vec2(0.,1.)); if(r1.b != Cc.b || r2.b != Cc.b) lc = vec3(.08); }
     else if(uLens == 5) lc = isSea ? mix(vec3(.55,.75,.85), vec3(.10,.18,.40), clamp(-land*2.2,0.,1.)) : mix(mix(vec3(.45,.62,.38), vec3(.86,.80,.55), clamp(land*4.,0.,1.)), vec3(.98), clamp((land-.3)*2.5,0.,1.));
-    else if(uLens == 7) lc = isSea ? vec3(.10,.10,.16) : mix(vec3(.16,.14,.22), vec3(.80,.45,1.), clamp(Cc.a*1.4, 0., 1.));
+    else if(uLens == 7){ vec2 st = wc - .5, fi = floor(st), ff = st - fi; float m = mix(mix(cellAt(fi + .5).a, cellAt(fi + vec2(1.5,.5)).a, ff.x), mix(cellAt(fi + vec2(.5,1.5)).a, cellAt(fi + 1.5).a, ff.x), ff.y);
+      lc = isSea ? mix(vec3(.10,.10,.16), vec3(.30,.20,.45), clamp(m*1.2,0.,1.)) : mix(vec3(.16,.14,.22), vec3(.80,.45,1.), clamp(m*1.4, 0., 1.)); lc += vec3(.25,.2,.3)*smoothstep(.55,.6,m)*smoothstep(.66,.6,m); }
     if(uLens == 6) col = mix(vec3(gray)*.9 + .08, col, .25); else col = lc*(isSea ? 1. : mix(.72, 1.18, clamp(sh,0.,1.)));
   }
   // peoples: borders and a faint wash
   float cid = floor(Cc.r*255. + .5);
-  if(cid > .5 && !isSea){
+  if(cid > .5 && !isSea && uLens != 4 && uLens != 5){
     vec3 pc = uPal[int(mod(cid - 1., 32.))];
     vec2 f = fract(wc); float bw = clamp(1.7/uZoom, .04, .34); float edge = 0.;
     if(cellAt(wc + vec2(1.,0.)).r != Cc.r) edge = max(edge, smoothstep(1. - bw*1.4, 1. - bw*.6, f.x));

@@ -13,7 +13,7 @@ if (!R) $('nogl').hidden = false;
 
 const cam = { x: W / 2, y: H / 2, z: 3, dpr: 1, w: 0, h: 0, minZ: 1 };
 const pal = new Float32Array(96);
-const S = { w: null, tool: null, brush: 5, lens: 0, speed: 2, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null };
+const S = { w: null, tool: null, brush: 5, lens: 0, speed: 2, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {} };
 const TPS = [0, 8, 32, 80];
 const LENSES = [[0, 'Land'], [1, 'Heat'], [2, 'Rain'], [8, 'Wind'], [3, 'Soil'], [5, 'Height'], [4, 'Plates']];
 const SEASONS = ['midwinter', 'late winter', 'spring', 'early summer', 'midsummer', 'late summer', 'autumn', 'early winter'];
@@ -43,7 +43,7 @@ function fit() {
   cam.dpr = Math.min(window.devicePixelRatio || 1, 2);
   const cw = jar.clientWidth, ch = jar.clientHeight; if (!cw || !ch) return;
   glc.width = ov.width = Math.round(cw * cam.dpr); glc.height = ov.height = Math.round(ch * cam.dpr); cam.w = glc.width; cam.h = glc.height;
-  cam.minZ = Math.max(ch / H, cw / W); clampCam();
+  cam.minZ = cw / W; cam.fitZ = Math.max(ch / H, cw / W); clampCam();
 }
 function clampCam() {
   cam.z = clamp(cam.z, cam.minZ, 72); const half = jar.clientHeight / 2 / cam.z;
@@ -56,11 +56,16 @@ export function flyTo(x, y, z) { cam.x = x; cam.y = y; if (z && cam.z < z) cam.z
 function hint(msg) { $('hint').textContent = msg || S.tool.hint; clearTimeout(S.hintT); if (msg) S.hintT = setTimeout(() => { $('hint').textContent = S.tool.hint; }, 2600); }
 export const say = hint;
 function setTool(t) {
+  const prev = S.tool; if (prev && prev.lens != null && S.lens === prev.lens && t.lens == null) setLens(0);
   S.tool = t; for (const b of document.querySelectorAll('[data-tool]')) b.setAttribute('aria-pressed', b.dataset.tool === t.id);
-  $('brushgrp').hidden = t.kind !== 'brush'; ov.style.cursor = t.kind === 'look' ? 'grab' : 'crosshair';
+  $('brushgrp').hidden = t.kind !== 'brush'; buildOpts(t); ov.style.cursor = t.kind === 'look' ? 'grab' : 'crosshair';
   if (t.kind === 'plates') setLens(4); else if (S.lens === 4) setLens(0);
   if (t.lens != null) setLens(t.lens);
   hint();
+}
+function buildOpts(t) {
+  const g = $('optgrp'); g.hidden = !t.opts; if (!t.opts) return; const box = g.lastChild; box.textContent = ''; const cur = S.opt[t.id] || 0;
+  t.opts.forEach((l, k) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = l; b.setAttribute('aria-pressed', k === cur); b.addEventListener('click', () => { S.opt[t.id] = k; buildOpts(t); }); box.appendChild(b); });
 }
 function setLens(id) { S.lens = id; for (const b of document.querySelectorAll('[data-lens]')) b.setAttribute('aria-pressed', +b.dataset.lens === id); S.dirty = true; }
 function setSpeed(v) { S.speed = v; for (let k = 0; k < 4; k++) $('sp' + k).setAttribute('aria-pressed', k === v); }
@@ -74,7 +79,7 @@ function applyTool(p, first) {
     case 'rain': case 'dry': ok = weather(w, t.id, p.x, p.y, r); break;
     case 'forest': ok = plant(w, p.x, p.y, r); break;
     case 'fire': ok = burn(w, p.x, p.y, Math.min(r, 2)); break;
-    default: if (t.apply) ok = t.apply(w, p, first, r, st);
+    default: if (t.apply) ok = t.apply(w, p, first, r, st, S.opt[t.id] || 0);
   }
   S.dirty = true; if (!ok && first) hint(t.miss || 'Nothing happens there.');
 }
@@ -168,14 +173,14 @@ function dials() {
   const labels = () => {
     $('o-sun').textContent = P.sun === 0 ? 'as it is' : (P.sun > 0 ? '+' : '') + P.sun + '°';
     $('o-tilt').textContent = P.tilt < 4 ? 'none' : P.tilt < 16 ? 'gentle' : P.tilt < 30 ? 'mild' : P.tilt < 38 ? 'harsh' : 'savage';
-    $('o-sea').textContent = Math.abs(P.sea) < 0.003 ? 'as it is' : P.sea > 0 ? 'risen' : 'fallen';
+    $('o-sea').textContent = Math.abs(P.seaDial) < 0.003 ? 'as it is' : P.seaDial > 0 ? 'risen' : 'fallen';
     $('d-spin').textContent = P.spin > 0 ? 'Eastward' : 'Westward';
   };
   $('d-sun').oninput = (e) => { P.sun = +e.target.value; touch(); };
   $('d-tilt').oninput = (e) => { P.tilt = +e.target.value; touch(); };
-  $('d-sea').oninput = (e) => { P.sea = +e.target.value; w.stamp.land++; refreshWater(w); touch(); };
+  $('d-sea').oninput = (e) => { P.seaDial = +e.target.value; P.sea = P.seaDial + w.seaAuto; w.stamp.land++; refreshWater(w); touch(); };
   $('d-spin').onclick = () => { P.spin = -P.spin; touch(); };
-  $('d-sun').value = P.sun; $('d-tilt').value = P.tilt; $('d-sea').value = P.sea; labels();
+  $('d-sun').value = P.sun; $('d-tilt').value = P.tilt; $('d-sea').value = P.seaDial; labels();
 }
 
 /* ---------- overlay ---------- */
@@ -218,20 +223,19 @@ function frame(now) {
   if (S.press && !S.press.pan && w.need.water && now > S.waterT) { S.waterT = now + 320; refreshWater(w); }
   if (R) { if (S.dirty) { R.upload(w, S.lens); S.dirty = false; } R.draw(w, cam, S.lens === 8 ? 0 : S.lens, now / 1000, pal); }
   overlay(now);
-  if (now - S.hudT > 500) { S.hudT = now; vitals(); }
+  if (now - S.hudT > 500) { S.hudT = now; vitals(); if (S.sel && S.sel.info) { const inf = S.sel.info(); if (inf) showInfo(inf); else { S.sel = null; } } }
   requestAnimationFrame(frame);
 }
 
 /* ---------- boot ---------- */
 function buildUI() {
-  const nav = $('tools'); nav.textContent = ''; let grp = null, box = null;
-  for (const t of TOOLS) {
-    if (t.group !== grp) { grp = t.group; const g = document.createElement('div'); g.className = 'grp'; const h = document.createElement('span'); h.className = 'gl'; h.textContent = grp; g.appendChild(h); box = document.createElement('div'); box.className = 'gb'; g.appendChild(box); nav.appendChild(g); }
-    const b = document.createElement('button'); b.type = 'button'; b.id = 'tool-' + t.id; b.dataset.tool = t.id; b.textContent = t.label; b.title = t.hint; b.addEventListener('click', () => setTool(t)); box.appendChild(b);
-  }
+  const nav = $('tools'); nav.textContent = ''; const order = ['Watch', 'Land', 'Sky', 'Life', 'Peoples', 'Wrath', 'Other world'], boxes = {};
+  for (const name of order.concat(TOOLS.map((t) => t.group))) { if (boxes[name] || !TOOLS.some((t) => t.group === name)) continue; const g = document.createElement('div'); g.className = 'grp'; const h = document.createElement('span'); h.className = 'gl'; h.textContent = name; g.appendChild(h); const box = document.createElement('div'); box.className = 'gb'; g.appendChild(box); nav.appendChild(g); boxes[name] = box; }
+  for (const t of TOOLS) { const b = document.createElement('button'); b.type = 'button'; b.id = 'tool-' + t.id; b.dataset.tool = t.id; b.textContent = t.label; b.title = t.hint; b.addEventListener('click', () => setTool(t)); boxes[t.group].appendChild(b); }
+  const og = document.createElement('div'); og.className = 'grp opts'; og.id = 'optgrp'; og.hidden = true; og.innerHTML = '<span class="gl">Kind</span><div class="gb"></div>';
   const g = document.createElement('div'); g.className = 'grp brush'; g.id = 'brushgrp'; g.innerHTML = '<span class="gl">Brush</span><div class="gb"></div>';
   for (const [r, l] of [[2, 'S'], [5, 'M'], [10, 'L'], [18, 'XL']]) { const b = document.createElement('button'); b.type = 'button'; b.dataset.brush = r; b.textContent = l; b.setAttribute('aria-label', l + ' brush'); b.addEventListener('click', () => setBrush(r)); g.lastChild.appendChild(b); }
-  nav.appendChild(g);
+  const first = nav.firstChild.nextSibling; nav.insertBefore(g, first); nav.insertBefore(og, first);
   const lr = $('lenses'); lr.textContent = '';
   for (const [id, label] of LENSES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.lens = id; b.id = 'lens-' + id; b.textContent = label; b.addEventListener('click', () => setLens(id)); lr.appendChild(b); }
   for (let k = 0; k < 4; k++) $('sp' + k).addEventListener('click', () => setSpeed(k));
@@ -246,6 +250,6 @@ export function start(data) {
   S.w = makeWorld(seed); S.sel = null; S.acc = 0; S.dirty = true;
   for (const fn of hooks.newWorld) fn(S.w);
   if (!built) { built = true; buildUI(); fit(); setTool(TOOLS[0]); setLens(0); setBrush(5); if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) S.speed = 1; setSpeed(S.speed); S.last = performance.now(); requestAnimationFrame(frame); }
-  cam.x = W / 2; cam.y = H / 2; cam.z = cam.minZ; clampCam(); dials(); showInfo(null); vitals();
+  cam.x = W / 2; cam.y = H / 2; cam.z = cam.fitZ || cam.minZ; clampCam(); dials(); showInfo(null); vitals();
 }
 window.__f = { S, cam, start, setTool: (id) => setTool(TOOLS.find((t) => t.id === id)), setLens, setSpeed, tick };

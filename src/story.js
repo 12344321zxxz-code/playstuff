@@ -1,4 +1,6 @@
 // The chronicle (things that happened) and the almanac (kinds of thing this world has produced).
+// true the first time anything asks about `key` in this world
+export const once = (w, key) => (w.onces[key] ? false : (w.onces[key] = true));
 export function ev(w, text, x, y, color, minor) {
   if (minor) { if (w.year - (w.lastMinor || -99) < 14) return; w.lastMinor = w.year; }
   w.events.push({ year: w.year, text, x, y, color: color || null });
@@ -35,7 +37,6 @@ export const PAGES = [
     ['enchanted', 'Enchanted wood', 'An old forest soaked in something that is not rain.'],
     ['dragon', 'Dragon', 'Something large took a mountain for itself.'],
     ['hoard', 'Dragon hoard', 'A worm grown fat on a hundred years of plunder.'],
-    ['kraken', 'Deep one', 'Ships that cross this water do not all come back.'],
   ]],
   ['Peoples', [
     ['village', 'First village', 'Wanderers stopped wandering.'],
