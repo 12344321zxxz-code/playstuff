@@ -137,8 +137,10 @@ const RUIN_PAGE = { drowned: 'drowned', buried: 'buried', overgrown: 'overgrown'
 export function endSet(w, s, kind) {
   if (s.dead) return; s.dead = true; w.anyDead = true; const c = w.cults[s.cult];
   if (s.maxTier >= 2 || (s.maxTier >= 1 && kind !== 'abandoned' && kind !== 'absorbed')) {
-    w.ruins.push({ x: s.x, y: s.y, name: s.name, cult: c.name, year: w.year, kind, know: c.know, tier: s.maxTier, looted: false, wonder: s.wonder });
-    if (w.ruins.length > 500) w.ruins.shift();
+    // one ruin per site: a place built on and lost again is the same ruin with another layer in it
+    const old = w.ruins.find((r) => Math.abs(wrapDx(r.x - s.x)) <= 1 && Math.abs(r.y - s.y) <= 1);
+    if (old) { old.name = s.name.replace(/^New /, ''); old.cult = c.name; old.year = w.year; old.kind = kind; old.know = Math.max(old.know, c.know); old.tier = Math.max(old.tier, s.maxTier); old.looted = false; old.wonder = old.wonder || s.wonder; old.layers = (old.layers || 1) + 1; }
+    else { w.ruins.push({ x: s.x, y: s.y, name: s.name.replace(/^New /, ''), cult: c.name, year: w.year, kind, know: c.know, tier: s.maxTier, looted: false, wonder: s.wonder, layers: 1 }); if (w.ruins.length > 500) w.ruins.shift(); }
     ev(w, `${s.name} ${RUIN_TEXT[kind] || RUIN_TEXT.abandoned}`, s.x, s.y, c.color, s.maxTier < 3 && (kind === 'abandoned' || kind === 'starved' || kind === 'sacked' || s.maxTier < 2) ? 1 : s.wonder ? 2 : 0);
     if (s.maxTier >= 2) discover(w, 'ruin', s.x, s.y); if (RUIN_PAGE[kind]) discover(w, RUIN_PAGE[kind], s.x, s.y);
   } else if (!s.name && kind !== 'abandoned' && kind !== 'absorbed') ev(w, `A band of the ${c.name} is lost.`, s.x, s.y, c.color, 1);
@@ -346,7 +348,7 @@ function cultYear(w, c) {
   c.coh += (target - c.coh) * 0.035; c.wins *= 0.97;
   if (c._dry >= Math.max(2, c.count * 0.3) && w.year - c.lastDry > 30 && b) { c.lastDry = w.year; ev(w, c.count >= 8 ? `The rains fail across the lands of the ${c.name}. ${b.name ? b.name + ' counts its grain' : 'The herds grow thin'}.` : `The rains fail for the ${c.name}.`, b.x, b.y, c.color, c.count >= 8 ? 0 : 1); if (c.count >= 8) discover(w, 'drought', b.x, b.y); }
   if (c.env.sed >= 40 && b && b.name && !c.flags.empire) { c.flags.empire = 1; ev(w, `The ${c.name} rule from ${b.name} over ${c.env.sed} towns and villages.`, b.x, b.y, c.color, once(w, 'empire') ? 2 : c.flags.empired ? 1 : 0); c.flags.empired = 1; discover(w, 'empire', b.x, b.y); }
-  if (b && c.count >= 8 && rnd() < (c.coh < 0.3 ? 0.04 : c.coh < 0.45 ? 0.01 : 0.0008)) { if (c.coh < 0.24 && c.count >= 10 && w.year - (c.fellAt || -999) > 140) collapse(w, c); else if (w.year - (c.fellAt || -999) > 40) schism(w, c); }
+  if (b && c.count >= 8 && rnd() < (c.coh < 0.3 ? 0.04 : c.coh < 0.45 ? 0.01 : 0.0008)) { if (c.coh < 0.24 && c.count >= 10 && w.year - (c.fellAt || -999) > 140) collapse(w, c); else if (w.year - Math.max(c.fellAt || -999, c.splitAt || -999) > 45) { c.splitAt = w.year; schism(w, c); } }
   if (b && A.masonry && b.tier === 3 && b.pop > 1500 && !b.wonder && w.year - c.wonderAt > 180 && (c.gold || c.coh > 0.6 || tr === 'builder') && rnd() < 0.03) {
     b.wonder = 1 + ((rnd() * 4) | 0); c.wonderAt = w.year; c.coh = Math.min(1, c.coh + 0.1);
     ev(w, `${b.name} raises ${['', 'a great pyramid', 'a colossus', 'a temple the size of a hill', 'a lighthouse seen from a day away'][b.wonder]}.`, b.x, b.y, c.color); discover(w, 'wonder', b.x, b.y);
