@@ -15,7 +15,9 @@ export const SPECIES = [
   { key: 'reindeer', name: 'reindeer', one: 'a herd of reindeer', col: '#b8b0a4', tame: 'reindeer', meat: 1, hab: (T) => (T < 5 && T > -14 ? 1 : 0.05) },
   { key: 'boar', name: 'wild boar', one: 'a sounder of boar', col: '#5a4a44', tame: 'pig', meat: 0.9, hab: (T, m, tr) => (tr > 0.4 && T > 7 ? 1 : 0.1) },
 ];
-const MAXH = 1000, MAXP = 240;
+// A herd eats its patch down to the roots and moves on; grass, not a head count, is what limits
+// them. Packs keep them well under that limit, which is why the grass is long where wolves live.
+const MAXH = 1000, MAXP = 240, EAT = 0.015, GROW = 0.085, SPLIT = 150, KILL = 0.5, PGROW = 0.125;
 export const habitat = (w, sp, i) => SPECIES[sp].hab(w.tMean[i], w.mi[i], w.t[i], w.h[i] - w.params.sea);
 
 export function initFauna(w) {
@@ -51,13 +53,14 @@ export function fauna(w) {
     let bx = h.x, by = h.y, bs = g[c] * (0.35 + 0.65 * green[c]) * (farm[c] ? 0.3 : 1) + 0.05; const st = (rnd() * 8) | 0;
     for (let q = 0; q < 8; q++) {
       const d = NB8[(q + st) & 7], y = h.y + d[1]; if (y < 1 || y >= H - 1) continue; const x = wx(h.x + d[0]), i = y * W + x; if (water[i] || fireT[i]) continue;
-      let sc = g[i] * (0.35 + 0.65 * green[i]) * (farm[i] ? 0.3 : 1) * (0.35 + 0.65 * habitat(w, sp, i)) + rnd() * 0.07; if (herdAt[i]) sc -= 0.3; if (owner[i] >= 0) sc -= 0.12; if (snow[i] > 0.6) sc -= 0.15;
+      let sc = g[i] * (0.35 + 0.65 * green[i]) * (farm[i] ? 0.3 : 1) + rnd() * 0.07; if (herdAt[i]) sc -= 0.3; if (owner[i] >= 0) sc -= 0.12; if (snow[i] > 0.6) sc -= 0.15;
+      if (sc <= bs) continue; sc -= (sc > 0 ? sc : 0) * 0.65 * (1 - habitat(w, sp, i));
       if (sc > bs) { bs = sc; bx = x; by = y; }
     }
     if (bx !== h.x || by !== h.y) { if (herdAt[c] === k + 1) herdAt[c] = 0; h.x = bx; h.y = by; c = by * W + bx; herdAt[c] = k + 1; }
-    const need = h.n * 0.006, got = Math.min(need, g[c] * 0.6); g[c] -= got * 0.8; const hb = habitat(w, sp, c);
-    h.n += h.n * ((0.085 * got) / need - 0.03 - (hb < 0.5 ? 0.03 : 0));
-    if (h.n > 64) { if (herds.length + born.length < MAXH) { h.n *= 0.5; born.push({ x: h.x, y: h.y, px: h.x, py: h.y, n: h.n, sp, mt: w.tickN, odd: h.odd }); } else h.n = 64; }
+    const need = h.n * EAT, got = Math.min(need, g[c]); g[c] -= got; const hb = habitat(w, sp, c);
+    h.n += h.n * ((GROW * got) / need - 0.03 - (hb < 0.5 ? 0.03 : 0));
+    if (h.n > SPLIT) { if (herds.length + born.length < MAXH) { h.n *= 0.5; born.push({ x: h.x, y: h.y, px: h.x, py: h.y, n: h.n, sp, mt: w.tickN, odd: h.odd }); } else h.n = SPLIT; }
   }
   // packs
   crowd.fill(0); for (const p of packs) crowd[((p.y >> 3) * (W / 8)) + (p.x >> 3)]++;
@@ -73,8 +76,8 @@ export function fauna(w) {
       const y = p.y + dy, x = wx(p.x + dx); if (y < 1 || y >= H - 1 || water[y * W + x]) { p.h = (rnd() * 8) | 0; continue; } p.x = x; p.y = y;
     }
     c = p.y * W + p.x; let fed = 0;
-    if (best) { const ddx = best.x - p.x, wdx = ddx > W / 2 ? ddx - W : ddx < -W / 2 ? ddx + W : ddx; if (Math.max(Math.abs(wdx), Math.abs(best.y - p.y)) <= 1) { const eff = t[best.y * W + best.x] > 0.5 ? 0.5 : 1, big = SPECIES[best.sp].meat, kill = Math.min(best.n * 0.3, (p.n * 0.5 * eff) / big); best.n -= kill; fed = Math.min(1, (kill * big) / (p.n * 0.5)); } }
-    p.n += p.n * ((0.125 * fed) / (1 + Math.max(0, crowd[((p.y >> 3) * (W / 8)) + (p.x >> 3)] - 1)) - 0.05); if (owner[c] >= 0) p.n *= 0.95;
+    if (best) { const ddx = best.x - p.x, wdx = ddx > W / 2 ? ddx - W : ddx < -W / 2 ? ddx + W : ddx; if (Math.max(Math.abs(wdx), Math.abs(best.y - p.y)) <= 1) { const eff = t[best.y * W + best.x] > 0.5 ? 0.5 : 1, big = SPECIES[best.sp].meat, kill = Math.min(best.n * 0.3, (p.n * KILL * eff) / big); best.n -= kill; fed = Math.min(1, (kill * big) / (p.n * KILL)); } }
+    p.n += p.n * ((PGROW * fed) / (1 + Math.max(0, crowd[((p.y >> 3) * (W / 8)) + (p.x >> 3)] - 1)) - 0.05); if (owner[c] >= 0) p.n *= 0.95;
     if (p.n > 9 && packs.length + bornP.length < MAXP) { p.n *= 0.5; bornP.push({ x: p.x, y: p.y, px: p.x, py: p.y, n: p.n, h: (rnd() * 8) | 0, mt: w.tickN }); }
   }
   if ((w.tickN & 3) === 0) {
@@ -93,7 +96,8 @@ export function faunaYear(w) {
     const st = w.species[s]; st.n = cnt[s];
     if (st.alive && cnt[s] <= 0) { st.alive = false; ev(w, `The last ${SPECIES[s].name} are gone. There will be no more.`, st.lx, st.ly, null); discover(w, 'lost', st.lx, st.ly); }
   }
-  if (w.graz0 == null) w.graz0 = total; else if (total > Math.max(24000, w.graz0 * 1.5) && w.herds.length) { const h = w.herds[0]; discover(w, 'herds', h.x, h.y); }
+  if (w.year === 40) w.graz0 = total; else if (w.graz0 && total > w.graz0 * 1.4 && w.herds.length) { const h = w.herds[0]; if (discover(w, 'herds', h.x, h.y)) ev(w, 'With little left to hunt them, the herds have grown past counting. The grass is going.', h.x, h.y, null); }
+  w.grazPeak = Math.max(total, (w.grazPeak || 0) * 0.99); if (w.year > 60 && w.grazPeak > 25000 && total < w.grazPeak * 0.58 && w.herds.length) { const h = w.herds[0]; w.grazPeak = total; if (discover(w, 'boom', h.x, h.y)) ev(w, 'The herds ate the grass to the roots. Now there are bones on every plain.', h.x, h.y, null); }
   if (!w.packs.length && w.year > 20 && !w.found.nopred && w.herds.length) discover(w, 'nopred', w.herds[0].x, w.herds[0].y);
   if (w.year % 50 === 25) {
     for (const h of w.herds) { if (h.odd) continue; const m = w.mass[h.y * W + h.x], sz = w.massSize[m] || 0; if (sz > 12 && sz < 420) { h.iso = (h.iso || 0) + 50; if (h.iso >= 350) { h.odd = sz < 140 ? 'dwarf' : 'giant'; if (discover(w, 'oddity', h.x, h.y)) ev(w, `Cut off on their island, the ${SPECIES[h.sp].name} have grown ${h.odd === 'dwarf' ? 'small and tame' : 'huge and strange'}.`, h.x, h.y, null); } } else h.iso = 0; }

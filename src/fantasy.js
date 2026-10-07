@@ -4,7 +4,7 @@
 import { W, H, N, clamp, wx, wrapDx, cyl, DISC } from './core.js';
 import { ev, discover } from './story.js';
 import { ignite } from './life.js';
-import { near, colorOf, endSet } from './people.js';
+import { near, colorOf, endSet, flee } from './people.js';
 
 export function initMagic(w) {
   const ley = (w.ley = new Float32Array(N)), pd = w._pd, s = w.seed;
@@ -67,13 +67,14 @@ export function dragonsTick(w) {
     d.px = d.x; d.py = d.y; const dx = wrapDx(d.tx - d.x), dy = d.ty - d.y, l = Math.hypot(dx, dy), sp = 4;
     if (l > sp) { d.x = wx(d.x + (dx / l) * sp); d.y += (dy / l) * sp; continue; }
     d.x = d.tx; d.y = d.ty;
-    if (d.st === 'home') { d.st = 'sleep'; d.sleep = 3 + ((rnd() * 9) | 0); continue; }
+    if (d.st === 'home') { d.st = 'sleep'; d.sleep = 6 + ((rnd() * 18) | 0); continue; }
     const tg = d.target; d.hunger = 0;
     if (tg.kind === 'herd') { tg.h.n = Math.max(0, tg.h.n - 22); }
     else if (!tg.s.dead) { const s = tg.s, c = w.cults[s.cult];
-      if (c.tech >= 3 && s.pop > 900 && rnd() < 0.14 + (c.iron ? 0.08 : 0)) { d.dead = true; s.pop *= 0.9; c.coh = Math.min(1, c.coh + 0.25); c.know *= 1.05; ev(w, `${d.name} comes for ${s.name} and does not leave. The city keeps the skull over its gate.`, s.x, s.y, colorOf(c)); discover(w, 'slayer', s.x, s.y); continue; }
-      const loot = s.pop * 0.18; s.pop -= loot; d.hoard += loot / 40 + (c.gold ? 4 : 0); for (const o of DISC[2]) { const yy = s.y + o[1]; if (yy < 1 || yy >= H - 1) continue; if (rnd() < 0.5) ignite(w, yy * W + wx(s.x + o[0])); }
-      if (s.pop < 40 && s.tier >= 1) { endSet(w, s, 'dragon'); } else ev(w, `${d.name} falls on ${s.name} out of a clear sky.`, s.x, s.y, null, d.hoard > 6 && s.tier < 3);
+      if (s.tower && rnd() < 0.7) { if (discover(w, 'ward', s.x, s.y)) ev(w, `${d.name} circles ${s.name} twice and turns away. The tower is lit.`, s.x, s.y, colorOf(c)); d.st = 'home'; d.tx = d.lx; d.ty = d.ly; continue; }
+      if (c.tech >= 3 && s.pop > 900 && rnd() < 0.14 + (c.arts.iron ? 0.08 : 0)) { d.dead = true; s.pop *= 0.9; c.coh = Math.min(1, c.coh + 0.25); c.know *= 1.05; ev(w, `${d.name} comes for ${s.name} and does not leave. The city keeps the skull over its gate.`, s.x, s.y, colorOf(c)); discover(w, 'slayer', s.x, s.y); continue; }
+      const loot = s.pop * 0.18; s.pop -= loot; flee(w, s, loot * 0.5); s.burned++; d.hoard += loot / 40 + (c.gold ? 4 : 0); for (const o of DISC[2]) { const yy = s.y + o[1]; if (yy < 1 || yy >= H - 1) continue; if (rnd() < 0.5) ignite(w, yy * W + wx(s.x + o[0])); }
+      if (s.pop < 40 && s.tier >= 1) { endSet(w, s, 'dragon'); } else if (s.burned === 1) ev(w, `${d.name} falls on ${s.name} out of a clear sky.`, s.x, s.y, null, s.tier < 2 ? 1 : 0); else if (s.burned % 4 === 0) ev(w, `${s.name} has burned ${s.burned} times now. Its people rebuild in stone and keep watching the sky.`, s.x, s.y, colorOf(c), 1);
       if (d.hoard > 22 && discover(w, 'hoard', d.lx, d.ly)) ev(w, `The hoard of ${d.name} is the richest thing in the world, and everyone knows where it is.`, d.lx, d.ly, null); }
     d.st = 'home'; d.tx = d.lx; d.ty = d.ly;
   }

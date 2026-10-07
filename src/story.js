@@ -1,9 +1,10 @@
 // The chronicle (things that happened) and the almanac (kinds of thing this world has produced).
 // true the first time anything asks about `key` in this world
 export const once = (w, key) => (w.onces[key] ? false : (w.onces[key] = true));
-export function ev(w, text, x, y, color, minor) {
-  if (minor) { if (w.year - (w.lastMinor || -99) < 14) return; w.lastMinor = w.year; }
-  w.events.push({ year: w.year, text, x, y, color: color || null });
+// level: 0 or nothing = worth a line; 1 or true = small (only one is kept every few years); 2 = a headline
+export function ev(w, text, x, y, color, level) {
+  if (level && level !== 2) { if (w.year - (w.lastMinor || -99) < 9) return; w.lastMinor = w.year; }
+  w.events.push({ year: w.year, text, x, y, color: color || null, big: level === 2 });
 }
 
 // Almanac pages. They start blank; a page is filled in the first time the world produces the
@@ -15,6 +16,8 @@ export const PAGES = [
     ['lake', 'Great lake', 'A hollow filled until it became an inland sea.'],
     ['island', 'New island', 'Land stood up out of open water.'],
     ['strait', 'Drowned land', 'The sea came in over ground that used to be dry.'],
+    ['cold', 'Cold age', 'The sun dimmed a little for a few generations, and everything moved toward the equator.'],
+    ['warm', 'Warm age', 'A few generations of long summers.'],
     ['iceage', 'Ice age', 'The ice came down from the poles and stayed.'],
     ['thaw', 'Great thaw', 'The ice let go and the seas rose.'],
     ['monsoon', 'Monsoon', 'Half the year parched, half the year drowned.'],
@@ -27,6 +30,8 @@ export const PAGES = [
     ['crater', 'Star scar', 'A hole where a star fell.'],
     ['desert', 'Sand sea', 'A desert the size of a country.'],
     ['bridge', 'Land bridge', 'The sea fell and two lands touched.'],
+    ['drought', 'Great drought', 'The rains stayed away for years and a town went hungry.'],
+    ['dust', 'Worn-out land', 'Fields farmed until the soil gave up.'],
   ]],
   ['Living things', [
     ['primeval', 'Forest primeval', 'Woods so wide that most of the land is under leaves.'],
@@ -37,6 +42,10 @@ export const PAGES = [
     ['enchanted', 'Enchanted wood', 'An old forest soaked in something that is not rain.'],
     ['dragon', 'Dragon', 'Something large took a mountain for itself.'],
     ['hoard', 'Dragon hoard', 'A worm grown fat on a hundred years of plunder.'],
+    ['kraken', 'Deep one', 'Ships that cross this water do not all come back.'],
+    ['locusts', 'Swarm', 'After the rains came back, so did something else.'],
+    ['nets', 'Empty nets', 'A sea fished until there was nothing left to catch.'],
+    ['boom', 'Boom and crash', 'Too many grazers, then bare ground, then bones.'],
   ]],
   ['Peoples', [
     ['village', 'First village', 'Wanderers stopped wandering.'],
@@ -56,6 +65,13 @@ export const PAGES = [
     ['smoke', 'Age of smoke', 'A people learned to burn the ground itself.'],
     ['slayer', 'Dragonslayers', 'A city killed the thing in the mountain.'],
     ['tower', 'Wizard tower', 'Someone built where the magic pools.'],
+    ['ward', 'Warded town', 'The dragon came, looked at the tower, and left.'],
+    ['rainmaker', 'Rainmakers', 'A tower called the rain, and it came.'],
+    ['war', 'Great war', 'Two large peoples, and not enough room.'],
+    ['horde', 'Horde', 'Every rider of the grass, under one name.'],
+    ['trade', 'Sea road', 'Ships that carry goods, ideas and sickness between shores.'],
+    ['fall', 'The Fall', 'The world held far fewer people than it once had.'],
+    ['gone', 'Vanished people', 'A people with a name and a history, and now neither.'],
   ]],
   ['Ruins', [
     ['ruin', 'Lost city', 'Empty streets, slowly going back to earth.'],
@@ -66,6 +82,7 @@ export const PAGES = [
     ['reborn', 'City on a city', 'New walls on old foundations.'],
     ['relic', 'Old knowledge', 'Someone dug in a ruin and learned something.'],
     ['haunt', 'Haunted ruin', 'Nobody goes there. Something does.'],
+    ['curse', 'Curse', 'Diggers opened a haunted place and brought something home.'],
   ]],
 ];
 export function discover(w, id, x, y) {

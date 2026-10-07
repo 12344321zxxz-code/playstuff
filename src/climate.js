@@ -34,10 +34,11 @@ function rainBelts(a) {       // how readily air gives up its water, by distance
   return (1.0 * itcz + 0.85 * storm + 0.2) * (1 - 0.7 * sub);
 }
 
-function season(w, s, out) {
+let epoch = 0;
+function* season(w, s, out, my) {
   const P = w.params, tiltF = P.tilt / 23.5, phiI = s * P.tilt * 0.42, spin = P.spin;
   const { elev, land, cont, ts, tb, u, v, curl, psi, cu, cv, sst, base, ta, q, acc, a: A, b: B } = C;
-  const cool = w.aerosol * 9, warm = w.greenhouse || 0;
+  const cool = w.aerosol * 9, warm = (w.greenhouse || 0) + (w.solar || 0);
   // 1. heat at the surface
   for (let y = 0; y < CH; y++) {
     const phi = C.lat[y], sp = Math.sin(phi * RAD), seas = s * Math.sign(phi) * tiltF * Math.pow(Math.abs(sp), 0.8);
@@ -77,17 +78,20 @@ function season(w, s, out) {
   }
   const sc = (dot < 0 ? -1 : 1) * 0.8 / mx;
   for (let i = 0; i < CN; i++) { if (land[i]) continue; let a = cu[i] * sc + 0.2 * u[i], b = cv[i] * sc + 0.2 * v[i]; const m = Math.hypot(a, b); if (m > 0.9) { a *= 0.9 / m; b *= 0.9 / m; } cu[i] = a; cv[i] = b; }
+  yield; if (my !== epoch) return;
   // 4. sea temperature carried by the currents
   sst.set(base);
   for (let it = 0; it < 30; it++) { advect(sst, A, cu, cv); for (let i = 0; i < CN; i++) sst[i] = land[i] ? base[i] : A[i] + (base[i] - A[i]) * 0.09; }
   // 5. air temperature: the wind carries sea air inland
   for (let i = 0; i < CN; i++) { ts[i] = land[i] ? ts[i] : sst[i]; ta[i] = ts[i]; }
   for (let it = 0; it < 7; it++) { advect(ta, A, u, v); for (let i = 0; i < CN; i++) ta[i] = A[i] + (ts[i] - A[i]) * (land[i] ? 0.34 : 0.7); }
+  yield; if (my !== epoch) return;
   // 6. water in the air
   const QS = C.qs || (C.qs = f32()), QO = C.qo || (C.qo = f32());
   for (let i = 0; i < CN; i++) { QS[i] = qsat(ta[i] - LAPSE * elev[i]); QO[i] = qsat(sst[i]); q[i] = (land[i] ? 0.25 : 0.6) * qsat(ta[i]); acc[i] = 0; }
   const SPIN = 18, ITS = 58;
   for (let it = 0; it < ITS; it++) {
+    if (it % 8 === 7) { yield; if (my !== epoch) return; }
     advect(q, A, u, v);
     for (let y = 0; y < CH; y++) {
       const eff = rainBelts(Math.abs(C.lat[y] - phiI)), ym = y > 0 ? y - 1 : 0, yp = y < CH - 1 ? y + 1 : CH - 1;
@@ -115,11 +119,16 @@ function up(src, x, y) {          // bilinear read of a coarse field at a full-r
 }
 export const sampleCoarse = up;
 
-export function computeClimate(w) { climateStage(w, 0); climateStage(w, 1); climateStage(w, 2); }
-// The same work in three pieces, so a running game can spread it over three ticks.
-export function climateStage(w, stage) {
-  if (stage === 1) { season(w, -1, C.out[0]); return; }
-  if (stage === 2) { season(w, 1, C.out[1]); upsample(w); return; }
+// The whole refresh as a generator: a running game takes a few steps per tick so nothing hitches;
+// computeClimate just runs it to the end. A newer refresh cancels an older one mid-way.
+export function* climateSteps(w) {
+  const my = ++epoch; prep(w); yield; if (my !== epoch) return;
+  yield* season(w, -1, C.out[0], my); if (my !== epoch) return; yield;
+  yield* season(w, 1, C.out[1], my); if (my !== epoch) return; yield;
+  yield* upsample(w, my);
+}
+export function computeClimate(w) { for (const _ of climateSteps(w)); }
+function prep(w) {
   const { h, g, t } = w, sea = w.params.sea, { elev, land, et, cont } = C;
   for (let cy = 0; cy < CH; cy++) for (let cx = 0; cx < CW; cx++) {
     const i = cy * CW + cx; let e = 0, ln = 0, ev = 0, ic = 0;
@@ -133,11 +142,12 @@ export function climateStage(w, stage) {
   for (let hd = 0; hd < qn; hd++) { const c = q[hd], nd = cont[c] + 1; if (nd > 12) continue; const x = c % CW, y = (c / CW) | 0; for (let k = 0; k < 4; k++) { const yy = y + (k === 2 ? -1 : k === 3 ? 1 : 0); if (yy < 0 || yy >= CH) continue; const n = yy * CW + (x + (k === 0 ? 1 : k === 1 ? CW - 1 : 0)) % CW; if (cont[n] > nd) { cont[n] = nd; q[qn++] = n; } } }
   for (let i = 0; i < CN; i++) cont[i] = Math.min(1, cont[i] / 8);
 }
-function upsample(w) {
+function* upsample(w, my) {
   const { h } = w, sea = w.params.sea;
   // back to full resolution, with the fine detail of real slopes
   const { tJan, tJul, rJan, rJul, wetBias } = w, o0 = C.out[0], o1 = C.out[1];
   for (let y = 0; y < H; y++) { const ym = y > 0 ? y - 1 : 0, yp = y < H - 1 ? y + 1 : H - 1;
+    if (y % 32 === 31) { yield; if (my !== epoch) return; }
     for (let x = 0; x < W; x++) {
       const i = y * W + x, hh = Math.max(0, h[i] - sea), xl = x === 0 ? W - 1 : x - 1, xr = x === W - 1 ? 0 : x + 1;
       const dx = (Math.max(sea, h[y * W + xr]) - Math.max(sea, h[y * W + xl])) * 0.5, dy = (Math.max(sea, h[yp * W + x]) - Math.max(sea, h[ym * W + x])) * 0.5;
@@ -165,7 +175,7 @@ export function derive(w) {
     const lo = Math.min(rJan[i], rJul[i]), hi = Math.max(rJan[i], rJul[i]) + 1e-4, dry = 1 - lo / hi, sf = 0.45 + 0.55 * Math.min(1, soil[i]);
     const rock = smooth(0.42, 0.7, h[i] - sea);
     gCap[i] = ice[i] ? 0 : smooth(0.07, 0.55, m) * smooth(-7, 5, tw) * (1 - rock * 0.8) * (0.6 + 0.4 * sf);
-    crop[i] = ice[i] ? 0 : smooth(0.36, 0.95, dryM) * smooth(8, 15, tw) * (1 - rock);
+    crop[i] = ice[i] ? 0 : smooth(0.36, 0.95, dryM) * smooth(8, 15, tw) * (1 - smooth(30, 36, tw)) * (1 - rock);
     tCap[i] = ice[i] ? 0 : smooth(0.5, 1.05, m) * smooth(7, 13, tw) * (1 - 0.45 * dry * (m < 1.5 ? 1 : 0.3)) * (1 - rock) * sf;
   }
   w.iceFrac = iceN / N; w.landIce = landN ? landIce / landN : 0;

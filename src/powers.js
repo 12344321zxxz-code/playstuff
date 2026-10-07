@@ -6,7 +6,7 @@ import { ignite } from './life.js';
 const fall = (d, r) => { const u = d / (r + 0.5); return u >= 1 ? 0 : (1 - u * u) * (1 - u * u); };
 
 export function sculpt(w, tool, x, y, r, st) {
-  const { h } = w, ridge = w._ridge; x = Math.round(x); y = Math.round(y);
+  const { h } = w, ridge = w._ridge, sea = w.params.sea; x = Math.round(x); y = Math.round(y);
   if (y < 1 || y >= H - 1) return false;
   const disc = DISC[Math.min(20, r)];
   if (tool === 'smooth' || tool === 'flatten') {
@@ -19,8 +19,9 @@ export function sculpt(w, tool, x, y, r, st) {
     for (const o of disc) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const i = idx(x + o[0], yy), k = fall(o[2], r); let d = 0;
       if (tool === 'raise') d = 0.012 * k;
       else if (tool === 'lower') d = -0.012 * k;
-      else if (tool === 'ridge') d = 0.05 * k * k * (0.5 + 0.8 * ridge[i]);
-      else if (tool === 'trench') d = -0.045 * k * k;
+      // a ridge or a trench pulls the ground toward a set height, so one pass is enough and ten do no harm
+      else if (tool === 'ridge') { const tgt = sea + 0.62 * (0.5 + 0.65 * ridge[i]); if (tgt > h[i]) d = (tgt - h[i]) * k * k * 0.85; }
+      else if (tool === 'trench') { const tgt = Math.min(sea - 0.1, h[i] - 0.12); d = (tgt - h[i]) * k * k * 0.85; }
       h[i] = clamp(h[i] + d * (st.power || 1), -1, 1.2); }
   }
   w.stamp.land++; w.need.water = true; w.need.climate = true; w.edited = true;

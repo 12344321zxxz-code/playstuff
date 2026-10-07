@@ -1,6 +1,6 @@
 // The page: camera, input, tools, panels. The world itself lives in world.js and friends.
 import { W, H, N, TPY, CW, CH, TAU, clamp, idx, wrapDx, wx } from './core.js';
-import { makeWorld, tick, refreshWater, refreshClimate, movePlates } from './world.js';
+import { makeWorld, tick, refreshWater, queueClimate, background, movePlates } from './world.js';
 import { createRenderer, toScreen, toWorld, drawRivers } from './render.js';
 import { sculpt, erodeBrush, weather, plant, burn, plateAt } from './powers.js';
 import { describe } from './inspect.js';
@@ -13,8 +13,8 @@ if (!R) $('nogl').hidden = false;
 
 const cam = { x: W / 2, y: H / 2, z: 3, dpr: 1, w: 0, h: 0, minZ: 1 };
 const pal = new Float32Array(96);
-const S = { w: null, tool: null, brush: 5, lens: 0, speed: 2, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {} };
-const TPS = [0, 8, 32, 80];
+const S = { w: null, tool: null, brush: 5, lens: 0, speed: 2, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {}, touched: false, ref: null, ghost: null, perf: { sim: 0, gl: 0, ov: 0, ticks: 0 } };
+const TPS = [0, 8, 32, 96];
 const LENSES = [[0, 'Land'], [1, 'Heat'], [2, 'Rain'], [8, 'Wind'], [3, 'Soil'], [5, 'Height'], [4, 'Plates']];
 const SEASONS = ['midwinter', 'late winter', 'spring', 'early summer', 'midsummer', 'late summer', 'autumn', 'early winter'];
 
@@ -53,7 +53,7 @@ function zoomAt(sx, sy, f) { const a = toWorld(cam, sx, sy); cam.z *= f; clampCa
 export function flyTo(x, y, z) { cam.x = x; cam.y = y; if (z && cam.z < z) cam.z = z; clampCam(); }
 
 /* ---------- tools ---------- */
-function hint(msg) { $('hint').textContent = msg || S.tool.hint; clearTimeout(S.hintT); if (msg) S.hintT = setTimeout(() => { $('hint').textContent = S.tool.hint; }, 2600); }
+function hint(msg, ms) { $('hint').textContent = msg || S.tool.hint; clearTimeout(S.hintT); if (msg) S.hintT = setTimeout(() => { $('hint').textContent = S.tool.hint; }, ms || 3200); }
 export const say = hint;
 function setTool(t) {
   const prev = S.tool; if (prev && prev.lens != null && S.lens === prev.lens && t.lens == null) setLens(0);
@@ -82,6 +82,7 @@ function applyTool(p, first) {
     default: if (t.apply) ok = t.apply(w, p, first, r, st, S.opt[t.id] || 0);
   }
   S.dirty = true; if (!ok && first) hint(t.miss || 'Nothing happens there.');
+  if (w.edited || w.need.climate) S.touched = true;
 }
 function finishEdit() {
   const w = S.w;
@@ -131,6 +132,7 @@ function bindInput() {
     if (pr.pan) { if (pr.moved < 6 && S.tool.kind === 'look' && e.type === 'pointerup') look(p); return; }
     if (S.tool.kind === 'plates') {
       const w = S.w;
+      S.touched = true;
       if (pr.plate && pr.moved > 2) { movePlates(w); hint('The plates shift.'); }
       else if (pr.moved <= 2) { const pl = plateAt(w, p.x, p.y); pl.land = !pl.land; movePlates(w); hint(pl.land ? 'Ocean floor rises into a continent.' : 'A continent sinks beneath the sea.'); }
       S.dirty = true; return;
@@ -169,18 +171,20 @@ function vitals() {
   $('yr').textContent = w.year; $('season').textContent = SEASONS[Math.floor(w.phase * 8) % 8];
 }
 function dials() {
-  const w = S.w, P = w.params, touch = () => { S.climT = performance.now() + 350; S.dirty = true; labels(); };
+  const w = S.w, P = w.params, touch = () => { S.climT = performance.now() + 350; S.dirty = true; S.touched = true; labels(); };
   const labels = () => {
     $('o-sun').textContent = P.sun === 0 ? 'as it is' : (P.sun > 0 ? '+' : '') + P.sun + '°';
     $('o-tilt').textContent = P.tilt < 4 ? 'none' : P.tilt < 16 ? 'gentle' : P.tilt < 30 ? 'mild' : P.tilt < 38 ? 'harsh' : 'savage';
     $('o-sea').textContent = Math.abs(P.seaDial) < 0.003 ? 'as it is' : P.seaDial > 0 ? 'risen' : 'fallen';
     $('d-spin').textContent = P.spin > 0 ? 'Eastward' : 'Westward';
+    $('o-mood').textContent = P.mood < 0.15 ? 'steady' : P.mood < 0.7 ? 'mild' : P.mood < 1.3 ? 'fickle' : 'wild';
   };
+  $('d-mood').oninput = (e) => { P.mood = +e.target.value; labels(); };
   $('d-sun').oninput = (e) => { P.sun = +e.target.value; touch(); };
   $('d-tilt').oninput = (e) => { P.tilt = +e.target.value; touch(); };
   $('d-sea').oninput = (e) => { P.seaDial = +e.target.value; P.sea = P.seaDial + w.seaAuto; w.stamp.land++; refreshWater(w); touch(); };
   $('d-spin').onclick = () => { P.spin = -P.spin; touch(); };
-  $('d-sun').value = P.sun; $('d-tilt').value = P.tilt; $('d-sea').value = P.seaDial; labels();
+  $('d-sun').value = P.sun; $('d-tilt').value = P.tilt; $('d-sea').value = P.seaDial; $('d-mood').value = P.mood; labels();
 }
 
 /* ---------- overlay ---------- */
@@ -204,9 +208,28 @@ function drawPlates() {
     arrow(A[0], A[1], B[0], B[1], 'rgba(10,12,14,.9)', 4.5 * cam.dpr); arrow(A[0], A[1], B[0], B[1], '#fff', 2.2 * cam.dpr);
     ctx.beginPath(); ctx.arc(B[0], B[1], 6 * cam.dpr, 0, TAU); ctx.fillStyle = pl.land ? '#dba51f' : '#58b6e6'; ctx.fill(); ctx.strokeStyle = '#101418'; ctx.lineWidth = 1.5 * cam.dpr; ctx.stroke(); }
 }
+// After you change the land or the sky, the climate settles into something new. For a few
+// seconds the map shows what moved: blue where it is now wetter than before, orange where drier.
+const gcv = document.createElement('canvas'); gcv.width = W; gcv.height = H; const gctx = gcv.getContext('2d');
+function climateWatch(now) {
+  const w = S.w; if (!S.ref || S.ref.w !== w) { S.ref = { w, stamp: w.climateStamp, mi: Float32Array.from(w.mi) }; S.ghost = null; return; }
+  if (w.climateStamp === S.ref.stamp || w.job) return; const old = S.ref.mi, mi = w.mi; S.ref.stamp = w.climateStamp;
+  if (S.touched) { S.touched = false; const img = gctx.createImageData(W, H), d = img.data; let wet = 0, dry = 0;
+    for (let i = 0, j = 0; i < N; i++, j += 4) { if (w.water[i] === 1) continue; const a = Math.min(old[i], 2.2), b = Math.min(mi[i], 2.2), df = b - a, k = Math.abs(df) / (0.25 + 0.5 * Math.max(a, b)); if (k < 0.18) continue;
+      const al = Math.min(1, (k - 0.18) * 2.2) * 190; if (df > 0) { d[j] = 30; d[j + 1] = 150; d[j + 2] = 255; wet++; } else { d[j] = 255; d[j + 1] = 120; d[j + 2] = 20; dry++; } d[j + 3] = al; }
+    if (wet + dry > 60) { gctx.putImageData(img, 0, 0); S.ghost = { t0: now }; hint(wet > dry * 3 ? 'The rain has moved. Blue is wetter than it was.' : dry > wet * 3 ? 'The rain has moved. Orange is drier than it was.' : 'The rain has moved. Blue is wetter than it was, orange is drier.', 9000); } }
+  old.set(mi);
+}
+function drawGhost(now) {
+  const g = S.ghost; if (!g) return; const age = (now - g.t0) / 1000; if (age > 9) { S.ghost = null; return; }
+  const s = cam.z * cam.dpr; toScreen(cam, 0, 0, A); ctx.globalAlpha = age < 6 ? 0.8 : 0.8 * (1 - (age - 6) / 3); ctx.imageSmoothingEnabled = true;
+  for (let k = -1; k <= 1; k++) { const x0 = A[0] + k * W * s; if (x0 > cam.w || x0 + W * s < 0) continue; ctx.drawImage(gcv, x0, A[1], W * s, H * s); }
+  ctx.globalAlpha = 1;
+}
 function overlay(now) {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ov.width, ov.height);
   const w = S.w;
+  drawGhost(now);
   if (S.lens !== 4 && S.lens !== 5) drawRivers(ctx, w, cam);
   for (const fn of hooks.overlay) fn(ctx, w, cam, S, now);
   if (S.lens === 8) drawWind();
@@ -217,12 +240,15 @@ function overlay(now) {
 
 /* ---------- loop ---------- */
 function frame(now) {
-  const dt = Math.min(0.1, (now - S.last) / 1000); S.last = now; const w = S.w;
-  if (S.speed && !(S.press && !S.press.pan)) { S.acc += dt * TPS[S.speed]; let n = 0; const t0 = performance.now(); while (S.acc >= 1 && n < 10 && performance.now() - t0 < 12) { tick(w); for (const fn of hooks.tick) fn(w); S.acc -= 1; n++; } if (n) S.dirty = true; if (S.acc > 3) S.acc = 0; }
-  if (S.climT && now > S.climT && !S.press) { S.climT = 0; refreshClimate(w); S.dirty = true; }
+  const dt = Math.min(0.1, (now - S.last) / 1000); S.last = now; const w = S.w, P = S.perf, t0 = performance.now(); let ran = 0;
+  if (S.speed && !(S.press && !S.press.pan)) { S.acc += dt * TPS[S.speed]; while (S.acc >= 1 && ran < 10 && performance.now() - t0 < 12) { tick(w); for (const fn of hooks.tick) fn(w); S.acc -= 1; ran++; } if (ran) S.dirty = true; if (S.acc > 3) S.acc = 0; }
+  if (S.climT && now > S.climT && !S.press) { S.climT = 0; queueClimate(w); }
+  if (!ran && w.job && !(S.press && !S.press.pan)) { const st = w.stamp.land; background(w, 8); if (w.stamp.land !== st) S.dirty = true; }
+  const t1 = performance.now(); P.sim += (t1 - t0 - P.sim) * 0.05; P.ticks += (ran - P.ticks) * 0.05;
   if (S.press && !S.press.pan && w.need.water && now > S.waterT) { S.waterT = now + 320; refreshWater(w); }
+  climateWatch(now);
   if (R) { if (S.dirty) { R.upload(w, S.lens); S.dirty = false; } R.draw(w, cam, S.lens === 8 ? 0 : S.lens, now / 1000, pal); }
-  overlay(now);
+  const t2 = performance.now(); overlay(now); const t3 = performance.now(); P.gl += (t2 - t1 - P.gl) * 0.05; P.ov += (t3 - t2 - P.ov) * 0.05;
   if (now - S.hudT > 500) { S.hudT = now; vitals(); if (S.sel && S.sel.info) { const inf = S.sel.info(); if (inf) showInfo(inf); else { S.sel = null; } } }
   requestAnimationFrame(frame);
 }

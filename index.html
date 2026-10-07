@@ -32,13 +32,15 @@
         <label class="dial"><span>Sun</span><input type="range" id="d-sun" min="-14" max="14" step="0.5" value="0"><output id="o-sun">as it is</output></label>
         <label class="dial"><span>Seasons</span><input type="range" id="d-tilt" min="0" max="45" step="0.5" value="23.5"><output id="o-tilt">mild</output></label>
         <label class="dial"><span>Sea level</span><input type="range" id="d-sea" min="-0.14" max="0.14" step="0.005" value="0"><output id="o-sea">as it is</output></label>
+        <label class="dial"><span>Weather</span><input type="range" id="d-mood" min="0" max="2" step="0.1" value="1"><output id="o-mood">fickle</output></label>
         <label class="dial"><span>Spin</span><button type="button" id="d-spin" class="mini">Eastward</button><output></output></label>
       </section>
-      <section class="card vitals" id="vitals" aria-label="Living things"></section>
+      <section class="card" aria-label="Living things"><div class="vitals" id="vitals"></div><div class="trend"><span class="lab">People over time</span><canvas id="spark" width="600" height="80" role="img" aria-label="World population over time"></canvas></div></section>
       <section class="card inspect" id="inspect" aria-live="polite"></section>
       <section class="card book">
-        <div class="tabs" role="tablist"><button type="button" role="tab" id="tab-chron" aria-selected="true">Chronicle</button><button type="button" role="tab" id="tab-alm" aria-selected="false">Almanac</button></div>
+        <div class="tabs" role="tablist"><button type="button" role="tab" id="tab-chron" aria-selected="true">Chronicle</button><button type="button" role="tab" id="tab-ppl" aria-selected="false">Peoples</button><button type="button" role="tab" id="tab-alm" aria-selected="false">Almanac</button></div>
         <ol id="log"></ol>
+        <div id="roster" hidden></div>
         <div id="almanac" hidden></div>
       </section>
     </aside>

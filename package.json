@@ -1,6 +1,6 @@
 {
   "name": "formicarium",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A god game: tend a world like a garden. Land, climate, life, peoples, ruins, all shaping each other.",
   "type": "module",
   "private": true,
