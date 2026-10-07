@@ -1,0 +1,89 @@
+/* Layout: the map is the one framed object and takes all the room it can; powers sit on a rail to
+   its left, the keeper's notebook to its right. Narrow screens stack: map, powers, notebook. */
+:root{
+  --ground:#e3e8e1; --panel:#eef2ec; --ink:#1c2924; --muted:#566860; --line:#c2ccc4; --press:#d6ddd5;
+  --accent:#dba51f; --accent-ink:#1c2924; --frame:#101418;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Instrument Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"Spline Sans Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ground:#111815; --panel:#18221e; --ink:#dde6de; --muted:#8fa197; --line:#2b3a33; --press:#22302a;
+  --accent:#e5b53f; --accent-ink:#141c19; --frame:#07090b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ground:#111815; --panel:#18221e; --ink:#dde6de; --muted:#8fa197; --line:#2b3a33; --press:#22302a;
+  --accent:#e5b53f; --accent-ink:#141c19; --frame:#07090b; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.42}
+.app{height:100%;max-width:2000px;margin-inline:auto;padding-inline:16px;padding-block:10px 14px;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(22px,2.4vw,30px);line-height:1;letter-spacing:-0.02em;margin:0}
+.clock{display:flex;align-items:baseline;gap:8px;margin-right:auto}
+.lab,.gl,h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+#yr{font-size:20px;font-weight:500;min-width:3.5ch}
+.muted{color:var(--muted)}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;line-height:1.2}
+button:hover{background:var(--press)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+button[aria-pressed="true"],button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.seg{display:flex;flex-wrap:wrap}
+.seg button{border-radius:0;margin-left:-1px}
+.seg button:first-child{border-radius:6px 0 0 6px;margin-left:0}
+.seg button:last-child{border-radius:0 6px 6px 0}
+.lensrow{display:flex;align-items:center;gap:8px}
+.stage{flex:1;min-height:0;display:grid;grid-template-columns:168px minmax(0,1fr) 300px;gap:14px}
+.tools{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;padding-right:2px}
+.grp{display:flex;flex-direction:column;gap:5px}
+.gb{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.gb button{text-align:left;padding:6px 8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brush .gb{grid-template-columns:repeat(4,1fr)}
+.brush .gb button{text-align:center;padding-inline:0}
+.mapcol{min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px}
+.jar{position:relative;flex:1;min-height:260px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--frame)}
+.jar canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#ov{touch-action:none;cursor:grab}
+.zoomer{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:4px}
+.zoomer button{width:34px;height:34px;padding:0;font-size:18px;background:color-mix(in srgb,var(--panel) 88%,transparent)}
+.nogl{position:absolute;inset:0;display:grid;place-items:center;margin:0;color:#dde6de;padding:24px;text-align:center}
+.hint{margin:0;min-height:1.42em}
+.side{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;overflow-y:auto}
+.card{border-top:1px solid var(--line);padding-top:10px}
+.card:first-child{border-top:0;padding-top:0}
+.dial{display:grid;grid-template-columns:64px minmax(0,1fr) 78px;gap:8px;align-items:center;margin-top:6px}
+.dial input{width:100%;accent-color:var(--accent)}
+.dial output{color:var(--muted);font-size:12.5px;text-align:right}
+.mini{padding:3px 8px;justify-self:start}
+.vitals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px}
+.vit{display:flex;flex-direction:column;min-width:0}
+.vit .num{font-size:15px;font-weight:500}
+.inspect{min-height:112px}
+.inspect h3{font-family:var(--display);font-weight:600;font-size:17px;line-height:1.2;margin:0 0 5px;text-wrap:balance}
+.inspect p{margin:0 0 3px}
+.chip{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;border:1px solid var(--ink);flex:none}
+.chip.none{background:transparent;border-color:var(--line)}
+.book{flex:1;min-height:180px;display:flex;flex-direction:column;gap:8px}
+.tabs{display:flex;gap:4px}
+.tabs button{padding:4px 10px}
+#log{list-style:none;margin:0;padding:0;overflow-y:auto;min-height:0;flex:1}
+#log li.muted{padding:4px 0}
+.ev{display:grid;grid-template-columns:4.4ch 10px minmax(0,1fr);gap:8px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:4px;padding:4px 4px 4px 0}
+.ev:disabled{cursor:default;color:var(--ink)}
+.ev:disabled:hover{background:none}
+.ev .y{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);text-align:right}
+.ev .chip{margin:0;width:8px;height:8px;align-self:center}
+#almanac{overflow-y:auto;min-height:0;flex:1}
+.alm-h{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 4px}
+.alm{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:4px}
+.alm button{text-align:left;padding:6px 8px;font-size:13px}
+.alm .blank{border:1px dashed var(--line);border-radius:6px;padding:6px 8px;color:var(--muted);font-family:var(--mono);font-size:12px}
+@media (max-width:1100px){
+  html,body{height:auto}
+  .app{height:auto}
+  .stage{display:flex;flex-direction:column}
+  .mapcol{order:1}.tools{order:2;overflow:visible}.side{order:3;overflow:visible}
+  .jar{flex:none;height:min(72vh,calc((100vw - 32px) * 0.62))}
+  .gb{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+  #log,#almanac{max-height:320px}
+}

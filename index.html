@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Formicarium</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--APP-->
+<div class="app">
+  <header class="top">
+    <div class="brand"><h1>Formicarium</h1></div>
+    <div class="clock"><span class="lab">Year</span><span id="yr" class="num">0</span><span id="season" class="muted">midwinter</span></div>
+    <div class="seg" role="group" aria-label="Speed"><button type="button" id="sp0">Pause</button><button type="button" id="sp1">Slow</button><button type="button" id="sp2">Steady</button><button type="button" id="sp3">Fast</button></div>
+    <div class="lensrow"><span class="lab">Lens</span><div class="seg" id="lenses" role="group" aria-label="Map lens"></div></div>
+    <button type="button" id="newworld">New world</button>
+  </header>
+  <div class="stage">
+    <nav class="tools" id="tools" aria-label="Powers"></nav>
+    <div class="mapcol">
+      <div class="jar" id="jar"><canvas id="gl"></canvas><canvas id="ov" aria-label="The world. Drag to move, scroll to zoom, or pick a power and use it on the map."></canvas>
+        <div class="zoomer"><button type="button" id="zin" aria-label="Zoom in">+</button><button type="button" id="zout" aria-label="Zoom out">&minus;</button></div>
+        <p class="nogl" id="nogl" hidden>This needs WebGL2, which this browser is not offering.</p>
+      </div>
+      <p class="hint" id="hint" aria-live="polite"></p>
+    </div>
+    <aside class="side">
+      <section class="card" aria-label="The sky">
+        <h2>The sky</h2>
+        <label class="dial"><span>Sun</span><input type="range" id="d-sun" min="-14" max="14" step="0.5" value="0"><output id="o-sun">as it is</output></label>
+        <label class="dial"><span>Seasons</span><input type="range" id="d-tilt" min="0" max="45" step="0.5" value="23.5"><output id="o-tilt">mild</output></label>
+        <label class="dial"><span>Sea level</span><input type="range" id="d-sea" min="-0.14" max="0.14" step="0.005" value="0"><output id="o-sea">as it is</output></label>
+        <label class="dial"><span>Spin</span><button type="button" id="d-spin" class="mini">Eastward</button><output></output></label>
+      </section>
+      <section class="card vitals" id="vitals" aria-label="Living things"></section>
+      <section class="card inspect" id="inspect" aria-live="polite"></section>
+      <section class="card book">
+        <div class="tabs" role="tablist"><button type="button" role="tab" id="tab-chron" aria-selected="true">Chronicle</button><button type="button" role="tab" id="tab-alm" aria-selected="false">Almanac</button></div>
+        <ol id="log"></ol>
+        <div id="almanac" hidden></div>
+      </section>
+    </aside>
+  </div>
+</div>
+<!--/APP-->
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
