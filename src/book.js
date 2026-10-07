@@ -11,8 +11,8 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls)
 
 function drain(w) { if (!w.events.length) return; for (const e of w.events) { log.push(e); if (e.page) almDirty = true; } w.events.length = 0; if (log.length > 500) log = log.slice(-400); }
 function chronicle() {
-  const key = log.length + ':' + (log.length ? log[log.length - 1].year : 0); if (key === shown) return; shown = key;
-  const ol = $('log'); ol.textContent = '';
+  const key = log.length + ':' + (log.length ? log[log.length - 1].year : 0), ol = $('log'); if (key === shown || (shown && ol.matches(':hover'))) return; shown = key;   // hold still while the pointer is on it
+  ol.textContent = '';
   if (!log.length) { const n = state.w.sets.length; ol.appendChild(el('li', 'muted', n ? `Year 0. ${n} small bands of people are scattered over the world: the coloured triangles. They know nothing yet. Where each one happens to be standing will decide most of what it becomes. Watch, or pick a power on the left and change something.` : 'Nothing worth writing down yet.')); return; }
   for (let k = log.length - 1; k >= Math.max(0, log.length - 160); k--) {
     const e = log[k], li = el('li'), b = el('button', 'ev' + (e.page ? ' pg' : e.digest ? ' dg' : e.big ? ' big' : '')); b.type = 'button';

@@ -96,14 +96,16 @@ export function faunaYear(w) {
     const st = w.species[s]; st.n = cnt[s];
     if (st.alive && cnt[s] <= 0) { st.alive = false; ev(w, `The last ${SPECIES[s].name} are gone. There will be no more.`, st.lx, st.ly, null); discover(w, 'lost', st.lx, st.ly); }
   }
-  if (w.year === 40) w.graz0 = total; else if (w.graz0 && total > w.graz0 * 1.4 && w.herds.length) { const h = w.herds[0]; if (discover(w, 'herds', h.x, h.y)) ev(w, 'With little left to hunt them, the herds have grown past counting. The grass is going.', h.x, h.y, null); }
+  w.grazAvg = w.grazAvg == null ? total : w.grazAvg + (total - w.grazAvg) * 0.015; if (w.year > 120 && total > w.grazAvg * 1.35 && total > 30000 && w.herds.length && w.year - (w.herdsTold || -99) > 80) { const h = w.herds[0]; w.herdsTold = w.year; discover(w, 'herds', h.x, h.y); ev(w, w.stats.hunters < 300 ? 'With nothing left to hunt them, the herds have grown past counting. The grass is going.' : 'The herds have grown past counting. The grass is going.', h.x, h.y, null); }
   w.grazPeak = Math.max(total, (w.grazPeak || 0) * 0.99); if (w.year > 60 && w.grazPeak > 25000 && total < w.grazPeak * 0.58 && w.herds.length) { const h = w.herds[0]; w.grazPeak = total; if (discover(w, 'boom', h.x, h.y)) ev(w, 'The herds ate the grass to the roots. Now there are bones on every plain.', h.x, h.y, null); }
   if (!w.packs.length && w.year > 20 && !w.found.nopred && w.herds.length) discover(w, 'nopred', w.herds[0].x, w.herds[0].y);
   if (w.year % 50 === 25) {
     for (const h of w.herds) { if (h.odd) continue; const m = w.mass[h.y * W + h.x], sz = w.massSize[m] || 0; if (sz > 12 && sz < 420) { h.iso = (h.iso || 0) + 50; if (h.iso >= 350) { h.odd = sz < 140 ? 'dwarf' : 'giant'; if (discover(w, 'oddity', h.x, h.y)) ev(w, `Cut off on their island, the ${SPECIES[h.sp].name} have grown ${h.odd === 'dwarf' ? 'small and tame' : 'huge and strange'}.`, h.x, h.y, null); } } else h.iso = 0; }
   }
 }
-export function addHerd(w, x, y, sp) { x = wx(Math.round(x)); y = clamp(Math.round(y), 1, H - 2); const i = y * W + x; if (w.water[i] || w.herds.length >= MAXH) return false;
+export function addHerd(w, x, y, sp) { x = wx(Math.round(x)); y = clamp(Math.round(y), 1, H - 2); const i = y * W + x; if (w.water[i]) return false;
+  // the world only holds so many herds: when it is full, the weakest one somewhere makes room
+  if (w.herds.length >= MAXH) { let k = 0; for (let q = 1; q < w.herds.length; q++) if (w.herds[q].n < w.herds[k].n) k = q; w.herds.splice(k, 1); w.herdAt.fill(0); for (let q = 0; q < w.herds.length; q++) { const h = w.herds[q]; w.herdAt[h.y * W + h.x] = q + 1; } }
   if (sp == null) { let bs = -1; for (let s = 0; s < SPECIES.length; s++) { const v = habitat(w, s, i) + w.rnd() * 0.3; if (v > bs) { bs = v; sp = s; } } }
   w.herds.push({ x, y, px: x, py: y, n: 26, sp, mt: w.tickN }); w.species[sp].alive = true; w.species[sp].ever = true; return SPECIES[sp]; }
 export function addPack(w, x, y) { x = wx(Math.round(x)); y = clamp(Math.round(y), 1, H - 2); if (w.water[y * W + x] || w.packs.length >= MAXP) return false; w.packs.push({ x, y, px: x, py: y, n: 6, h: 0, mt: w.tickN }); return true; }

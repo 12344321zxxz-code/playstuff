@@ -4,7 +4,7 @@ import { W, H, N, TPY } from '../src/core.js';
 import { makeWorld, tick } from '../src/world.js';
 import { PAGES } from '../src/story.js';
 const seed = +(process.argv[2] || 7), years = +(process.argv[3] || 800), show = +(process.argv[4] || 70);
-let t0 = Date.now(); const w = makeWorld(seed); console.log('seed', seed, 'gen ms', Date.now() - t0, 'herds', w.herds.length, 'packs', w.packs.length, 'bands', w.sets.length, 'species', w.species.filter((s) => s.alive).length);
+let t0 = Date.now(); const w = makeWorld(seed, process.argv.includes('--sync') ? { sync: true } : null); console.log('seed', seed, 'gen ms', Date.now() - t0, 'herds', w.herds.length, 'packs', w.packs.length, 'bands', w.sets.length, 'species', w.species.filter((s) => s.alive).length);
 const all = []; t0 = Date.now(); let worst = 0, slow = 0, maxMov = 0;
 for (let y = 1; y <= years; y++) {
   for (let k = 0; k < TPY; k++) { const a = performance.now(); tick(w); const d = performance.now() - a; if (d > worst) worst = d; if (d > 16) slow++; if (w.movers.length > maxMov) maxMov = w.movers.length; }

@@ -7,7 +7,9 @@
   "scripts": {
     "test": "node test/smoke.mjs",
     "build": "node tools/build.mjs",
-    "serve": "python3 -m http.server 8080"
+    "serve": "python3 -m http.server 8080",
+    "test:chains": "node test/chains.mjs",
+    "test:torture": "node test/torture.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.21.5"

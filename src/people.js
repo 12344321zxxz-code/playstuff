@@ -10,7 +10,7 @@ import { wetAt } from './weather.js';
 import { catchFish } from './sea.js';
 import { send, arrive } from './movers.js';
 
-export const TECH = [3000, 120000, 1500000, 15000000, 150000000];
+export const TECH = [3000, 120000, 1500000, 15000000, 40000000];
 export const TIER = ['band', 'village', 'town', 'city'];
 export const COLORS = ['#d7263d', '#8e44d6', '#f46d1b', '#f2efe4', '#22201e', '#e040a8', '#ffd400', '#00c2a8', '#7a3b1d', '#ff8fa3', '#3d5afe', '#9bd636', '#00a1e4', '#b56576', '#6d597a', '#e9c46a', '#577590', '#f94144', '#43aa8b', '#bc6c25', '#a2d2ff', '#cdb4db', '#606c38', '#fb8500'];
 export const ORES = ['', 'copper', 'tin', 'iron', 'gold', 'salt', 'coal'];
@@ -41,7 +41,8 @@ export function newCult(w, parent) {
   const lang = parent ? { c: parent.lang.c.slice(0, 5).concat(pickN(w.rnd, CONS, 2)), v: parent.lang.v.slice(0, 3).concat(pickN(w.rnd, VOW, 1)), e: parent.lang.e.slice() } : makeLang(w);
   const c = { id: w.cults.length, slot, color: COLORS[slot], lang, name: cultName(w, lang), know: parent ? parent.know : 0, tech: parent ? parent.tech : 0, alive: true, count: 0, pop: 0, peak: 0, wit: 0.75 + 0.6 * w.rnd(),
     arts: parent ? Object.assign({}, parent.arts) : {}, tame: parent ? Object.assign({}, parent.tame) : {}, metals: 0, gold: false, coh: 0.85, born: w.year, way: parent ? parent.way : 'forage', kind: 'foragers', parent: parent ? parent.name : null, grazer: parent ? parent.grazer : null,
-    ruler: null, big: null, flags: parent ? { village: 1, town: parent.flags.town, city: parent.flags.city } : {}, wins: 0, wonderAt: -999, war: null, nb: {}, env: { crop: 0, coast: 0, dryRiver: 0, hill: 0, sed: 0, nomads: 0, towns: 0, cities: 0 }, seasoned: parent ? parent.seasoned : false, hungry: 0, lastDry: -99 };
+    ruler: null, big: null, flags: parent ? { village: 1, town: parent.flags.town, city: parent.flags.city } : {}, wins: 0, wonderAt: -999, war: null, nb: {}, env: { crop: 0, coast: 0, dryRiver: 0, hill: 0, sed: 0, nomads: 0, towns: 0, cities: 0 }, seasoned: parent ? parent.seasoned : false, hungry: 0, lastDry: -99,
+    _n: -1, _p: 0, _b: null, _metals: 0, _ways: { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }, _dry: 0, _full: 0 };   // _n < 0: born since the last census began
   crown(w, c, true); w.cults.push(c); return c;
 }
 function crown(w, c, quiet) {
@@ -278,7 +279,7 @@ export function* peopleSteps(w) {
       s.pop -= loss;
     }
     if (s.plague > 0) { const st = w.plagues[s.pid], dead = s.pop * st.v; s.pop -= dead; st.killed += dead; st.now++; s.plague--; if (s.plague === 0) s.immune = 70; c.seasoned = true;
-      near(w, s.x, s.y, 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.4)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
+      near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
     c.know += s.pop * c.wit * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
@@ -289,12 +290,14 @@ export function* peopleSteps(w) {
   buildGrid(w); territory(w);
   let alive = 0;
   for (const c of w.cults) {
-    if (!c.alive) continue; c.count = c._n; c.pop = c._p; c.big = c._b && !c._b.dead ? c._b : null;
+    if (!c.alive) continue; if (c._n < 0) { alive++; continue; }   // too new to have been counted
+    c.count = c._n; c.pop = c._p; c.big = c._b && !c._b.dead ? c._b : null;
     if (c.count === 0) { if (!w.sets.some((s) => s.cult === c.id) && !w.movers.some((m) => m.cult === c.id && (m.kind === 'refugees' || m.kind === 'settlers'))) { c.alive = false; endWar(w, c, true); ev(w, `The ${c.name} are gone from the world.`, null, null, c.color, c.peak > 2000 ? 2 : c.peak > 300 ? 0 : 1); if (c.peak > 300) discover(w, 'gone', null, null); } continue; }
     alive++; cultYear(w, c);
   }
   ruinsYear(w); plaguesYear(w);
-  if (smoke > 0) { w.greenhouse = Math.min(7, (w.greenhouse || 0) + smoke * 0.9e-7); if (!w.found.smoke) { const c = w.cults.find((q) => q.alive && q.arts.engines); if (c && c.big) discover(w, 'smoke', c.big.x, c.big.y); } }
+  w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop
+  if (smoke > 0) { w.greenhouse = Math.min(7, w.greenhouse + smoke * 1.1e-7); if (!w.found.smoke) { const c = w.cults.find((q) => q.alive && q.arts.engines); if (c && c.big) discover(w, 'smoke', c.big.x, c.big.y); } }
   w.stats.people = Math.round(total); w.stats.places = w.sets.length; w.stats.peoples = alive;
   const hist = w.popHist; if (w.year % w.popEvery === 0) { hist.push(Math.round(total)); if (hist.length >= 320) { let j = 0; for (let q = 0; q < hist.length; q += 2) hist[j++] = hist[q]; hist.length = j; w.popEvery *= 2; } }
   if (w.year % 100 === 0 && total > 0) { let top = null; for (const c of w.cults) if (c.alive && (!top || c.pop > top.pop)) top = c; const was = w.popCent || 0, ch = was > 50 ? (total - was) / was : 0; w.popCent = total;
@@ -311,7 +314,7 @@ function ruinsYear(w) {
     if (r.kind !== 'drowned' && w.water[i] === 1) { r.kind = 'drowned'; discover(w, 'drowned', r.x, r.y); }
     if (!r.looted && r.kind !== 'drowned' && rnd() < 0.03) { const s = near(w, r.x, r.y, 8, null, true); if (s) { const c = w.cults[s.cult];
         if (r.haunt) { r.looted = true; infect(w, s, null, true); ev(w, `Diggers from ${s.name} open the ruins of ${r.name}. What they bring home kills half the town.`, r.x, r.y, c.color); discover(w, 'curse', r.x, r.y); }
-        else if (c.know < r.know * 0.9) { c.know += (r.know - c.know) * 0.35; r.looted = true; ev(w, `Diggers from ${s.name} find old writings in the ruins of ${r.name}.`, r.x, r.y, c.color); discover(w, 'relic', r.x, r.y); } } }
+        else if (c.know < r.know * 0.9) { c.know += (r.know - c.know) * 0.35; r.looted = true; ev(w, `Diggers from ${s.name} find old writings in the ruins of ${r.name}.`, r.x, r.y, c.color, (w.relics = (w.relics || 0) + 1) <= 2 ? 0 : 1); discover(w, 'relic', r.x, r.y); } } }
     if (w.magic[i] > 0.8 && w.year - r.year > 250 && !r.haunt) { r.haunt = true; if (discover(w, 'haunt', r.x, r.y)) ev(w, `No one goes near the ruins of ${r.name} any more.`, r.x, r.y, null); }
   }
 }
