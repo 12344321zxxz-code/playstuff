@@ -25,7 +25,7 @@ export function linkText(e: any, open: (ref: string) => void) {
 export function createBook(host: BookHost) {
   let tab = '', legStack: string[] = [], legKind = 'peoples', chronFilter = 'all', query = '';
   const body = $('book-body'), book = $('book');
-  const setTab = (t: string) => { tab = t; for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs [data-tab]')) b.setAttribute('aria-pressed', String(b.dataset.tab === t)); if (!t) { book.hidden = true; return; } book.hidden = false; $('book-title').textContent = ({ chronicle: 'Chronicle', legends: 'Legends', peoples: 'Peoples', almanac: 'Almanac', world: 'The World' } as any)[t]; render(); host.sfx('page'); };
+  const setTab = (t: string) => { tab = t; for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs [data-tab]')) b.setAttribute('aria-pressed', String(b.dataset.tab === t)); if (!t) { book.hidden = true; return; } book.hidden = false; const cd = document.getElementById('card'); if (cd) cd.hidden = true; $('book-title').textContent = ({ chronicle: 'Chronicle', legends: 'Legends', peoples: 'Peoples', almanac: 'Almanac', world: 'The World' } as any)[t]; render(); host.sfx('page'); };
   for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs [data-tab]')) b.addEventListener('click', () => setTab(tab === b.dataset.tab ? '' : b.dataset.tab!));
   $('book-close').addEventListener('click', () => setTab(''));
   const openLegend = (ref: string) => { legStack.push(ref); if (tab !== 'legends') setTab('legends'); else render(); };

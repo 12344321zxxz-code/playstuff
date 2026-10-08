@@ -5,18 +5,18 @@ import { W, H } from '../sim/core';
 import { Mirror } from './state';
 import { Cam, Label } from './scene';
 
-const FELL = '"IM Fell English", "EB Garamond", Georgia, serif', FELLSC = '"IM Fell English SC", "IM Fell English", Georgia, serif';
+const FELL = '"Instrument Sans", system-ui, sans-serif', FELLSC = '"Instrument Sans", system-ui, sans-serif';
 const REGION_STYLE: Record<number, { font: string; color: string; italic: boolean; caps: boolean; sp: number; min: number; max: number }> = {
-  1: { font: FELL, color: '#33566b', italic: true, caps: false, sp: 0.35, min: 11, max: 30 },
-  2: { font: FELL, color: '#33566b', italic: true, caps: false, sp: 0.1, min: 9.5, max: 15 },
-  3: { font: FELLSC, color: '#5b3f26', italic: false, caps: true, sp: 0.42, min: 10, max: 22 },
-  4: { font: FELL, color: '#3d5b2c', italic: true, caps: false, sp: 0.25, min: 10, max: 20 },
-  5: { font: FELLSC, color: '#87602f', italic: false, caps: true, sp: 0.5, min: 10, max: 24 },
-  6: { font: FELL, color: '#4c5a3c', italic: true, caps: false, sp: 0.2, min: 9.5, max: 16 },
-  7: { font: FELL, color: '#6b6230', italic: true, caps: false, sp: 0.35, min: 10, max: 20 },
-  8: { font: FELL, color: '#56606a', italic: true, caps: false, sp: 0.3, min: 10, max: 18 },
-  9: { font: FELLSC, color: '#4f6a80', italic: false, caps: true, sp: 0.45, min: 10, max: 22 },
-  10: { font: FELLSC, color: '#4a3a2a', italic: false, caps: true, sp: 0.15, min: 9.5, max: 15 },
+  1: { font: FELL, color: '#bfe0f0', italic: true, caps: false, sp: 0.3, min: 11, max: 24 },
+  2: { font: FELL, color: '#d4ecf6', italic: true, caps: false, sp: 0.08, min: 10, max: 14 },
+  3: { font: FELLSC, color: '#f3ead8', italic: false, caps: true, sp: 0.32, min: 10, max: 17 },
+  4: { font: FELL, color: '#e2f0cf', italic: true, caps: false, sp: 0.2, min: 10, max: 16 },
+  5: { font: FELLSC, color: '#fbe7c4', italic: false, caps: true, sp: 0.35, min: 10, max: 18 },
+  6: { font: FELL, color: '#dcead6', italic: true, caps: false, sp: 0.15, min: 10, max: 14 },
+  7: { font: FELL, color: '#f2edc8', italic: true, caps: false, sp: 0.25, min: 10, max: 16 },
+  8: { font: FELL, color: '#e8ecef', italic: true, caps: false, sp: 0.2, min: 10, max: 15 },
+  9: { font: FELLSC, color: '#eef6fb', italic: false, caps: true, sp: 0.3, min: 10, max: 17 },
+  10: { font: FELLSC, color: '#f3ead8', italic: false, caps: true, sp: 0.1, min: 10, max: 13 },
 };
 export interface Fx { k: string; x: number; y: number; T: number; t0: number; R?: number; ux?: number; uy?: number }
 
@@ -31,8 +31,8 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, m: Mirror, cam: Cam, 
   // realm names, big and faint, when far out
   const all: (Label & { box?: number[] })[] = [];
   if (cam.z < 5 && !lensBare && (ui.lens === 0 || ui.lens === 6)) for (const c of m.ents.cults) {
-    if (!c.big || c.count < 3) continue; const px = Math.min(30, 12 + Math.sqrt(c.count) * 2.2) * (ui.lens === 6 ? 1.15 : 1);
-    all.push({ text: (c.empire ? 'Empire of the ' : 'The ') + c.name, x: c.big[0] + 0.5, y: c.big[1] - 3.5 / Math.max(1, cam.z / 2), px, kind: 'realm', pri: 2000 + c.pop / 50, color: shade(c.color), spacing: 0.32, ref: 'c' + c.id });
+    if (!c.big || c.count < 3) continue; const px = Math.min(24, 11 + Math.sqrt(c.count) * 1.8) * (ui.lens === 6 ? 1.15 : 1);
+    all.push({ text: ((c.empire ? 'Empire of the ' : '') + c.name).toUpperCase(), x: c.big[0] + 0.5, y: c.big[1] - 3.5 / Math.max(1, cam.z / 2), px, kind: 'realm', pri: 2000 + c.pop / 50, color: c.color, spacing: 0.22, ref: 'c' + c.id });
   }
   // places: seas, ranges, woods
   if (!lensBare) for (const r of m.regions) {
@@ -51,18 +51,17 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, m: Mirror, cam: Cam, 
   for (const l of all) {
     const [sx, sy] = toS(l.x, l.y); const px = l.px * dpr; if (sx < -400 || sy < -100 || sx > cw + 400 || sy > ch + 100) continue;
     const font = (l as any).font || (l.kind === 'realm' ? FELLSC : FELL);
-    ctx.font = `${l.italic ? 'italic ' : ''}${l.kind === 'city' ? '600 ' : ''}${px}px ${font}`;
+    ctx.font = `${l.italic ? 'italic ' : ''}${l.kind === 'city' || l.kind === 'realm' || l.kind === 'town' ? '600 ' : '500 '}${px}px ${font}`;
     const sp = (l.spacing || 0) * px; setSpacing(ctx, sp);
     const tw = ctx.measureText(l.text).width, ang = l.ang || 0, ca = Math.abs(Math.cos(ang)), sa = Math.abs(Math.sin(ang));
     const bw = tw * ca + px * 1.1 * sa, bh = tw * sa + px * 1.1 * ca, box = [sx - bw / 2 - 2, sy - bh / 2 - 1, sx + bw / 2 + 2, sy + bh / 2 + 1];
     if (hit(box)) continue; placed.push(box);
     ctx.save(); ctx.translate(sx, sy); if (ang) ctx.rotate(ang);
-    if (l.kind === 'realm') { ctx.globalAlpha = 0.62; ctx.fillStyle = l.color || '#5a3a2a'; ctx.fillText(l.text, 0, 0); }
-    else if (l.kind === 'region') { ctx.globalAlpha = 0.85; ctx.lineWidth = Math.max(2, px * 0.22); ctx.strokeStyle = 'rgba(245,238,220,0.55)'; ctx.strokeText(l.text, 0, 0); ctx.fillStyle = l.color || '#333'; ctx.fillText(l.text, 0, 0); }
+    if (l.kind === 'realm') { ctx.globalAlpha = 0.9; ctx.lineWidth = Math.max(3, px * 0.24); ctx.strokeStyle = 'rgba(10,14,18,0.75)'; ctx.strokeText(l.text, 0, 0); ctx.fillStyle = l.color || '#fff'; ctx.fillText(l.text, 0, 0); }
+    else if (l.kind === 'region') { ctx.globalAlpha = 0.78; ctx.lineWidth = Math.max(2.5, px * 0.26); ctx.strokeStyle = 'rgba(10,16,22,0.6)'; ctx.strokeText(l.text, 0, 0); ctx.fillStyle = l.color || '#fff'; ctx.fillText(l.text, 0, 0); }
     else {
-      ctx.lineWidth = Math.max(2.5, px * 0.3); ctx.strokeStyle = 'rgba(246,239,222,0.88)'; ctx.strokeText(l.text, 0, 0);
-      ctx.fillStyle = l.color || (l.kind === 'beast' ? '#7a2a1a' : l.kind === 'ruin' ? '#6a5a4a' : l.kind === 'figure' || l.kind === 'hero' ? '#5a3a6a' : '#2b2016'); ctx.fillText(l.text, 0, 0);
-      if (l.kind === 'city' && l.pri >= 300) { ctx.beginPath(); ctx.moveTo(-tw / 2, px * 0.62); ctx.lineTo(tw / 2, px * 0.62); ctx.strokeStyle = 'rgba(43,32,22,0.6)'; ctx.lineWidth = dpr; ctx.stroke(); }
+      ctx.lineWidth = Math.max(2.5, px * 0.3); ctx.strokeStyle = 'rgba(12,16,18,0.85)'; ctx.strokeText(l.text, 0, 0);
+      ctx.fillStyle = l.color || (l.kind === 'beast' ? '#ffb27a' : l.kind === 'ruin' ? '#d9d2c2' : l.kind === 'figure' || l.kind === 'hero' ? '#e2c8ff' : '#ffffff'); ctx.fillText(l.text, 0, 0);
     }
     ctx.restore(); setSpacing(ctx, 0);
     if (l.ref) ui.labelHits.push([box, l.ref]);
@@ -80,6 +79,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, m: Mirror, cam: Cam, 
     else if (f.k === 'clash') { const R = (0.6 + 1.6 * u) * Math.max(s, 6 * dpr); ctx.lineWidth = 2.2 * dpr; ctx.strokeStyle = `rgba(170,40,25,${1 - u})`; ctx.beginPath(); for (let q = 0; q < 6; q++) { const a = (q / 6) * 6.283 + 0.4; ctx.moveTo(X + Math.cos(a) * R * 0.3, Y + Math.sin(a) * R * 0.3); ctx.lineTo(X + Math.cos(a) * R, Y + Math.sin(a) * R); } ctx.stroke(); }
     else if (f.k === 'spark') { const R = (1 + 5 * u) * Math.max(s, 5 * dpr); ctx.lineWidth = 2.4 * dpr; ctx.strokeStyle = `rgba(230,180,40,${1 - u})`; ctx.beginPath(); for (let q = 0; q < 8; q++) { const a = (q / 8) * 6.283; ctx.moveTo(X + Math.cos(a) * R * 0.45, Y + Math.sin(a) * R * 0.45); ctx.lineTo(X + Math.cos(a) * R, Y + Math.sin(a) * R); } ctx.stroke(); }
     else if (f.k === 'bolt') { if (u < 0.5) { ctx.strokeStyle = `rgba(255,255,240,${1 - u * 2})`; ctx.lineWidth = 3 * dpr; ctx.beginPath(); let bx = X + (Math.random() - 0.5) * 20, by = 0; ctx.moveTo(bx, by); while (by < Y) { by += 20 + Math.random() * 30; bx += (Math.random() - 0.5) * 30; ctx.lineTo(by > Y ? X : bx, Math.min(by, Y)); } ctx.stroke(); ctx.lineWidth = 8 * dpr; ctx.strokeStyle = `rgba(200,220,255,${0.25 * (1 - u * 2)})`; ctx.stroke(); } }
+    else if (f.k === 'mark') { const pulse = 0.5 + 0.5 * Math.sin(now * 0.006), R = (14 + 6 * pulse) * dpr, a = u < 0.8 ? 1 : (1 - u) * 5; ctx.beginPath(); ctx.arc(X, Y, R, 0, 7); ctx.lineWidth = 2.4 * dpr; ctx.strokeStyle = `rgba(168,129,47,${0.9 * a})`; ctx.stroke(); ctx.beginPath(); ctx.arc(X, Y, R + 6 * dpr, 0, 7); ctx.lineWidth = 1 * dpr; ctx.strokeStyle = `rgba(138,43,28,${0.6 * a})`; ctx.stroke(); }
     else if (f.k === 'omen') { const R = 30 * dpr * (1 + u); const g = ctx.createRadialGradient(X, Y - 40 * dpr, 2, X, Y - 40 * dpr, R); g.addColorStop(0, `rgba(255,250,200,${0.9 * (1 - u)})`); g.addColorStop(1, 'rgba(255,240,160,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X, Y - 40 * dpr, R, 0, 7); ctx.fill(); }
   }
   // locusts
@@ -87,7 +87,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, m: Mirror, cam: Cam, 
   // plague: a sickly ring around stricken towns
   if (cam.z > 2.5) for (const st of m.ents.sets) if (st.plague) { const [X, Y] = toS(st.x + 0.5, st.y + 0.5); ctx.beginPath(); ctx.arc(X, Y, Math.max(14 * dpr, s * 2.2), 0, 7); ctx.setLineDash([3 * dpr, 4 * dpr]); ctx.strokeStyle = 'rgba(110,140,30,0.9)'; ctx.lineWidth = 1.8 * dpr; ctx.stroke(); ctx.setLineDash([]); }
   // selection
-  if (ui.selPos) { const [X, Y] = toS(ui.selPos[0] + 0.5, ui.selPos[1] + 0.5), R = Math.max(18 * dpr, s * (ui.selPos[2] || 1.8)); ctx.beginPath(); ctx.arc(X, Y, R, 0, 7); ctx.setLineDash([7 * dpr, 5 * dpr]); ctx.lineDashOffset = ui.still ? 0 : -now * 0.02; ctx.lineWidth = 2.2 * dpr; ctx.strokeStyle = 'rgba(60,30,20,0.85)'; ctx.stroke(); ctx.setLineDash([]); }
+  if (ui.selPos) { const [X, Y] = toS(ui.selPos[0] + 0.5, ui.selPos[1] + 0.5), R = Math.max(18 * dpr, s * (ui.selPos[2] || 1.8)); ctx.beginPath(); ctx.arc(X, Y, R, 0, 7); ctx.setLineDash([7 * dpr, 5 * dpr]); ctx.lineDashOffset = ui.still ? 0 : -now * 0.02; ctx.lineWidth = 2.2 * dpr; ctx.strokeStyle = '#ffffff'; ctx.stroke(); ctx.setLineDash([]); }
   // plates: arrows to drag
   if (ui.lens === 4) for (const pl of m.plates) { const [ax, ay] = toS(pl.cx, pl.cy), [bx, by] = toS(pl.cx + pl.vx * 16, pl.cy + pl.vy * 16); arrow(ctx, ax, ay, bx, by, 'rgba(40,24,14,0.9)', 4 * dpr); arrow(ctx, ax, ay, bx, by, '#f4ead2', 2 * dpr); ctx.beginPath(); ctx.arc(bx, by, 7 * dpr, 0, 7); ctx.fillStyle = pl.land ? '#c8a050' : '#5a8aa8'; ctx.fill(); ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.6 * dpr; ctx.stroke(); }
   // the brush

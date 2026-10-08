@@ -87,7 +87,7 @@ function realmField(c: Uint8Array, water: Uint8Array, out: Uint8Array) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const i = y * W + x; if (water[i] === 1) { ids[i] = 0; fids[i] = 0; continue; }
     // bilinear vote among the four nearest coarse cells
-    const fx = (x + 0.5) / 4 - 0.5 + (vnoise(x * 0.3, y * 0.3, 1) - 0.5) * 1.6 + (hash(x, y) - 0.5) * 0.25, fy = (y + 0.5) / 4 - 0.5 + (vnoise(x * 0.3, y * 0.3, 7) - 0.5) * 1.6 + (hash(y + 999, x) - 0.5) * 0.25;
+    const fx = (x + 0.5) / 4 - 0.5 + (vnoise(x * 0.25, y * 0.25, 1) - 0.5) * 1.0 + (hash(x, y) - 0.5) * 0.25, fy = (y + 0.5) / 4 - 0.5 + (vnoise(x * 0.25, y * 0.25, 7) - 0.5) * 1.0 + (hash(y + 999, x) - 0.5) * 0.25;
     const cx = Math.max(0, Math.min(CW - 1, Math.round(fx))), cy = Math.max(0, Math.min(CH - 1, Math.round(fy))), ci = (cy * CW + cx) * 4;
     ids[i] = c[ci]; fids[i] = c[ci + 1];
   }

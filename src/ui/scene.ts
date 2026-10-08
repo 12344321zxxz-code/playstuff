@@ -29,18 +29,18 @@ export function buildScene(m: Mirror, cam: Cam, G: GlyphList, labels: Label[], n
   const frac = clamp(((now - m.frameAt) / 1000) * m.tps, 0, 1.2), tk = m.tickN + frac;
   const fine = m.fine, sea = m.sea;
 
-  /* --- the country --- */
-  if (!bare) {
-    const target = 20 / z, Lf = Math.log2(Math.max(1, target)), L = clamp(Math.floor(Lf), 0, 5), fade = clamp((Lf - L) * 1.6 - 0.3, 0, 1);
+  /* --- the country: painted by the terrain shader now; only volcanoes and such stand on it --- */
+  if (false) {
+    const target = 24 / z, Lf = Math.log2(Math.max(1, target)), L = clamp(Math.floor(Lf), 0, 5), fade = clamp((Lf - L) * 1.6 - 0.3, 0, 1);
     const b = 1 << L, arr = m.peaks[L], bw = Math.ceil(W / b), parent = L < 5 ? m.peaks[L + 1] : null, pbw = Math.ceil(W / (b * 2));
     if (arr) for (let by = Math.floor(y0 / b); by <= Math.floor(y1 / b); by++) for (let bx = Math.floor(x0 / b); bx <= Math.floor(x1 / b); bx++) {
       const i = arr[by * bw + bx]; if (i == null || i < 0 || m.water[i]) continue;
       const inParent = parent ? parent[(by >> 1) * pbw + (bx >> 1)] === i : true;
       const a = inParent ? 1 : 1 - fade; if (a <= 0.02) continue;
-      countryGlyph(m, i, b * z, a, push, now, z);
+      countryGlyph(m, i, b * z, a, push, now, z, L);
     }
     // close in, woods get thick: a few more trees inside each forest cell
-    if (z > 26) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x; if (m.water[i]) continue; const t = fine[i * 4 + 3] / 255; if (t < 0.68) continue; const hh = m.h[i] - sea; if (hh > 0.3) continue; const fl = fine[N * 8 + i * 4 + 1]; if (fl & 3) continue;
+    if (false) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x; if (m.water[i]) continue; const t = fine[i * 4 + 3] / 255; if (t < 0.68) continue; const hh = m.h[i] - sea; if (hh > 0.3) continue; const fl = fine[N * 8 + i * 4 + 1]; if (fl & 3) continue;
       const n = t > 0.85 ? 2 : 1, a = clamp((z - 26) / 8, 0, 1); for (let k = 0; k < n; k++) { const tx = x + 0.15 + h1(i, k + 3) * 0.7, ty = y + 0.15 + h1(i, k + 9) * 0.7; treeAt(m, i, tx, ty, clamp(z * 0.55, 10, 26), a, push, k); } }
   }
 
@@ -52,7 +52,7 @@ export function buildScene(m: Mirror, cam: Cam, G: GlyphList, labels: Label[], n
     if (z > 1.5) for (const v of E.volc) if (seen(v.x, v.y)) push(v.hot ? 'volcanoHot' : 'volcano', v.x + 0.5, v.y + 0.6, clamp(z * 3, 24, 60), 1, WHITE, 0, false, 0.3);
     if (z > 8) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x; if (m.ore[i] && !m.water[i]) push('ore', x + 0.5, y + 0.7, clamp(z * 0.5, 10, 20), 0.95); }
     // works: dams, mines, the great walls
-    if (z > 4) { const wk = m.works; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x, v = wk[i * 4]; if (!v) continue; if (v & 8) push('ruin', x + 0.5, y + 0.6, clamp(z * 0.9, 8, 24), 0.9); if (v & 16) push('mine', x + 0.5, y + 0.7, clamp(z * 1.2, 14, 30)); if ((v & 2) && h1(i) < 0.3) push('dam', x + 0.5, y + 0.6, clamp(z * 1.1, 12, 28)); } }
+    if (z > 4) { const wk = m.works; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x, v = wk[i * 4]; if (!v) continue; if (v & 16) push('mine', x + 0.5, y + 0.7, clamp(z * 1.2, 14, 30)); if ((v & 2) && h1(i) < 0.3) push('dam', x + 0.5, y + 0.6, clamp(z * 1.1, 12, 28)); } }
   }
 
   /* --- peoples --- */
@@ -103,14 +103,14 @@ export function buildScene(m: Mirror, cam: Cam, G: GlyphList, labels: Label[], n
   /* --- animals --- */
   if (z > 6.5 && opts.lens !== 6) {
     const n0 = z < 12 ? 1 : z < 20 ? 2 : 4, asz = clamp(z * 0.75, 11, 28);
-    for (const hd of E.herds) { if (!seen(hd.x, hd.y) || (z < 12 && hd.n < 25)) continue; const f = clamp((tk - hd.mt) * 0.5, 0, 1), x = hd.px + (hd.x - hd.px) * f + 0.5, y = hd.py + (hd.y - hd.py) * f + 0.5, spn = SPECIES_SPR[hd.sp] || 'deer', n = Math.min(n0, Math.ceil(hd.n / 12));
+    for (let hk = 0; hk < E.herds.length; hk++) { const hd = E.herds[hk]; if (!seen(hd.x, hd.y) || (z < 12 && (hd.n < 40 || hk % 3 !== 0)) || (z < 20 && hk % 2 === 1 && hd.n < 30)) continue; const f = clamp((tk - hd.mt) * 0.5, 0, 1), x = hd.px + (hd.x - hd.px) * f + 0.5, y = hd.py + (hd.y - hd.py) * f + 0.5, spn = SPECIES_SPR[hd.sp] || 'deer', n = Math.min(n0, Math.ceil(hd.n / 12));
       for (let k = 0; k < n; k++) push(spn, x + (h1(hd.sp * 999 + k, hd.x) - 0.5) * 1.4, y + (h1(k, hd.y) - 0.5) * 1.0, asz * (hd.odd === 'giant' ? 1.5 : hd.odd === 'dwarf' ? 0.65 : 1), 1, WHITE, 0, hd.x < hd.px); }
     for (const p of E.packs) { if (!seen(p.x, p.y)) continue; const f = clamp((tk - p.mt) * 0.5, 0, 1), x = p.px + (p.x - p.px) * f + 0.5, y = p.py + (p.y - p.py) * f + 0.5; for (let k = 0; k < Math.min(n0, 3); k++) push('wolf', x + (h1(k, p.x) - 0.5), y + (h1(k + 5, p.y) - 0.5) * 0.8, asz * 0.9, 1, WHITE, 0, p.x < p.px); }
   }
   /* --- the sea's own life: whales where the whale density is high, shoals close in --- */
   if (z > 2.4 && !bare) { const C = m.coarse, D = CW * CH * 4; for (let cy = Math.floor(y0 / 4); cy <= Math.floor(y1 / 4); cy++) for (let cx = Math.floor(x0 / 4); cx <= Math.floor(x1 / 4); cx++) { const ci = cy * CW + cx, whale = C[D + ci * 4 + 1] / 255, fish = C[D + ci * 4] / 255, cap = C[D + ci * 4 + 3] / 255;
     const x = cx * 4 + 2, y = cy * 4 + 2, i = y * W + x; if (!m.water[i] || m.water[i] === 2) continue;
-    if (z > 3.5 && (cx + cy) % 2 === 0 && whale > 0.3 && h1(ci, 77) < whale * 0.18) { const t = now * 0.0002 + h1(ci) * 10, wx = x + Math.sin(t) * 1.5, wy = y + Math.cos(t * 0.7) * 1; const surf = 0.5 + 0.5 * Math.sin(now * 0.0011 + ci); if (surf > 0.35) push('whale', wx, wy, clamp(z * 2, 18, 56), clamp((surf - 0.35) * 3, 0, 0.95), WHITE, 0, Math.cos(t) < 0); }
+    if (z > 9 && (cx + cy) % 2 === 0 && whale > 0.3 && h1(ci, 77) < whale * 0.18) { const t = now * 0.0002 + h1(ci) * 10, wx = x + Math.sin(t) * 1.5, wy = y + Math.cos(t * 0.7) * 1; const surf = 0.5 + 0.5 * Math.sin(now * 0.0011 + ci); if (surf > 0.35) push('whale', wx, wy, clamp(z * 2, 18, 56), clamp((surf - 0.35) * 3, 0, 0.95), WHITE, 0, Math.cos(t) < 0); }
     if (z > 10 && fish * cap > 0.25 && h1(ci, 31) < 0.6) push('fish', x + (h1(ci, 3) - 0.5) * 3, y + (h1(ci, 4) - 0.5) * 3, clamp(z * 0.8, 10, 24), 0.55 + 0.25 * Math.sin(now * 0.004 + ci)); } }
   /* --- beasts and their lairs --- */
   for (const b of E.beasts) {
@@ -132,11 +132,11 @@ function nearWater(m: Mirror, x: number, y: number, r: number): [number, number]
 
 // The country's glyph for a cell: a peak, a hill, a wood, reeds, dunes, a tuft of grass.
 type Push = (name: string, x: number, y: number, px: number, a?: number, tint?: number, rot?: number, flip?: boolean, depth?: number) => void;
-function countryGlyph(m: Mirror, i: number, spanPx: number, a: number, push: Push, now: number, z: number) {
+function countryGlyph(m: Mirror, i: number, spanPx: number, a: number, push: Push, now: number, z: number, L: number) {
   const f = m.fine, hh = m.h[i] - m.sea, jit = hh > 0.34 ? 0.2 : 0.75, x = (i % W) + 0.5 + (h1(i, 7) - 0.5) * jit, y = ((i / W) | 0) + 0.5 + (h1(i, 8) - 0.5) * jit;
   const t = f[i * 4 + 3] / 255, mi = f[i * 4 + 1] / 102, g = f[i * 4 + 2] / 255, snow = f[N * 4 + i * 4] / 255, Tm = f[N * 4 + i * 4 + 3] / 3.1875 - 40, fl = f[N * 8 + i * 4 + 1];
   const r = h1(i, 1), flip = r < 0.5;
-  if (hh > (spanPx > 60 ? 0.4 : 0.34)) { const cold = hh > 0.52 || Tm < -1 || snow > 0.5, big = clamp(spanPx * 1.25, 18, 58) * (0.75 + Math.min(0.6, (hh - 0.34) * 1.6)); push(cold ? (r < 0.5 ? 'mountS' : 'mountS2') : (r < 0.5 ? 'mount' : 'mount2'), x, y + 0.4, big, a, WHITE, 0, flip); return; }
+  if (hh > 0.34 + 0.025 * L) { const cold = hh > 0.52 || Tm < -1 || snow > 0.5, big = clamp(spanPx * 1.05, 16, 52) * (0.7 + Math.min(0.6, (hh - 0.34) * 1.6)); push(cold ? (r < 0.5 ? 'mountS' : 'mountS2') : (r < 0.5 ? 'mount' : 'mount2'), x, y + 0.4, big, a, WHITE, 0, flip); return; }
   if (fl & 2) return;   // streets
   if (fl & 1) { if (z > 10 && h1(i, 5) < 0.035) push('windmill', x, y + 0.3, clamp(spanPx, 12, 26), a); return; }
   if (fl & 16) { if (h1(i, 6) < 0.3) push('ice', x, y + 0.3, clamp(spanPx, 12, 28), a * 0.8, WHITE, 0, flip); return; }

@@ -19,12 +19,12 @@ export function worksYear(w) {
     const i0 = s.y * W + s.x, sea = w.params.sea;
     if (A.irrigation && w.mi[i0] < 0.55 && !(s.works && s.works.includes('canals'))) { const path = canalPath(w, s); if (path) { start(w, s, 'canal', path, 6); continue; } }
     if (A.masonry && A.writing && s.tier === 3 && w.dSea[i0] <= 4 && rnd() < 0.5) { const cells = dikeCells(w, s); if (cells.length >= 6) { start(w, s, 'dike', cells, 10); continue; } }
-    if (A.masonry && s.tier === 3 && rnd() < 0.3) { const d = damSite(w, s); if (d) { start(w, s, 'dam', d, 12); continue; } }
+    if (A.masonry && s.tier === 3 && rnd() < 0.3) { const d = damSite(w, s); if (d) { start(w, s, 'dam', d.cells, 12).top = d.top; continue; } }
     if ((A.bronze || A.iron) && s.ores && !(s.works && s.works.includes('mines'))) { const m = mineSite(w, s); if (m >= 0) { start(w, s, 'mine', [m], 3); continue; } }
     if (A.masonry && A.writing && c.war && c.env.sed >= 12 && w.cults[c.war.foe].env.nomads > w.cults[c.war.foe].env.sed && !c.wallBuilt) { const path = wallPath(w, c, w.cults[c.war.foe]); if (path) { c.wallBuilt = w.year; start(w, s, 'wall', path, 18); } }
   }
 }
-function start(w, s, kind, cells, need) { w.projects.push({ id: w.nextId++, kind, at: s.id, cult: s.cult, cells, need, prog: 0, began: w.year, x: s.x, y: s.y, done: false }); }
+function start(w, s, kind, cells, need) { const p = { id: w.nextId++, kind, at: s.id, cult: s.cult, cells, need, prog: 0, began: w.year, x: s.x, y: s.y, done: false, top: null }; w.projects.push(p); return p; }
 const SAY = {
   canal: (s, c) => `The ${c.name} dig a canal to bring river water to the fields of ${s.name}.`, dam: (s, c) => `A dam goes across the valley above ${s.name}. Behind it, a lake begins to fill.`,
   dike: (s, c) => `${s.name} builds dikes and pumps the shallows dry. The new fields are below the sea.`, mine: (s, c) => `Mines go into the hills above ${s.name}.`,
@@ -33,7 +33,7 @@ const SAY = {
 function finish(w, p, s) {
   p.done = true; p.end = w.year; const c = w.cults[s.cult], h = w.h, sea = w.params.sea;
   for (const i of p.cells) w.works[i] |= WK[p.kind];
-  if (p.kind === 'dam') { for (const i of p.cells) h[i] = Math.max(h[i], p.top); w.stamp.land++; w.need.water = true; }
+  if (p.kind === 'dam' && p.top > -2) { for (const i of p.cells) h[i] = Math.max(h[i], p.top); w.stamp.land++; w.need.water = true; }
   if (p.kind === 'dike') { for (const i of p.cells) { h[i] = sea + 0.008; w.soil[i] = 1.2; } w.stamp.land++; w.need.water = true; w.need.climate = true; }
   if (p.kind === 'canal') w.need.water = true;
   if (p.kind === 'mine') { for (const o of DISC[1]) { const j = clamp(((p.cells[0] / W) | 0) + o[1], 1, H - 2) * W + wx((p.cells[0] % W) + o[0]); w.t[j] *= 0.3; w.g[j] *= 0.5; } }
@@ -59,7 +59,7 @@ function damSite(w, s) {
   for (const o of DISC[10]) { if (o[2] < 4) continue; const y = s.y + o[1]; if (y < 3 || y >= H - 3) continue; const x = wx(s.x + o[0]), i = y * W + x; if (w.river[i] < 2 || w.h[i] - w.params.sea < 0.08) continue;
     const d = w.down[i]; if (d < 0) continue; const dx = (d % W) - x, dy = ((d / W) | 0) - y, px = -dy, py = dx; const cells = []; let top = w.h[i] + 0.035, ok = 0;
     for (let k = -4; k <= 4; k++) { const cx = wx(x + px * k), cy = clamp(y + py * k, 1, H - 2), j = cy * W + cx; cells.push(j); if (w.h[j] > top) ok++; }
-    if (ok >= 2) return Object.assign(cells, { top }); }
+    if (ok >= 2) return { cells, top }; }
   return null;
 }
 function mineSite(w, s) { for (const o of DISC[5]) { const y = s.y + o[1]; if (y < 1 || y >= H - 1) continue; const i = y * W + wx(s.x + o[0]); if (w.ore[i] && w.ore[i] !== 5 && w.water[i] !== 1) return i; } return -1; }

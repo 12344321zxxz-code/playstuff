@@ -13,6 +13,8 @@ import { mapRegions } from './regions';
 const MAGIC = 0x324d5246; // 'FRM2'
 const TA = { Float32Array, Float64Array, Int32Array, Int16Array, Uint8Array, Uint16Array, Uint32Array, Int8Array };
 const SKIP = new Set(['rnd', 'census', 'job', 'sgrid', 'regions', '_oreList', 'nameIx']);
+// fields the climate and the rivers work out again on load, so they need not be stored
+const DERIVED = { tJan: Float32Array, tJul: Float32Array, rJan: Float32Array, rJul: Float32Array, tMean: Float32Array, rMean: Float32Array, mi: Float32Array, gCap: Float32Array, tCap: Float32Array, crop: Float32Array, temp: Float32Array, rain: Float32Array, snow: Float32Array, green: Float32Array, filled: Float32Array, flow: Float32Array, down: Int32Array, water: Uint8Array, river: Uint8Array, fresh: Uint8Array, dSea: Uint8Array, mass: Int16Array, ownD: Float32Array };
 
 export function saveWorld(w) {
   const blobs = [], canon = new Map();
@@ -35,7 +37,7 @@ export function saveWorld(w) {
     const t = enc(v); if (t !== v) return t;
     if (seen.has(v)) return null; seen.add(v);
     if (Array.isArray(v)) { const home = homeOf.has(v); return v.map((x) => walk(x, home)); }
-    const o = {}; for (const k in v) { if (SKIP.has(k)) continue; const x = walk(v[k], false); if (x !== undefined) o[k] = x; } return o;
+    const o = {}; for (const k in v) { if (SKIP.has(k) || (v === w && k in DERIVED)) continue; const x = walk(v[k], false); if (x !== undefined) o[k] = x; } return o;
   }
   const json = JSON.stringify(walk(w, false)), jb = new TextEncoder().encode(json);
   const head = 12, jl = (jb.length + 7) & ~7, out = new ArrayBuffer(head + jl + size), dv = new DataView(out);
@@ -66,15 +68,17 @@ export function loadWorld(buf) {
   // what was left out: the random stream, background jobs, caches
   let a = w.rs || w.seed | 1; w.rnd = function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; w.rs = a; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   w.census = null; w.job = null; w.events = []; w.fx = [];
+  for (const k in DERIVED) w[k] = new DERIVED[k](N);
   const T = templateById(w.template); setLatitudes(T.lat[0], T.lat[1]);
   w.nameIx = {};
-  computeClimate(w); derive(w); computeHydro(w); derive(w); seaCap(w);
+  computeHydro(w); computeClimate(w); derive(w); computeHydro(w); derive(w); seaCap(w); w.riverList = w.riverList || new Int32Array(0);
   w.regions = { nameAt: (i) => { const k = w.regAt[i]; return k >= 0 && w.regs[k] ? w.regs[k].name : null; }, refAt: (i) => { const k = w.regAt[i]; return k >= 0 && w.regs[k] ? 'g' + w.regs[k].id : null; } };
-  relink(w); w.stamp.land++; w.mapStamp = (w.mapStamp || 0) + 1; w.roadStamp = (w.roadStamp || 0) + 1; w.regStamp = (w.regStamp || 0) + 1;
+  buildGrid(w); relink(w); w.stamp.land++; w.mapStamp = (w.mapStamp || 0) + 1; w.roadStamp = (w.roadStamp || 0) + 1; w.regStamp = (w.regStamp || 0) + 1;
   return w;
 }
 // the name index for chronicle links is rebuilt from what exists
 import { nameIt } from './story';
+import { buildGrid } from './people';
 function relink(w) {
   for (const c of w.cults) nameIt(w, 'c' + c.id, c.name);
   for (const s of w.sets) if (s.name) nameIt(w, 's' + s.id, s.name);

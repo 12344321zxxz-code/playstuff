@@ -22,7 +22,7 @@ export function createRadial(root: HTMLElement, icon: (n: string, s?: number) =>
       el('path', { class: 'bg', d: arc(R0, R1, a0, a1) }, w);
       const am = (a0 + a1) / 2, tx = Math.cos(am) * (R0 + R1) / 2, ty = Math.sin(am) * (R0 + R1) / 2;
       el('rect', { x: tx - 20, y: ty - 3, width: 40, height: 3, fill: r.color, opacity: 0.7 }, w);
-      const t = el('text', { x: tx, y: ty + 12, 'text-anchor': 'middle', class: 'ring-lab' }, w); t.textContent = r.label.toUpperCase();
+      const words = r.label.toUpperCase().split(' '); words.forEach((wd, q) => { const t = el('text', { x: tx, y: ty + 12 + q * 12 - (words.length - 1) * 4, 'text-anchor': 'middle', class: 'ring-lab' }, w); t.textContent = wd; });
       const ic = r.id === 'land' ? 'mountS' : r.id === 'sky' ? 'storm' : r.id === 'life' ? 'tree' : r.id === 'wrath' ? 'volcanoHot' : 'dragon';
       el('image', { href: icon(ic, 64), x: tx - 15, y: ty - 30, width: 30, height: 30 }, w);
       w.addEventListener('pointerenter', () => { if (ring !== k) { ring = k; sfx('click'); build(); } });

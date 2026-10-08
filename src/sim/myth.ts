@@ -51,7 +51,7 @@ export function noteAct(w, kind, x, y, r) {
       discover(w, 'myth', s.x, s.y);
     }
     // enough awe, and it becomes a faith
-    if (A.by[kind] >= 3 && !A.faith && w.rnd() < 0.5) { const f = mythFaith(w, s, kind); if (f) ev(w, `Among the ${c.name}, a prophet: ${w.figs.find((q) => q.id === f.prophet)?.name || 'a voice'} says ${w.god[kind] || epithetOf(w, kind)} is real, and is watching. ${f.name} is born at ${s.name || 'the camps of the ' + c.name}.`, s.x, s.y, f.color, 2, ['f' + f.id]); }
+    if (A.by[kind] >= 4 && !A.faith && w.rnd() < 0.35 && w.faiths.filter((q) => q.alive && q.god).length < 5) { const f = mythFaith(w, s, kind); if (f) ev(w, `Among the ${c.name}, a prophet: ${w.figs.find((q) => q.id === f.prophet)?.name || 'a voice'} says ${w.god[kind] || epithetOf(w, kind)} is real, and is watching. ${f.name} is born at ${s.name || 'the camps of the ' + c.name}.`, s.x, s.y, f.color, 2, ['f' + f.id]); }
     // the faithful notice when you do what you are known for
     for (const f of w.faiths) if (f.alive && f.god && f.kind === kind && f.towns) { f.zealUntil = w.year + 25; }
   }

@@ -120,7 +120,7 @@ const TROPHY = { dragon: ['the Skull of %', 'the Hoard of %', 'the Scale-Mail of
 export function makeArt(w, b, s, fig) {
   if (!s && !fig) return null; const L = TROPHY[b.kind] || ['the Bones of %'], name = L[(b.id + w.year) % L.length].replace('%', b.name);
   const a = { id: w.nextId++, name, kind: 'trophy', made: w.year, beast: b.id, cult: s ? s.cult : fig ? fig.cult : null, at: s ? s.id : null, x: s ? s.x : b.x, y: s ? s.y : b.y, lost: false, hist: [] };
-  a.from = `${s ? s.name + ' keeps ' : fig.name + ' takes '}${name}`;
+  a.from = `${fig ? fig.name + ' takes ' : (s.name || 'the ' + w.cults[s.cult].name) + ' keeps '}${name}`;
   w.arts.push(a); nameIt(w, 'a' + a.id, name.replace(/^the /, '').replace(/^./, (m) => m.toUpperCase())); nameIt(w, 'a' + a.id, name);
   return a;
 }

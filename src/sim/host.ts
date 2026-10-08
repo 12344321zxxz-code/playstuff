@@ -28,9 +28,14 @@ export function createHost(post) {
   function newWorld(seed, template, bands) {
     const t0 = now(); w = makeWorld(seed, { template, bands }); w.name = worldName(w);
     for (const k in sent) sent[k] = -1; acc = 0; edit = null;
-    post({ t: 'world', seed, template: w.template, name: w.name, ms: Math.round(now() - t0), species: SPECIES.map((s) => ({ key: s.key, col: s.col })) });
+    post({ t: 'world', seed, template: w.template, tname: (TEMPLATES.find((t) => t.id === w.template) || { name: '' }).name, name: w.name, ms: Math.round(now() - t0), species: SPECIES.map((s) => ({ key: s.key, col: s.col })) });
   }
-  function worldName(w) { const T = TEMPLATES.find((t) => t.id === w.template); return T ? T.name : 'The World'; }
+  function worldName(w) {
+    let a = (w.seed * 2654435761) >>> 0; const r = () => ((a = (a * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const C = ['v', 'r', 'th', 'm', 'l', 'd', 'k', 'g', 's', 'n', 'br', 'dr', 'esh', 'al'], V = ['a', 'e', 'o', 'ae', 'i', 'au', 'ei'], E = ['a', 'ia', 'or', 'eth', 'en', 'ar', 'ion', 'ys'];
+    let s = ''; const n = 2 + (r() < 0.4 ? 1 : 0); for (let k = 0; k < n; k++) s += C[(r() * C.length) | 0] + V[(r() * V.length) | 0]; s += E[(r() * E.length) | 0];
+    return s[0].toUpperCase() + s.slice(1);
+  }
 
   /* ---------- the loop ---------- */
   function loop() {

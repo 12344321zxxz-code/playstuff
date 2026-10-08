@@ -36,11 +36,11 @@ let pendingAck: ArrayBuffer | null = null, riversDirty = false, roadsDirty = fal
 /* ---------- boot ---------- */
 async function boot() {
   if (!gl) { $('nogl').hidden = false; return; }
-  try { await Promise.race([Promise.all([(document as any).fonts.load('20px "IM Fell English"'), (document as any).fonts.load('italic 20px "IM Fell English"'), (document as any).fonts.load('20px "IM Fell English SC"'), (document as any).fonts.load('16px "EB Garamond"')]), new Promise((r) => setTimeout(r, 2500))]); } catch (_) {}
+  try { await Promise.race([Promise.all([(document as any).fonts.load('600 16px "Instrument Sans"'), (document as any).fonts.load('italic 500 16px "Instrument Sans"'), (document as any).fonts.load('700 20px "Bricolage Grotesque"')]), new Promise((r) => setTimeout(r, 2500))]); } catch (_) {}
   atlas = paintAtlas();
   terrain = createTerrain(gl); glyphs = createGlyphs(gl, atlas.canvas); lines = createLines(gl);
-  terrain.setPalette(COLORS.map((c) => soft(c)), FAITH_COLORS.map((c) => soft(c, 0.85)));
-  $('compass').innerHTML = compassSVG();
+  terrain.setPalette(COLORS, FAITH_COLORS);
+  $('compass').hidden = true;
   buildUI(); fit(); window.addEventListener('resize', fit);
   $('making').hidden = false; $('making-s').textContent = 'raising the land, filling the seas';
   client = await connect(onMsg);
@@ -57,7 +57,7 @@ let worldT = 0;
 function onMsg(m: any) {
   if (m.t === 'world') {
     Object.assign(M, { ready: false, seed: m.seed, template: m.template, name: m.name, species: m.species || [] }); S.events = []; S.sel = null; S.selPos = null; hideCard();
-    $('wname').textContent = m.name; $('making').hidden = true; worldT = performance.now();
+    $('wname').textContent = m.name; $('wname').title = m.tname || ''; $('making').hidden = true; worldT = performance.now();
     cam.x = W / 2; cam.y = H / 2; cam.z = fitZ(); delete cam.tz; book.resetDials(); book.render();
     if (!m.loaded && !sessionSeen()) showWelcome();
     return;
@@ -83,7 +83,7 @@ function onEvents(evs: any[]) {
   for (const e of evs) {
     if (e.page) { toast(e, true); audio.sting('found'); continue; }
     S.events.push(e);
-    if (e.big) { toast(e, false); audio.sting(stingFor(e.text)); }
+    if (e.big) { toast(e, false); audio.sting(stingFor(e.text)); if (e.x != null) S.fx.push({ k: 'mark', x: e.x, y: e.y, T: 9, t0: performance.now(), text: e.text } as any); }
     else if (/go to war|at war|ride on|drags the/.test(e.text) && !e.minor) audio.sting('war');
   }
   if (S.events.length > 1500) S.events.splice(0, S.events.length - 1500);
@@ -263,7 +263,7 @@ function frame(now: number) {
 function hud() {
   $('yr').textContent = 'Year ' + M.year; $('season').textContent = SEASONS[Math.floor(M.phase * 8) % 8];
   const st = M.stats || {}, plague = M.ents.sets.filter((s: any) => s.plague).length;
-  const age = M.solar < -2.2 ? 'An age of ice' : M.solar > 2.2 ? 'A long warm age' : plague > 12 ? 'The plague years' : (st.wars || 0) >= 3 ? 'An age of wars' : (st.people || 0) > 60000 ? 'A crowded age' : '';
+  const age = M.solar < -2.9 ? 'An age of ice' : M.solar > 2.8 ? 'A long warm age' : plague > 12 ? 'The plague years' : (st.wars || 0) >= 3 ? 'An age of wars' : (st.people || 0) > 60000 ? 'A crowded age' : '';
   $('age').textContent = age;
   // what the world sounds like from here
   const x0 = Math.max(0, Math.floor(cam.x - cam.vw / cam.dpr / cam.z / 2)), x1 = Math.min(W - 1, Math.ceil(cam.x + cam.vw / cam.dpr / cam.z / 2)), y0 = Math.max(0, Math.floor(cam.y - cam.vh / cam.dpr / cam.z / 2)), y1 = Math.min(H - 1, Math.ceil(cam.y + cam.vh / cam.dpr / cam.z / 2));

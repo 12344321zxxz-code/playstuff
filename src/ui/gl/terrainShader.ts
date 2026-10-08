@@ -1,204 +1,187 @@
-// The atlas: one full-screen pass that paints the land and sea like a hand-coloured map. Paper
-// underneath; watercolour washes for the country; engraved ripple lines along the coasts; ink
-// for the shorelines; soft hill shading; realm borders hand-coloured in bands with a dotted
-// line, the way old political maps were painted.
+// The land, painted in natural colour: smooth (bicubic) height for clean hill shading at any
+// zoom, rich biome colours, deep water, snow that lies in patches, and close in the forests break
+// into single trees and fields into furrows. Realms are a faint wash with a clean border line.
 export const TERRAIN_VS = `#version 300 es
 in vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }`;
 
 export const TERRAIN_FS = `#version 300 es
 precision highp float; precision highp int;
 uniform sampler2D uElev, uA, uB, uC, uCoast, uRealm, uCoarse, uWorks;
-uniform vec2 uRes, uCenter, uMap;      // screen px, camera centre (cells), map size (cells)
+uniform vec2 uRes, uCenter, uMap, uCoarseSize;
 uniform float uZoom, uSea, uTime, uPhase, uDpr, uSolar;
 uniform int uLens;
 uniform vec3 uPal[32];
 uniform vec3 uFaith[16];
-uniform vec2 uCoarseSize;
-out vec4 frag;
+out vec4 o;
 
-float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
-float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
-float fbm(vec2 p) { float a = 0.0, m = 0.5; for (int k = 0; k < 4; k++) { a += vn(p) * m; p = p * 2.03 + 17.1; m *= 0.5; } return a; }
-vec2 uvOf(vec2 c) { return c / uMap; }
-float elev(vec2 c) { return texture(uElev, uvOf(c)).r; }
+float hash12(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+vec2 hash22(vec2 p) { float n = hash12(p); return vec2(n, hash12(p + n + 17.1)); }
+float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(hash12(i), hash12(i + vec2(1, 0)), f.x), mix(hash12(i + vec2(0, 1)), hash12(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p) { float a = 0., w = .5; for (int k = 0; k < 4; k++) { a += w * vnoise(p); p = p * 2.03 + 11.7; w *= .5; } return a; }
 
-// paper: warm cream, fibres, foxing, and the page browning toward its edges
-vec3 paper(vec2 s, vec2 w) {
-  float f = fbm(s * 0.012) * 0.55 + fbm(s * 0.09) * 0.3 + vn(s * vec2(0.9, 0.06)) * 0.15;
-  vec3 c = mix(vec3(0.93, 0.89, 0.79), vec3(0.97, 0.94, 0.86), f);
-  float fox = smoothstep(0.72, 0.9, fbm(w * 0.045 + 3.0)); c *= 1.0 - fox * 0.07;
-  return c;
+float elevAt(vec2 c) {
+  vec2 st = c - 0.5, i = floor(st), f = st - i, f2 = f * f, f3 = f2 * f;
+  vec2 w0 = (1. - 3. * f + 3. * f2 - f3) / 6., w1 = (4. - 6. * f2 + 3. * f3) / 6., w2 = (1. + 3. * f + 3. * f2 - 3. * f3) / 6., w3 = f3 / 6.;
+  vec2 g0 = w0 + w1, g1 = w2 + w3;
+  vec2 p0 = (i - 0.5 + w1 / g0) / uMap, p1 = (i + 1.5 + w3 / g1) / uMap;
+  return g0.y * (g0.x * texture(uElev, vec2(p0.x, p0.y)).r + g1.x * texture(uElev, vec2(p1.x, p0.y)).r)
+       + g1.y * (g0.x * texture(uElev, vec2(p0.x, p1.y)).r + g1.x * texture(uElev, vec2(p1.x, p1.y)).r);
 }
-// watercolour: wobble the pigment and let it pool darker at the edges of a wash
-vec3 wash(vec3 base, vec3 col, float a, vec2 w) {
-  float n = fbm(w * 0.35) - 0.5, gran = vn(w * 3.1) - 0.5;
-  vec3 c = col * (1.0 + n * 0.16 + gran * 0.05);
-  return mix(base, base * c / max(vec3(0.6), vec3(0.95)), a);   // multiply-ish, so the paper shows through
-}
-vec3 mulPaint(vec3 base, vec3 col, float a) { return mix(base, base * col, a); }
+float detail(vec2 c, float zf) { return (fbm(c * 1.3) - .5) * 0.05 + (fbm(c * 5.1) - .5) * 0.016 * zf; }
+float heightD(vec2 c, float zf) { float h = elevAt(c) - uSea; return h + detail(c, zf) * smoothstep(-0.01, 0.07, h) * (0.35 + 2.2 * max(h, 0.)); }
+ivec2 cellOf(vec2 c) { return ivec2(clamp(floor(c), vec2(0), uMap - 1.)); }
+vec4 cellAt(vec2 c) { return texelFetch(uC, cellOf(c), 0); }
 
-vec3 biome(vec4 A, vec4 B, float hh, vec2 w, out float forest, out float rock) {
-  float T = A.r * 80.0 - 40.0, m = A.g * 2.5, g = A.b, t = A.a, snow = B.r, green = B.b, Tm = B.a * 80.0 - 40.0;
-  // palette: painted, a little muted, warm
-  vec3 sand = vec3(0.93, 0.80, 0.55), steppe = vec3(0.84, 0.82, 0.55), meadow = vec3(0.70, 0.78, 0.45), scrub = vec3(0.80, 0.72, 0.52);
-  vec3 wood = vec3(0.44, 0.60, 0.33), taiga = vec3(0.36, 0.50, 0.36), jungle = vec3(0.27, 0.50, 0.30), dryw = vec3(0.58, 0.62, 0.36);
-  vec3 tundra = vec3(0.72, 0.74, 0.62), ice = vec3(0.95, 0.97, 0.98), marsh = vec3(0.56, 0.64, 0.48);
-  vec3 c = mix(scrub, sand, smoothstep(0.35, 0.12, m));
-  c = mix(c, mix(steppe, meadow, smoothstep(0.3, 0.9, green * g)), smoothstep(0.15, 0.55, g) * smoothstep(0.12, 0.35, m));
-  c = mix(c, tundra, smoothstep(6.0, -2.0, Tm) * (1.0 - smoothstep(0.6, 0.9, t)));
-  vec3 tree = mix(mix(wood, taiga, smoothstep(9.0, 2.0, Tm)), mix(dryw, jungle, smoothstep(0.9, 1.5, m)), smoothstep(16.0, 22.0, Tm));
-  forest = smoothstep(0.32, 0.62, t);
-  c = mix(c, tree, forest);
-  c = mix(c, marsh, smoothstep(1.6, 2.1, m) * smoothstep(0.08, 0.02, hh) * (1.0 - forest * 0.5));
-  rock = smoothstep(0.26, 0.55, hh);
-  vec3 stone = mix(vec3(0.70, 0.62, 0.50), vec3(0.62, 0.58, 0.56), smoothstep(0.4, 0.7, hh));
-  c = mix(c, stone, rock * 0.85);
-  c = mix(c, ice, max(smoothstep(0.35, 0.8, snow), 0.0));
-  return c;
-}
-
-float realmPick(vec2 w, out vec2 dd) {
-  vec4 r = texture(uRealm, uvOf(w)); dd = r.gb; return r.r;   // id (nearest), distance to the border (linear)
-}
+float dAt(ivec2 p, int ch) { p = clamp(p, ivec2(0), ivec2(uCoarseSize) - 1); vec4 v = texelFetch(uCoarse, p, 0); return floor((ch == 0 ? v.r : v.g) * 255. + .5); }
+vec2 regionPick(vec2 wc, int ch) { vec2 c = wc / 4. - .5, i = floor(c), f = c - i; f = f * f * (3. - 2. * f); ivec2 p = ivec2(i);
+  vec4 ids = vec4(dAt(p, ch), dAt(p + ivec2(1, 0), ch), dAt(p + ivec2(0, 1), ch), dAt(p + ivec2(1, 1), ch));
+  vec4 wt = vec4((1. - f.x) * (1. - f.y), f.x * (1. - f.y), (1. - f.x) * f.y, f.x * f.y);
+  float bid = 0., bm = 0.;
+  for (int k = 0; k < 4; k++) { float id = ids[k]; if (id < .5) continue; float m = dot(wt, vec4(equal(ids, vec4(id)))); if (m > bm) { bm = m; bid = id; } }
+  return vec2(bid, bm); }
+vec3 heatPal(float t) { t = clamp(t, 0., 1.); vec3 a = vec3(.16, .20, .55), b = vec3(.35, .62, .80), c = vec3(.93, .93, .80), d = vec3(.93, .60, .25), e = vec3(.70, .12, .12);
+  return t < .25 ? mix(a, b, t * 4.) : t < .5 ? mix(b, c, (t - .25) * 4.) : t < .75 ? mix(c, d, (t - .5) * 4.) : mix(d, e, (t - .75) * 4.); }
+vec3 wetPal(float t) { t = clamp(t, 0., 1.); vec3 a = vec3(.86, .74, .52), b = vec3(.80, .82, .50), c = vec3(.36, .66, .42), d = vec3(.10, .42, .48), e = vec3(.10, .20, .45);
+  return t < .25 ? mix(a, b, t * 4.) : t < .5 ? mix(b, c, (t - .25) * 4.) : t < .75 ? mix(c, d, (t - .5) * 4.) : mix(d, e, (t - .75) * 4.); }
 
 void main() {
-  vec2 sp = gl_FragCoord.xy; sp.y = uRes.y - sp.y;
-  vec2 w = uCenter + (sp - uRes * 0.5) / uZoom;          // world position in cells
-  float px = 1.0 / uZoom;                                 // one screen pixel, in cells
-  vec3 pap = paper(sp / uDpr + uCenter * uZoom / uDpr, w);
-  // outside the map: the margin of the page, and the frame
-  vec2 m0 = -w, m1 = w - uMap; float outside = max(max(m0.x, m0.y), max(m1.x, m1.y));
-  if (outside > 0.0) {
-    vec3 c = pap * vec3(0.95, 0.92, 0.85);
-    float fr = outside / px;   // in pixels from the map edge
-    float line = smoothstep(1.6, 0.6, abs(fr - 7.0 * uDpr)) * 0.85 + smoothstep(1.2, 0.3, abs(fr - 2.0 * uDpr)) * 0.5;
-    // the degree bar: alternating ink and paper between the two lines
-    float along = (abs(m0.x) < abs(m0.y) || abs(m1.x) < abs(m1.y)) ? w.y : w.x;
-    float bar = step(fr, 7.0 * uDpr) * step(2.0 * uDpr, fr) * step(0.5, fract(along / 16.0));
-    c = mix(c, vec3(0.23, 0.17, 0.11), max(line, bar * 0.75));
-    frag = vec4(c, 1.0); return;
-  }
-  // wobble the shoreline a little, the way a hand would draw it
-  vec2 q = w + (vec2(fbm(w * 0.7), fbm(w * 0.7 + 9.3)) - 0.5) * 0.45;
-  float sd = texture(uCoast, uvOf(q)).r;                  // >0 land, <0 water, in cells
-  float h = elev(w), hh = h - uSea;
-  vec4 A = texture(uA, uvOf(w)), B = texture(uB, uvOf(w));
-  vec4 C = texelFetch(uC, ivec2(clamp(floor(w), vec2(0), uMap - 1.0)), 0);
-  int flags = int(C.g * 255.0 + 0.5);
-  float lake = B.g;
-  vec3 col = pap;
-  bool water = sd < 0.0;
-  float aa = px * 1.2;
-  float landA = smoothstep(-aa, aa, sd);
+  vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+  vec2 wc = uCenter + (px - uRes * 0.5) / uZoom;
+  vec2 out0 = max(-wc, wc - uMap); float outside = max(out0.x, out0.y);
+  vec2 wcl = clamp(wc, vec2(0.5), uMap - 0.5);
+  vec2 uv = wcl / uMap;
+  float zf = smoothstep(4., 22., uZoom / uDpr);
+  float land = heightD(wcl, zf);
+  float e = 0.6;
+  float hx = heightD(wcl + vec2(e, 0.), zf) - heightD(wcl - vec2(e, 0.), zf);
+  float hy = heightD(wcl + vec2(0., e), zf) - heightD(wcl - vec2(0., e), zf);
+  vec2 grad = vec2(hx, hy) / (2. * e);
+  vec3 nrm = normalize(vec3(-grad * mix(11., 7., zf), 1.));
+  float lit = dot(nrm, normalize(vec3(-.55, -.65, .52)));
+  float sh = clamp(.5 + .9 * (lit - .52), 0., 1.3);
 
-  // --- the sea ---
-  {
-    float depth = clamp(-hh * 2.2, 0.0, 1.0);
-    vec3 shallow = vec3(0.76, 0.85, 0.80), deep = vec3(0.56, 0.70, 0.74);
-    vec3 sc = mix(shallow, deep, smoothstep(0.0, 0.7, depth));
-    if (lake > 0.02) sc = vec3(0.60, 0.77, 0.80);
-    vec3 s = wash(pap, sc, 0.86, w * 0.6);
-    // engraved ripple lines along the shore, constant on screen
-    float dpx = -sd / px / uDpr;                       // distance from the coast in CSS px
-    float sp6 = 5.5, k = dpx / sp6;
-    float ln = smoothstep(0.16, 0.0, abs(fract(k) - 0.5) - 0.32) * step(0.6, k) * smoothstep(9.0, 3.0, k);
-    s = mix(s, s * vec3(0.55, 0.66, 0.70), ln * 0.55);
-    // a darker rim right along the shore, the pigment pooling against the coast
-    s *= 1.0 - 0.18 * smoothstep(18.0, 0.0, dpx);
-    // sea ice
-    float ice = smoothstep(0.4, 0.8, B.r);
-    s = mix(s, vec3(0.93, 0.95, 0.97) * (0.95 + 0.05 * vn(w * 2.0)), ice * 0.85);
-    // fish and plankton show as a faint green bloom on rich water
-    vec4 F = texture(uCoarse, vec2(w.x / uMap.x, (w.y / uMap.y) * 0.5 + 0.5));
-    s = mix(s, s * vec3(0.94, 1.03, 0.97), F.a * 0.25);
-    col = s;
+  vec4 A = texture(uA, uv), B = texture(uB, uv), Cc = cellAt(wcl);
+  float temp = A.r * 80. - 40., mi = A.g * 2.5, grass = A.b, trees = A.a, snow = B.r, lake = B.g, green = B.b, tmean = B.a * 80. - 40.;
+  { vec2 q = vec2(.42) / uMap; lake = (lake * 2. + texture(uB, uv + vec2(q.x, q.y)).g + texture(uB, uv + vec2(-q.x, q.y)).g + texture(uB, uv + vec2(q.x, -q.y)).g + texture(uB, uv - q).g) / 6.; }
+  // flags blended between the four nearest cells, so fields and streets have soft edges
+  float farm, streets, ashM, fireM, lavaM; {
+    vec2 f = wcl - 0.5, fi = floor(f), ff = fract(f);
+    int c00 = int(texelFetch(uC, cellOf(fi + .5), 0).g * 255. + .5), c10 = int(texelFetch(uC, cellOf(fi + vec2(1.5, .5)), 0).g * 255. + .5);
+    int c01 = int(texelFetch(uC, cellOf(fi + vec2(.5, 1.5)), 0).g * 255. + .5), c11 = int(texelFetch(uC, cellOf(fi + 1.5), 0).g * 255. + .5);
+    float nz = (vnoise(wcl * 1.7) - 0.5) * 0.3;
+    #define BIT(m) (mix(mix(float((c00 & m) != 0), float((c10 & m) != 0), ff.x), mix(float((c01 & m) != 0), float((c11 & m) != 0), ff.x), ff.y))
+    farm = smoothstep(0.35, 0.65, BIT(1) + nz); streets = smoothstep(0.3, 0.7, BIT(2) + nz); ashM = smoothstep(0.3, 0.7, BIT(8) + nz); fireM = smoothstep(0.3, 0.7, BIT(4) + nz); lavaM = smoothstep(0.3, 0.7, BIT(64) + nz);
   }
-  // --- the land ---
-  vec3 land = pap; float forest = 0.0, rock = 0.0;
-  {
-    vec3 bc = biome(A, B, hh, w, forest, rock);
-    land = wash(pap, bc, 0.9, w);
-    // fields: a patchwork of strips at close range, a warm tint from afar
-    // flags at full smoothness: fetch the four nearest cells once, blend each bit
-    float farm, streets, ashM, fireM, lavaM; {
-      vec2 f = w - 0.5, fi = floor(f), ff = fract(f);
-      int c00 = int(texelFetch(uC, ivec2(clamp(fi, vec2(0), uMap - 1.0)), 0).g * 255.0 + 0.5);
-      int c10 = int(texelFetch(uC, ivec2(clamp(fi + vec2(1, 0), vec2(0), uMap - 1.0)), 0).g * 255.0 + 0.5);
-      int c01 = int(texelFetch(uC, ivec2(clamp(fi + vec2(0, 1), vec2(0), uMap - 1.0)), 0).g * 255.0 + 0.5);
-      int c11 = int(texelFetch(uC, ivec2(clamp(fi + vec2(1, 1), vec2(0), uMap - 1.0)), 0).g * 255.0 + 0.5);
-      float nz = (vn(w * 1.7) - 0.5) * 0.3;
-      #define BIT(m) (mix(mix(float((c00 & m) != 0), float((c10 & m) != 0), ff.x), mix(float((c01 & m) != 0), float((c11 & m) != 0), ff.x), ff.y))
-      farm = smoothstep(0.35, 0.65, BIT(1) + nz); streets = smoothstep(0.3, 0.7, BIT(2) + nz); ashM = smoothstep(0.3, 0.7, BIT(8) + nz); fireM = smoothstep(0.3, 0.7, BIT(4) + nz); lavaM = smoothstep(0.3, 0.7, BIT(64) + nz);
+  vec3 col; bool isSea = land < 0. || outside > 0.;
+  if (isSea) {
+    float d = max(-land, outside * 0.05);
+    vec3 shallow = mix(vec3(.30, .56, .62), vec3(.33, .72, .72), smoothstep(8., 26., temp));
+    col = mix(shallow, vec3(.13, .36, .54), smoothstep(0., .08, d));
+    col = mix(col, vec3(.07, .20, .38), smoothstep(.06, .45, d));
+    col *= .90 + .2 * sh;
+    float wv = sin(wc.x * 9. + uTime * 1.2 + sin(wc.y * 7.) * 2.) * sin(wc.y * 11. - uTime * .9);
+    col += .028 * zf * wv;
+    float si = max(smoothstep(-1.5, -6., temp + (fbm(wc * .18) - .5) * 7.), step(.99, snow) * .9) * (.86 + .14 * vnoise(wc * .45)) * (1. - smoothstep(0., 12., outside));
+    col = mix(col, vec3(.90, .94, .97), si);
+    col = mix(col, vec3(.80, .92, .94), smoothstep(.014, 0., d) * .45 * (1. - si));
+    vec4 F = texture(uCoarse, vec2(uv.x, uv.y * 0.5 + 0.5));
+    col = mix(col, col * vec3(.92, 1.06, .98), F.r * F.a * 0.6);
+    if (outside > 0.) col *= 1. - 0.3 * smoothstep(0., 30., outside);
+  } else {
+    float arid = 1. - smoothstep(.1, .55, mi);
+    vec3 sand = mix(vec3(.85, .75, .55), vec3(.80, .62, .44), vnoise(wcl * .07));
+    vec3 dirt = mix(vec3(.62, .57, .44), vec3(.55, .51, .43), vnoise(wcl * .31));
+    vec3 ground = mix(dirt, sand, arid * smoothstep(6., 19., tmean));
+    ground = mix(ground, vec3(.57, .59, .50), smoothstep(4., -7., tmean));
+    vec3 gG = mix(vec3(.55, .70, .34), vec3(.34, .59, .27), smoothstep(.35, 1.5, mi));
+    vec3 gc = mix(vec3(.78, .71, .43), gG, green);
+    col = mix(ground, gc, smoothstep(.04, .65, grass));
+    float marsh = smoothstep(1.6, 2.1, mi) * smoothstep(.08, .02, land) * (1. - smoothstep(.5, .8, trees));
+    col = mix(col, mix(vec3(.30, .45, .33), vec3(.36, .55, .55), step(.62, vnoise(wcl * 2.3))), marsh * .7);
+    vec3 fc = mix(vec3(.13, .33, .29), vec3(.18, .46, .24), smoothstep(0., 9., tmean));
+    fc = mix(fc, vec3(.09, .39, .20), smoothstep(17., 23., tmean));
+    float fall = smoothstep(.60, .72, uPhase) * smoothstep(.95, .84, uPhase);
+    float decid = smoothstep(2., 7., tmean) * smoothstep(17., 12., tmean);
+    fc = mix(fc, vec3(.74, .45, .15), fall * decid * .85);
+    fc = mix(fc, vec3(.45, .40, .32), decid * smoothstep(3., -3., temp) * .65);
+    float mg = texture(uWorks, uv).b;
+    fc = mix(fc, vec3(.30, .26, .52), smoothstep(.5, .9, mg) * .55);
+    float tr = smoothstep(.1, .72, trees);
+    float zt = smoothstep(9., 17., uZoom / uDpr);
+    col = mix(col, fc, tr * (1. - zt * .55));
+    if (zt > 0.01 && trees > .04) {
+      vec2 q = wcl * 3.2, qi = floor(q); float best = 9.; vec2 bo = vec2(0.); float br = 0.;
+      for (int j = -1; j <= 1; j++) for (int k = -1; k <= 1; k++) {
+        vec2 cell = qi + vec2(float(j), float(k)); vec2 r = hash22(cell); vec2 pt = cell + .5 + (r - .5) * .8;
+        float cover = texture(uA, (pt / 3.2) / uMap).a;
+        if (hash12(cell + 7.3) > cover * 1.15 - .06) continue;
+        float rad = .34 + .22 * r.x; float dd = length(q - pt) / rad;
+        if (dd < best) { best = dd; bo = (q - pt) / rad; br = r.y; }
+      }
+      if (best < 1.) { float lightSide = clamp(.5 - .5 * (bo.x + bo.y) * .7, 0., 1.); vec3 tc = fc * (.72 + .55 * lightSide) * (.9 + .2 * br); col = mix(col, tc, zt * smoothstep(1., .82, best)); }
+      else col *= 1. - .10 * zt * tr;
     }
-    if (farm > 0.0) {
-      vec2 cell = floor(w * 1.5 + vec2(vn(w * 0.3), 0.0)); float r = h21(cell);
-      float stripes = 0.5 + 0.5 * sin((r > 0.5 ? w.x : w.y) * 18.0 + r * 6.0);
-      vec3 fc = mix(vec3(0.86, 0.76, 0.42), vec3(0.72, 0.74, 0.40), r);
-      if (r > 0.8) fc = vec3(0.80, 0.62, 0.38);
-      if (uPhase > 0.75 || uPhase < 0.15) fc = mix(fc, vec3(0.62, 0.52, 0.38), 0.6);   // ploughed in winter
-      float close = smoothstep(6.0, 14.0, uZoom / uDpr);
-      vec3 plot = fc * (1.0 - close * 0.12 * stripes);
-      land = mix(land, wash(pap, plot, 0.95, w * 2.0), farm * 0.85);
-      // hedges between the plots, when you are close enough to see them
-      vec2 g2 = fract(w * 1.5 + vec2(vn(w * 0.3), 0.0)); float hedge = 1.0 - smoothstep(0.0, 0.06, min(min(g2.x, 1.0 - g2.x), min(g2.y, 1.0 - g2.y)));
-      land = mix(land, land * vec3(0.72, 0.78, 0.6), hedge * farm * close * 0.6);
+    float rock = smoothstep(.36, .6, land);
+    col = mix(col, mix(vec3(.56, .53, .50), vec3(.48, .46, .45), vnoise(wcl * .9)), rock);
+    if (farm > 0.) {
+      vec2 blk = floor(wcl / 2.); float ang = hash12(blk) * 3.14159; vec2 dir = vec2(cos(ang), sin(ang));
+      float stripe = smoothstep(.35, .5, abs(fract(dot(wcl, dir) * 2.4) - .5) * 2.);
+      vec3 fcol = mix(mix(vec3(.82, .73, .38), vec3(.70, .62, .33), stripe), mix(vec3(.62, .72, .33), vec3(.50, .63, .28), stripe), green * .75);
+      if (uPhase > 0.78 || uPhase < 0.12) fcol = mix(fcol, vec3(.50, .42, .32), .55);
+      vec2 fe = abs(fract(wcl) - .5); float edge = smoothstep(.44, .5, max(fe.x, fe.y)) * zf;
+      col = mix(col, fcol * (1. - .25 * edge), .88 * farm);
     }
-    land = mix(land, vec3(0.78, 0.70, 0.60) * pap, streets * 0.5);
-    land = mix(land, vec3(0.52, 0.48, 0.44) * pap, ashM * 0.55);
-    if (fireM > 0.0) { float fl = 0.6 + 0.4 * sin(uTime * 9.0 + h21(floor(w * 2.0)) * 6.28); land = mix(land, vec3(0.95, 0.36, 0.12), 0.75 * fl * fireM); }
-    if (lavaM > 0.0) { float fl = 0.7 + 0.3 * sin(uTime * 3.0 + w.x); land = mix(land, mix(vec3(0.15, 0.08, 0.06), vec3(1.0, 0.42, 0.1), fl * smoothstep(0.3, 0.7, vn(w * 2.5 + uTime * 0.2))), lavaM); }
-    // hill shading: light from the north-west, soft, like a wash of sepia
-    float e = 0.7;
-    float hx = elev(w + vec2(e, 0)) - elev(w - vec2(e, 0)), hy = elev(w + vec2(0, e)) - elev(w - vec2(0, e));
-    float shade = clamp(-(hx * 0.9 + hy * 1.1) * 7.0, -1.0, 1.0);
-    float relief = smoothstep(0.02, 0.25, hh);
-    land *= 1.0 + shade * (0.10 + 0.22 * relief);
-    land = mix(land, land * vec3(0.92, 0.88, 0.80), relief * 0.25);
-    // forest edges: the wash pools darker where it stops
-    float fe = clamp(length(vec2(dFdx(forest), dFdy(forest))) / px * 0.6, 0.0, 1.0);
-    land *= 1.0 - fe * 0.18;
-    // winter: snow lies on the land
-    land = mix(land, vec3(0.95, 0.96, 0.97) * (0.92 + 0.08 * shade) * pap / vec3(0.95, 0.92, 0.84), smoothstep(0.35, 0.9, B.r) * (1.0 - smoothstep(0.35, 0.8, A.a) * 0.5) * 0.6);
-  }
-  col = mix(col, land, landA);
-
-  // --- realms: a band of colour inside each border, a dotted line on it ---
-  if (uLens == 0 || uLens == 6 || uLens == 9) {
-    vec2 rw = w + (vec2(fbm(w * 0.5 + 4.0), fbm(w * 0.5 + 8.0)) - 0.5) * 1.2;
-    vec4 R = texture(uRealm, uvOf(rw));
-    int id = int(texelFetch(uRealm, ivec2(clamp(floor(rw), vec2(0), uMap - 1.0)), 0).r * 255.0 + 0.5);
-    if (uLens == 9) { id = int(texelFetch(uRealm, ivec2(clamp(floor(rw), vec2(0), uMap - 1.0)), 0).a * 255.0 + 0.5); }
-    float bd = (uLens == 9 ? R.b : R.g) * 32.0;                           // cells to the border
-    if (id > 0 && sd > -1.5) {
-      vec3 rc = uLens == 9 ? uFaith[(id - 1) & 15] : uPal[(id - 1) & 31];
-      float bpx = bd / px / uDpr;                                           // in CSS px
-      float band = smoothstep(uLens == 0 ? 9.0 : 16.0, 1.0, bpx);
-      float fill = uLens == 0 ? 0.0 : 0.24;
-      col = mulPaint(col, mix(vec3(1.0), rc, 0.9), clamp(fill + band * (uLens == 0 ? 0.3 : 0.4), 0.0, 0.8) * landA);
-      // the border itself: short dashes of dark ink
-      float dash = step(0.45, fract((w.x + w.y) * uZoom / uDpr / 7.0));
-      float line = smoothstep(1.3, 0.3, bpx) * dash;
-      col = mix(col, vec3(0.30, 0.20, 0.14), line * 0.7 * landA);
+    if (streets > 0.) {
+      vec2 b = fract(wcl * 3.) - .5; float blocks = smoothstep(.36, .3, max(abs(b.x), abs(b.y)));
+      vec3 ucol = mix(vec3(.66, .60, .53), mix(vec3(.80, .72, .62), vec3(.62, .44, .36), hash12(floor(wcl * 3.))), blocks * zf);
+      col = mix(col, ucol, .92 * streets);
     }
+    {
+      vec2 f = wcl - 0.5, fi = floor(f), ff = fract(f);
+      int k00 = int(texelFetch(uWorks, cellOf(fi + .5), 0).r * 255. + .5), k10 = int(texelFetch(uWorks, cellOf(fi + vec2(1.5, .5)), 0).r * 255. + .5);
+      int k01 = int(texelFetch(uWorks, cellOf(fi + vec2(.5, 1.5)), 0).r * 255. + .5), k11 = int(texelFetch(uWorks, cellOf(fi + 1.5), 0).r * 255. + .5);
+      #define WB(m) (mix(mix(float((k00 & m) != 0), float((k10 & m) != 0), ff.x), mix(float((k01 & m) != 0), float((k11 & m) != 0), ff.x), ff.y))
+      float canal = WB(1), dike = WB(4), wall = WB(8);
+      col = mix(col, vec3(.30, .55, .66), smoothstep(.5, .7, canal) * .8);
+      col = mix(col, col * vec3(.9, 1.05, .9), dike * .4); col = mix(col, vec3(.45, .42, .36), smoothstep(.5, .6, dike) * (1. - smoothstep(.6, .75, dike)) * .8);
+      col = mix(col, vec3(.38, .34, .30), smoothstep(.45, .7, wall) * .9);
+    }
+    col = mix(col, vec3(.22, .19, .18), .7 * ashM);
+    float sraw = snow + smoothstep(.5, .75, land) * .5 + (fbm(wcl * .45) - .5) * .4 + (fbm(wcl * 3.1) - .5) * .14 * zf - (sh - .6) * .12;
+    float sn = smoothstep(.40, .40 + .06 + .14 * (1. - zf), sraw);
+    col = mix(col, vec3(.95, .96, .98), sn);
+    col = mix(col, mix(vec3(.90, .94, .98), vec3(.80, .88, .95), fbm(wcl * .35)), smoothstep(.9, .99, snow) * .85);
+    if (lake > .085) { float ld = (lake - .085) * 1.5; col = mix(mix(vec3(.36, .62, .72), vec3(.16, .40, .60), clamp(ld * 2.5, 0., 1.)), vec3(.92, .95, .97), smoothstep(.5, .9, snow)); sh = mix(sh, 1., .8); }
+    col *= mix(.60, 1.30, clamp(sh, 0., 1.));
+    if (fireM > 0.) { float fl = vnoise(wcl * 4. + uTime * 5.); col = mix(col, mix(vec3(1., .42, .08), vec3(1., .86, .35), fl), fireM); }
+    if (lavaM > 0.) { float fl = fbm(wcl * 2.5 + vec2(uTime * .3, 0.)); col = mix(col, mix(vec3(.95, .25, .05), vec3(1., .80, .30), fl), lavaM); }
   }
-
-  // --- the coastline in ink ---
-  {
-    float lw = 0.9 * uDpr; float d = abs(sd) / px;
-    float ink = smoothstep(lw + 0.8, lw - 0.4, d);
-    col = mix(col, vec3(0.22, 0.17, 0.12), ink * 0.85);
+  if (outside <= 0.) {
+    float gmag = length(grad);
+    float cdist = abs(land) / (gmag + 1e-4) * uZoom;
+    col = mix(col, vec3(.09, .19, .26), (1. - smoothstep(.5 * uDpr, 1.7 * uDpr, cdist)) * .5 * step(gmag, 5.));
   }
-
-  // --- lenses ---
-  if (uLens == 1) { float T = A.r * 80.0 - 40.0; vec3 hc = T < -10.0 ? mix(vec3(0.16,0.2,0.55), vec3(0.35,0.6,0.8), (T+30.0)/20.0) : T < 10.0 ? mix(vec3(0.35,0.6,0.8), vec3(0.93,0.93,0.8), (T+10.0)/20.0) : mix(vec3(0.93,0.93,0.8), vec3(0.75,0.15,0.1), clamp((T-10.0)/25.0, 0.0, 1.0)); col = mix(col, pap * hc * 1.1, 0.75); }
-  else if (uLens == 2) { float m = A.g * 2.5; vec3 rc = mix(vec3(0.86,0.74,0.52), mix(vec3(0.45,0.66,0.42), vec3(0.15,0.35,0.5), smoothstep(0.9,1.8,m)), smoothstep(0.1,0.9,m)); col = mix(col, pap * rc * 1.1, 0.75 * landA); }
-  else if (uLens == 5) { vec3 hc = hh < 0.0 ? mix(vec3(0.7,0.84,0.88), vec3(0.2,0.33,0.55), clamp(-hh*2.0,0.0,1.0)) : hh < 0.15 ? mix(vec3(0.55,0.72,0.45), vec3(0.85,0.8,0.55), hh/0.15) : mix(vec3(0.85,0.8,0.55), vec3(0.98,0.97,0.95), clamp((hh-0.15)/0.5,0.0,1.0)); col = mix(col, pap * hc * 1.08, 0.8); }
-  else if (uLens == 7) { float mg = texture(uWorks, uvOf(w)).b; col = mix(col * vec3(0.8, 0.78, 0.86), vec3(0.62, 0.32, 0.86), smoothstep(0.1, 0.9, mg) * 0.8); }
-  else if (uLens == 10) { vec4 E = texture(uCoarse, vec2(w.x / uMap.x, (w.y / uMap.y) * 0.5)); vec4 F = texture(uCoarse, vec2(w.x / uMap.x, (w.y / uMap.y) * 0.5 + 0.5)); vec3 lc = mix(vec3(0.95,0.92,0.8), vec3(0.35,0.62,0.22), smoothstep(0.0, 0.6, E.b)); lc = mix(lc, vec3(0.62,0.18,0.12), smoothstep(0.05, 0.6, E.a) * 0.7); vec3 sc2 = mix(vec3(0.78,0.86,0.88), vec3(0.2,0.45,0.6), clamp(F.r * F.a * 2.0, 0.0, 1.0)); sc2 = mix(sc2, vec3(0.35,0.3,0.55), clamp(F.g * 2.0, 0.0, 1.0) * 0.6); col = mix(col, pap * (landA > 0.5 ? lc : sc2), 0.7); }
-  else if (uLens == 4) { int pl = int(C.b * 255.0 + 0.5); vec3 pc = uPal[(pl * 7 + 3) & 31]; col = mix(col, pap * pc, 0.5); float e1 = abs(dFdx(C.b)) + abs(dFdy(C.b)); col = mix(col, vec3(0.2, 0.1, 0.05), step(0.001, e1) * 0.7); }
-
-  // the page darkens toward the frame, a little
-  vec2 edge = min(w, uMap - w); float vig = smoothstep(0.0, 26.0, min(edge.x, edge.y));
-  col *= 0.9 + 0.1 * vig;
-  frag = vec4(col, 1.0);
+  if (uLens > 0 && uLens != 6 && uLens != 9) {
+    vec3 lc = col;
+    if (uLens == 1) lc = heatPal((temp + 30.) / 65.);
+    else if (uLens == 2) lc = isSea ? vec3(.22, .27, .36) : wetPal(mi / 2.2);
+    else if (uLens == 4) { float id = floor(Cc.b * 255. + .5); vec3 pc = .45 + .4 * cos(6.2832 * (id * .137 + vec3(0., .33, .67))); lc = isSea ? pc * .55 : pc;
+      vec4 r1 = cellAt(wcl + vec2(1., 0.)), r2 = cellAt(wcl + vec2(0., 1.)); if (r1.b != Cc.b || r2.b != Cc.b) lc = vec3(.08); }
+    else if (uLens == 5) lc = isSea ? mix(vec3(.55, .75, .85), vec3(.10, .18, .40), clamp(-land * 2.2, 0., 1.)) : mix(mix(vec3(.45, .62, .38), vec3(.86, .80, .55), clamp(land * 4., 0., 1.)), vec3(.98), clamp((land - .3) * 2.5, 0., 1.));
+    else if (uLens == 7) { float m = texture(uWorks, uv).b; lc = isSea ? mix(vec3(.10, .10, .16), vec3(.30, .20, .45), clamp(m * 1.2, 0., 1.)) : mix(vec3(.16, .14, .22), vec3(.80, .45, 1.), clamp(m * 1.4, 0., 1.)); lc += vec3(.25, .2, .3) * smoothstep(.55, .6, m) * smoothstep(.66, .6, m); }
+    else if (uLens == 10) { vec4 E = texture(uCoarse, vec2(uv.x, uv.y * 0.5)), F = texture(uCoarse, vec2(uv.x, uv.y * 0.5 + 0.5));
+      lc = isSea ? mix(vec3(.08, .12, .22), vec3(.20, .55, .62), clamp(F.r * F.a * 2.5, 0., 1.)) + vec3(.35, .25, .45) * clamp(F.g * 2., 0., 1.) : mix(vec3(.30, .26, .20), vec3(.45, .78, .32), clamp(E.b * 1.6, 0., 1.)); if (!isSea) lc = mix(lc, vec3(.80, .22, .15), clamp(E.a * 1.5, 0., 1.) * .6); }
+    col = lc * (isSea ? 1. : mix(.72, 1.18, clamp(sh, 0., 1.)));
+  }
+  if (uLens == 6 || uLens == 9) { float gray = dot(col, vec3(.3, .5, .2)); col = mix(vec3(gray) * .9 + .08, col, .25); }
+  int ch = uLens == 9 ? 1 : 0;
+  vec2 rg = regionPick(wcl + (vec2(fbm(wcl * .35), fbm(wcl * .35 + 7.7)) - .5) * 3.2, ch); float rid = rg.x, m = rg.y, fw = fwidth(m);
+  if (rid > .5 && !isSea && (uLens == 0 || uLens == 6 || uLens == 9)) {
+    vec3 pc = ch == 1 ? uFaith[int(mod(rid - 1., 16.))] : uPal[int(mod(rid - 1., 32.))];
+    bool strong = uLens == 6 || uLens == 9;
+    float inside = smoothstep(.38, .62, m), line = 1. - smoothstep(fw * .6, fw * 2.4 + .004, abs(m - .5));
+    col = mix(col, pc, (strong ? .5 : .07) * inside);
+    col = mix(col, pc * (strong ? .7 : .9), line * (strong ? .95 : .45));
+  }
+  o = vec4(col, 1.);
 }`;

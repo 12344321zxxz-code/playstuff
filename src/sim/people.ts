@@ -100,7 +100,7 @@ function meet(w, c, o, p) {
 
 /* ---------- finding things ---------- */
 const BK = 16, GW = W / BK, GH = H / BK;
-function buildGrid(w) { const g = (w.sgrid = w.sgrid || []); for (let k = 0; k < GW * GH; k++) (g[k] || (g[k] = [])).length = 0; for (const s of w.sets) if (!s.dead) g[((s.y / BK) | 0) * GW + ((s.x / BK) | 0)].push(s); }
+export function buildGrid(w) { const g = (w.sgrid = w.sgrid || []); for (let k = 0; k < GW * GH; k++) (g[k] || (g[k] = [])).length = 0; for (const s of w.sets) if (!s.dead) g[((s.y / BK) | 0) * GW + ((s.x / BK) | 0)].push(s); }
 export function near(w, x, y, d, skip, sedOnly, each) {
   const g = w.sgrid, r = Math.ceil(d / BK), bx = (x / BK) | 0, by = (y / BK) | 0, d2 = d * d; let best = null, bd = d2;
   for (let gy = by - r; gy <= by + r; gy++) { if (gy < 0 || gy >= GH) continue; for (let gx = bx - r; gx <= bx + r; gx++) { const b = g[gy * GW + ((gx % GW) + GW) % GW];
@@ -222,6 +222,7 @@ function territory(w) {
   const { owner, ocult, ownD, sets, urban } = w; owner.fill(-1); ocult.fill(-1); ownD.fill(1e9); urban.fill(0);
   for (let k = 0; k < sets.length; k++) {
     const s = sets[k]; s._k = k; if (s.dead) continue; if (s.nomad) { s.R = w.cults[s.cult].grazer ? 3 : 2; continue; }
+    if (!(s.pop > 0)) s.pop = 1;
     const R = (s.R = Math.min(9, 2 + Math.floor(Math.sqrt(s.pop) / 7))), bias = s.pop * 0.0015, slot = w.cults[s.cult].slot;
     for (const o of DISC[R]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]), d = o[2] * o[2] - bias; if (d < ownD[i]) { ownD[i] = d; owner[i] = k; ocult[i] = slot; } }
     if (s.tier >= 2) { const ur = s.tier === 3 ? (s.pop > 2500 ? 2 : 1) : 0; for (const o of DISC[ur]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); if (!w.water[i]) urban[i] = 1; } }

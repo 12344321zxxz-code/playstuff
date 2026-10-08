@@ -19,7 +19,7 @@ export function weatherYear(w) {
   // (it starts from where the world was made, so nothing lurches in year one)
   const u = ((w.seed >>> 3) % 100) / 100, sg = w.seed & 1 ? 1 : -1, was = w.solar || 0; const sun0 = sg * (1.7 * Math.sin(w.year / (60 + 30 * u)) + 0.8 * Math.sin(w.year / (23 + 11 * u))) * w.params.mood;
   // and over thousands of years the great cycle: ice ages and the long warm spells between them
-  const glacial = -2.6 * Math.max(0, Math.sin((w.year + 400 * u) / (300 + 120 * u))) ** 3 * w.params.mood;
+  const glacial = -1.6 * Math.max(0, Math.sin((w.year + 400 * u) / (300 + 120 * u))) ** 3 * w.params.mood;
   if (w.forcing) { if (w.year > (w.forcingUntil || 0)) w.forcing *= 0.94; if (Math.abs(w.forcing) < 0.05) w.forcing = 0; }
   w.solar = sun0 + glacial + (w.forcing || 0);
   if (w.solar < -1.9 && was >= -1.9 && discover(w, 'cold', null, null)) ev(w, 'The summers are getting shorter. Old people say it was not always like this.', null, null, null, 2);
