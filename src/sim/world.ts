@@ -15,6 +15,13 @@ import { initWeather, weatherYear } from './weather';
 import { initSea, seaYear, seaCap } from './sea';
 import { moversTick } from './movers';
 import { initFaith } from './faith';
+import { initBeasts, beastsYear, beastsTick, artsYear } from './beasts';
+import { initFigures, figuresYear } from './figures';
+import { initMyth, mythYear } from './myth';
+import { initEco, ecoStep, ecoYear } from './eco';
+import { initRegions, mapRegions } from './regions';
+import { initWorks, worksYear } from './works';
+import { krakensTick } from './sea';
 
 const F = () => new Float32Array(N), U = () => new Uint8Array(N);
 
@@ -34,6 +41,8 @@ export function makeWorld(seed, opts) {
   initWeather(w);
   makePlates(w, rnd);
   buildLand(w, rnd);
+  // most land is low: lowlands spread, uplands stay, the peaks keep their height
+  { const sea = w.params.sea; for (let i = 0; i < N; i++) { const hh = w.h[i] - sea; if (hh > 0) w.h[i] = sea + Math.pow(hh, 1.5) / Math.sqrt(0.6); } }
   for (let i = 0; i < N; i++) { w.rMean[i] = 0.6; w.mi[i] = 0.6; }
   computeHydro(w);
   computeClimate(w); derive(w); computeHydro(w); derive(w);
@@ -47,8 +56,8 @@ export function makeWorld(seed, opts) {
   seasonFields(w);
   seedOre(w);
   w.ice0 = w.landIce; w.landCount = countLand(w); w.mi0 = Float32Array.from(w.mi); baseline(w);
-  initFaith(w); initSea(w); initFauna(w); initMagic(w); initPeople(w, opts && opts.bands);
-  w.events.length = 0; w.found = {};
+  initFaith(w); initSea(w); initFauna(w); initMagic(w); initBeasts(w); initFigures(w); initMyth(w); initWorks(w); initEco(w); initPeople(w, opts && opts.bands); initRegions(w);
+  w.events.length = 0; w.found = {}; w.history = []; w.hist = {};
   return w;
 }
 
@@ -79,10 +88,10 @@ export function tick(w) {
   w.tickN++; w.phase = (w.tickN % TPY) / TPY; w.year = Math.floor(w.tickN / TPY);
   if (w.aerosol > 0.001) w.aerosol *= 0.975; else w.aerosol = 0;
   seasonFields(w, w.tickN & 1); vegetation(w, w.tickN & 3); fireStep(w);
-  fauna(w); dragonsTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
+  fauna(w); dragonsTick(w); beastsTick(w); krakensTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
   // the yearly work is spread over the year's ticks so no single tick is heavy
   const ph = w.tickN % TPY;
-  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); } else if (ph === 3) magicYear(w); else if (ph === 4) naturalYear(w); else if (ph === 5) roadsYear(w);
+  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); ecoYear(w); } else if (ph === 3) { magicYear(w); ecoStep(w); } else if (ph === 4) naturalYear(w); else if (ph === 5) roadsYear(w); else if (ph === 6) { beastsYear(w); artsYear(w); ecoStep(w); } else if (ph === 7) { figuresYear(w); mythYear(w); worksYear(w); if (w.year % 40 === 17 || w.regDirty) { w.regDirty = false; mapRegions(w); } }
   if (ph === 0) {
     const y = w.year;
     for (let i = 0; i < N; i += 4) { const b = w.wetBias[i]; if (b !== 0) { w.wetBias[i] = b * 0.996; w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } else { w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } }
@@ -105,6 +114,6 @@ function runJob(w, ms) {
     const a = performance.now(), r = j.g.next(), d = performance.now() - a; j.n = (j.n || 0) + 1; if (w.dbg && d > (w.dbg.max || 0)) { w.dbg.max = d; w.dbg.at = j.k + '#' + j.n; }
     if (!r.done) { if (performance.now() - t0 > ms) return; continue; }
     if (j.k === 'climate') { derive(w); w.need.climate = false; w.job = { k: 'water', g: hydroSteps(w) }; if (w.sync) return runJob(w, ms); return; }
-    derive(w); w.need.water = false; w.stamp.land++; landChanged(w); w.job = null; return;
+    derive(w); w.need.water = false; w.stamp.land++; landChanged(w); w.job = null; w.regDirty = true; return;
   }
 }

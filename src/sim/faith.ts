@@ -4,8 +4,9 @@
 // they change what peoples do: who they will fight, what land they will clear, what they
 // remember after a fall. Also here: the yearly maps of realms and faiths that the page draws.
 import { W, H, N, CS, CW, CH, CN, wx, wrapDx, clamp } from './core';
-import { ev, discover, once } from './story';
+import { ev, discover, once, nameIt } from './story';
 import { near } from './people';
+import { prophetFor } from './figures';
 
 export const FAITH_COLORS = ['#f4d35e', '#ee964b', '#9bc1bc', '#e84855', '#7fb069', '#5d5c8f', '#f2f4f3', '#b38cb4', '#3a86ff', '#c08552', '#2ec4b6', '#ff5d8f', '#8d99ae', '#a7c957', '#ffbe0b', '#6a4c93'];
 export const TENET = {
@@ -23,6 +24,7 @@ const ORIGIN = {
   haunt: { names: ['the Old Kings', 'the Ones Below', 'the Quiet Dead'], tenet: 'ancestors', say: 'People who live near the haunted ruins start to pray to whoever built them.' },
   plague: { names: ['the Pale Saint', 'the Mercy', 'the Bitter Cup'], tenet: 'peace', say: 'Among the survivors of the sickness, a new faith: the ones who lived were spared for something.' },
   wonder: { names: ['the Sun Throne', 'the High House', 'the Golden Eye'], tenet: 'ancestors', say: 'The great temple fills with priests, and the priests with ideas.' },
+  beast: { names: ['the Beast Below', 'the Horned One', 'the Old Hunger'], tenet: 'peace', say: 'People who live in the shadow of the lair begin to leave it offerings.' },
   city: { names: ['the Sky Father', 'the Hearth', 'the Twins', 'the Way', 'the Lamp', 'the Weaver', 'the Rain Lord', 'the Bright One'], tenet: null, say: null },
 };
 const MAXF = 12;
@@ -30,13 +32,13 @@ export const faithOf = (w, s) => (s && s.faith != null ? w.faiths[s.faith] : nul
 
 export function initFaith(w) { w.faiths = []; w.realm = new Uint8Array(CN); w.faithMap = new Uint8Array(CN); w.mapStamp = 0; }
 function aliveF(w) { let n = 0; for (const f of w.faiths) if (f.alive) n++; return n; }
-function newFaith(w, s, kind) {
-  const o = ORIGIN[kind], used = new Set(w.faiths.map((f) => f.name)), word = s.name ? s.name.replace(/^New /, '') : w.cults[s.cult].name;
+export function newFaith(w, s, kind, given) {
+  const o = given || ORIGIN[kind], used = new Set(w.faiths.map((f) => f.name)), word = s.name ? s.name.replace(/^New /, '') : w.cults[s.cult].name;
   let name = o.names.find((n) => !used.has(n)) || o.names[(w.rnd() * o.names.length) | 0] + ' of ' + word; if (kind === 'city') name = o.names[(w.rnd() * o.names.length) | 0] + ' of ' + word;
   const tenets = Object.keys(TENET), tenet = o.tenet || tenets[(w.rnd() * tenets.length) | 0];
   const used2 = new Set(w.faiths.filter((f) => f.alive).map((f) => f.slot)); let slot = 0; while (used2.has(slot) && slot < 15) slot++;
   const f = { id: w.faiths.length, slot, color: FAITH_COLORS[slot], name, tenet, born: w.year, x: s.x, y: s.y, at: s.name, origin: kind, alive: true, towns: 0, peoples: 0, parent: null };
-  w.faiths.push(f); return f;
+  f.uid = w.nextId++; w.faiths.push(f); nameIt(w, 'f' + f.id, f.name); return f;
 }
 // Something happened at (x, y). Maybe somebody nearby starts a faith about it.
 export function holySite(w, x, y, kind, p) {
@@ -44,7 +46,7 @@ export function holySite(w, x, y, kind, p) {
   const s = near(w, Math.round(x), Math.round(y), 16, null, true); if (!s || s.dead || w.rnd() > (p == null ? 0.6 : p)) return null;
   const old = faithOf(w, s); if (old && old.origin === kind && w.year - old.born < 300) return null;
   if (w.faiths.some((f) => f.alive && w.year - f.born < 150 && wrapDx(f.x - s.x) ** 2 + (f.y - s.y) ** 2 < 625)) return null;
-  const f = newFaith(w, s, kind), c = w.cults[s.cult]; convert(w, s, f); if (c.faith == null) c.faith = f.id;
+  const f = newFaith(w, s, kind), c = w.cults[s.cult]; convert(w, s, f); if (c.faith == null) c.faith = f.id; prophetFor(w, s, f);
   const first = discover(w, 'faith', s.x, s.y);
   ev(w, `${ORIGIN[kind].say || 'A new faith.'} They call it ${f.name}.`, s.x, s.y, f.color, first ? 2 : 0);
   return f;
@@ -80,7 +82,7 @@ export function faithYear(w) {
   if (aliveF(w) < MAXF && w.year > 200 && rnd() < 0.02) { const cand = w.cults.filter((c) => c.alive && c.faith == null && c.big && !c.big.nomad && c.big.name && (c.big.tier === 3 || (c.count >= 6 && w.year > 350)) && c.big.faith == null).map((c) => c.big); if (cand.length) { const s = cand[(rnd() * cand.length) | 0], f = newFaith(w, s, 'city'); convert(w, s, f); w.cults[s.cult].faith = f.id; const first = discover(w, 'faith', s.x, s.y); ev(w, `In ${s.name}, priests of a new god: ${f.name}. Its teaching ${TENET[f.tenet]}.`, s.x, s.y, f.color, first ? 2 : 0); } }
   for (const f of w.faiths) {
     if (!f.alive) continue;
-    if (f.towns === 0 && f.born < w.year) { f.alive = false; if (w.year - f.born > 60) ev(w, `Nobody prays to ${f.name} any more.`, f.x, f.y, f.color, 1); continue; }
+    if (f.towns === 0 && f.born < w.year) { f.alive = false; f.died = w.year; if (w.year - f.born > 60) ev(w, `Nobody prays to ${f.name} any more.`, f.x, f.y, f.color, 1); continue; }
     if (f.peoples >= 3 && w.year - f.born > 220 && aliveF(w) < MAXF && rnd() < Math.min(0.02, 0.001 * f.peoples)) reform(w, f);   // the bigger it is, the sooner it splits
   }
   maps(w);

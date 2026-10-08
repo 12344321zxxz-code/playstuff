@@ -3,7 +3,7 @@
 // along the seams between plates and in a few deep springs, soaks into old forest, gathers in
 // ruins, and changes what lives in it. Dragons are the top of the food chain.
 import { W, H, N, clamp, wx, wrapDx, cyl, DISC } from './core';
-import { ev, discover } from './story';
+import { ev, discover, nameIt } from './story';
 import { ignite } from './life';
 import { near, colorOf, endSet, flee } from './people';
 import { holySite } from './faith';
@@ -40,8 +40,8 @@ export function addDragon(w, x, y) {
   let bi = y * W + x, bh = w.h[bi];
   for (const o of DISC[12]) { const yy = y + o[1]; if (yy < 2 || yy >= H - 2) continue; const i = yy * W + wx(x + o[0]); if (w.h[i] > bh) { bh = w.h[i]; bi = i; } }
   if (bh < sea) return null;
-  const d = { x: bi % W, y: (bi / W) | 0, lx: bi % W, ly: (bi / W) | 0, hoard: 0, age: 0, hunger: 2, st: 'wake', tx: 0, ty: 0, sleep: 0, name: DNAME[w.dragonNames++ % DNAME.length], target: null, px: bi % W, py: (bi / W) | 0 };
-  w.dragons.push(d); return d;
+  const d = { id: w.nextId++, kind: 'dragon', born: w.year, x: bi % W, y: (bi / W) | 0, lx: bi % W, ly: (bi / W) | 0, hoard: 0, age: 0, hunger: 2, st: 'wake', tx: 0, ty: 0, sleep: 0, name: DNAME[w.dragonNames++ % DNAME.length], target: null, px: bi % W, py: (bi / W) | 0 };
+  w.dragons.push(d); nameIt(w, 'b' + d.id, d.name); (w.beastLog || (w.beastLog = [])).push(d); return d;
 }
 function dragonsYear(w) {
   const rnd = w.rnd, sea = w.params.sea;

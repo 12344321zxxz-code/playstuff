@@ -8,12 +8,12 @@ import { krakenNear } from './sea';
 
 export const arrive = {};          // kind -> what happens when they get there; filled in by people.js
 const MAXM = 300;
-const LOST = { settlers: ['Settlers', 'go'], army: ['A war band', 'goes'], trade: ['A trading ship', 'goes'], refugees: ['People fleeing', 'go'], home: ['A war band', 'goes'] };
+const LOST = { settlers: ['Settlers', 'go'], army: ['A war band', 'goes'], trade: ['A trading ship', 'goes'], refugees: ['People fleeing', 'go'], home: ['A war band', 'goes'], quest: ['A hero', 'goes'], pilgrims: ['Pilgrims', 'go'] };
 
 export function send(w, m) {
   if (w.movers.length >= MAXM && (m.kind === 'trade' || m.kind === 'home')) return null;
   if (w.movers.length >= MAXM + 60) return null;
-  m.px = m.x; m.py = m.y; m.born = w.tickN; m.pi = 0; m.land = m.land || 0.75; m.sea = m.sea || 1.7; w.movers.push(m); return m;
+  m.id = w.nextId++; m.px = m.x; m.py = m.y; m.born = w.tickN; m.pi = 0; m.land = m.land || 0.75; m.sea = m.sea || 1.7; w.movers.push(m); return m;
 }
 
 export function moversTick(w) {

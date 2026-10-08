@@ -52,7 +52,7 @@ export function* hydroSteps(w) {
     if (wat2[i] !== 2 || seen[i]) continue; let qn = 0, deep = 0; q[qn++] = i; seen[i] = 1;
     for (let hd = 0; hd < qn; hd++) { const c = q[hd], x = c % W, y = (c / W) | 0; if (fl2[c] - h[c] > deep) deep = fl2[c] - h[c];
       for (let k = 0; k < 4; k++) { const yy = y + (k === 2 ? -1 : k === 3 ? 1 : 0); if (yy < 0 || yy >= H) continue; const nb = yy * W + wx(x + (k === 0 ? 1 : k === 1 ? -1 : 0)); if (wat2[nb] === 2 && !seen[nb]) { seen[nb] = 1; q[qn++] = nb; } } }
-    if (qn < 7 && deep < 0.035) for (let k = 0; k < qn; k++) wat2[q[k]] = 0;
+    if (!(qn >= 30 || (qn >= 10 && deep > 0.05) || deep > 0.09)) for (let k = 0; k < qn; k++) wat2[q[k]] = 0;
     else if (!big || qn > big.n) big = { n: qn, x: i % W, y: (i / W) | 0 };
   }
   let rn = 0;
@@ -60,7 +60,7 @@ export function* hydroSteps(w) {
   yield; if (my !== epoch) return;
   // distance to fresh water (rivers, lakes) and to the sea, both capped
   let qn = 0; fresh2.fill(7);
-  for (let i = 0; i < N; i++) if (riv2[i] || wat2[i] === 2) { fresh2[i] = 0; q[qn++] = i; }
+  for (let i = 0; i < N; i++) if (riv2[i] || wat2[i] === 2 || (w.works && w.works[i] & 1 && !wat2[i])) { fresh2[i] = 0; q[qn++] = i; }
   bfs(q, qn, fresh2, 7);
   yield; if (my !== epoch) return;
   qn = 0; dSea2.fill(60);

@@ -120,7 +120,7 @@ export function stormsTick(w) {
   // late summer over warm water breeds storms
   const ph = w.phase;
   for (const hemi of [1, -1]) { const season = hemi > 0 ? ph > 0.5 && ph < 0.8 : ph < 0.3 && ph > 0.0; if (!season || w.storms.length >= 4 || rnd() > 0.12) continue;
-    for (let q = 0; q < 30; q++) { const lat = hemi * (8 + rnd() * 16), y = Math.round((0.5 - lat / 156) * H), x = (rnd() * W) | 0, i = y * W + x; if (water[i] === 1 && temp[i] > 25.5) { w.storms.push({ x, y, str: 0.5, life: 26, spin: rnd() * 6 }); break; } } }
+    for (let q = 0; q < 30; q++) { const y = 4 + ((rnd() * (H - 8)) | 0), x = (rnd() * W) | 0, i = y * W + x; if (water[i] === 1 && temp[i] > 25.5 && (latOf(y) >= 0) === (hemi > 0)) { w.storms.push({ x, y, str: 0.5, life: 26, spin: rnd() * 6 }); break; } } }
   for (const s of w.storms) {
     const i = cell(s.x, s.y), wv = windAt(w, s.x, s.y), sg = latOf(s.y) >= 0 ? -1 : 1; s.px = s.x; s.py = s.y;
     s.x = wx(s.x + wv[0] * 2.6); s.y = clamp(s.y + wv[1] * 2.2 + sg * 0.55, 2, H - 3); s.life--;
@@ -162,4 +162,13 @@ export function naturalYear(w) {
           for (let s = 2; s <= 18; s++) { const yy = Math.round(y - (v / l) * s); if (yy < 1 || yy >= H - 1) break; const j = yy * W + wx(Math.round(x - (u / l) * s)); if (h[j] - sea > 0.3) peak = true; else if (peak && mi[j] > 0.9 && water[j] !== 1) { discover(w, 'shadow', x, y); break; } } } } }
     if (land) { const b = w.base; if (des / land > Math.max(0.2, b.desert + 0.08)) discover(w, 'desert', dx0, dy0); if (forest / land > Math.max(0.5, b.forest + 0.12)) discover(w, 'primeval', null, null); if (w.year > 30 && mon / land > Math.max(0.05, b.monsoon + 0.06)) discover(w, 'monsoon', mx, my); }
   }
+}
+
+// A bolt from a clear sky. Dry woods catch; a town hit by one remembers it.
+export function lightning(w, x, y) {
+  x = wx(Math.round(x)); y = clamp(Math.round(y), 1, H - 2); const i = y * W + x; w.fx.push({ k: 'bolt', x, y, T: 0.9 });
+  if (w.water[i]) return 'It strikes the water.';
+  let lit = false; for (const o of DISC[1]) { const j = (y + o[1]) * W + wx(x + o[0]); if (w.t[j] > 0.2 || w.g[j] > 0.3) if (ignite(w, j)) lit = true; }
+  const s = near(w, x, y, 2.5, null, false); if (s) { s.pop *= 0.98; const c = w.cults[s.cult]; if (s.tier >= 2) ev(w, `Lightning strikes ${s.name} out of a clear sky. ${c.faith != null ? 'The priests of ' + w.faiths[c.faith].name + ' have a lot to explain.' : 'Nobody sleeps that night.'}`, s.x, s.y, c.color, 1); }
+  return lit ? 'It catches.' : true;
 }

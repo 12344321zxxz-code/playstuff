@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Plants, soil and fire. Plants grow toward what climate, water and soil allow; they build soil
 // as they go; bare wet slopes lose it. Fire resets a patch and feeds the ground.
-import { W, H, N, CW, TAU, clamp, smooth, wx, NB8 } from './core';
+import { W, H, N, CW, CH, TAU, clamp, smooth, wx, NB8 } from './core';
 
 // Fields that follow the calendar: today's temperature and rain, snow on the ground, how green.
 // `half` 0 or 1 does only the northern or southern half, so a running game can alternate.
@@ -13,7 +13,7 @@ export function seasonFields(w, half) {
     for (let x = 0; x < W; x++) {
       const i = row + x, T = tJan[i] + (tJul[i] - tJan[i]) * f; temp[i] = T;
       if (water[i] === 1) { snow[i] = ice[i] ? 1 : T < -1.5 ? 0.85 : 0; continue; }
-      const R = (rJan[i] + (rJul[i] - rJan[i]) * f) * (wetA ? wetA[crow + (x >> 2)] : 1); rain[i] = R;
+      const R = (rJan[i] + (rJul[i] - rJan[i]) * f) * (wetA ? wab(wetA, x, y) : 1); rain[i] = R;
       let target = ice[i] ? 1 : T > 1.5 ? 0 : T < -3.5 ? 1 : (1.5 - T) * 0.2; if (R < 0.04) target *= 0.3;
       snow[i] += (target - snow[i]) * 0.45;
       const m = mi[i], wet = (0.65 * R + 0.21 * (m > 2 ? 2 : m)) / (0.22 + 0.03 * (T > 0 ? T : 0));
@@ -49,7 +49,7 @@ export function vegetation(w, part) {
         if (r < 0.003 * tc) tv = 0.04;
         else if (r < 0.2 * tc) { const k = (rs >>> 3) & 7, yy = y + NB8[k][1]; if (yy >= 0 && yy < H && t[yy * W + wx(x + NB8[k][0])] > 0.4) tv = 0.04; }
       }
-      const aw = wetA[crow + (x >> 2)], cap = gCap[i] * (1 - 0.7 * tv) * (0.55 + 0.45 * (aw > 1.3 ? 1.3 : aw)); gv += 0.32 * gv * (cap - gv) + 0.015 * gCap[i]; if (gv < 0) gv = 0; else if (gv > 1) gv = 1;
+      const aw = wab(wetA, x, y), cap = gCap[i] * (1 - 0.7 * tv) * (0.55 + 0.45 * (aw > 1.3 ? 1.3 : aw)); gv += 0.32 * gv * (cap - gv) + 0.015 * gCap[i]; if (gv < 0) gv = 0; else if (gv > 1) gv = 1;
       t[i] = tv; g[i] = gv;
       // soil
       let s = soil[i]; const cover = gv * 0.5 + tv;
@@ -81,4 +81,11 @@ export function fireStep(w) {
     if (--fireT[c] > 0) next.push(c); else { ash[c] = 1; soil[c] = Math.min(1.3, soil[c] + 0.12); if (rnd() < 0.35) t[c] = Math.max(t[c], 0.03); }
   }
   w.burnedThisYear = (w.burnedThisYear || 0) + cur.length; if (cur.length) w.burnAt = cur[0];
+}
+
+// this year's rain anomaly at a fine cell, smoothly between the coarse cells
+export function wab(a, x, y) {
+  const fx = (x - 1.5) * 0.25, fy = (y - 1.5) * 0.25, ix = Math.floor(fx), iy = fy < 0 ? 0 : Math.floor(fy), tx = fx - ix, ty = fy < 0 ? 0 : fy - iy;
+  const c0 = (iy < CH ? iy : CH - 1) * CW, c1 = (iy + 1 < CH ? iy + 1 : CH - 1) * CW, x0 = (ix + CW) % CW, x1 = (ix + 1) % CW;
+  return (a[c0 + x0] * (1 - tx) + a[c0 + x1] * tx) * (1 - ty) + (a[c1 + x0] * (1 - tx) + a[c1 + x1] * tx) * ty;
 }

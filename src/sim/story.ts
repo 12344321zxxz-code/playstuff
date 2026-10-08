@@ -2,10 +2,31 @@
 // The chronicle (things that happened) and the almanac (kinds of thing this world has produced).
 // true the first time anything asks about `key` in this world
 export const once = (w, key) => (w.onces[key] ? false : (w.onces[key] = true));
-// level: 0 or nothing = worth a line; 1 or true = small (only one is kept every few years); 2 = a headline
-export function ev(w, text, x, y, color, level) {
-  if (level && level !== 2) { if (w.year - (w.lastMinor || -99) < 9) return; w.lastMinor = w.year; }
-  w.events.push({ year: w.year, text, x, y, color: color || null, big: level === 2 });
+// level: 0 or nothing = worth a line; 1 or true = small (only one is kept every few years); 2 = a headline.
+// Every event is also kept in the world's history, linked to whoever and whatever it mentions, so
+// the legends browser can tell any people, place, figure or beast's story.
+export function ev(w, text, x, y, color, level, refs) {
+  if (level && level !== 2) { if (w.year - (w.lastMinor || -99) < 9) return null; w.lastMinor = w.year; }
+  const links = [], e = { id: w.evN = (w.evN || 0) + 1, year: w.year, text, x, y, color: color || null, big: level === 2, minor: !!(level && level !== 2), refs: linkRefs(w, text, refs, links), links };
+  w.events.push(e); record(w, e);
+  return e;
+}
+export function record(w, e) {
+  const H = w.history || (w.history = []); H.push(e); if (H.length > 30000) H.splice(0, 5000);
+  const by = w.hist || (w.hist = {}); for (const r of e.refs) (by[r] || (by[r] = [])).push(e.id);
+}
+// Names the chronicle can link. `token` is a kind letter and an id: c people, s place, f faith,
+// b beast, p figure, a artifact, r ruin.
+export function nameIt(w, token, name) {
+  if (!name) return; const ix = w.nameIx || (w.nameIx = {}), key = firstCap(name); if (!key) return;
+  const L = ix[key] || (ix[key] = []); const k = L.findIndex((q) => q[0] === name); if (k >= 0) L.splice(k, 1); L.push([name, token]);
+}
+const firstCap = (s) => { const m = s.match(/[A-Z][\w’'-]+/); return m ? m[0] : null; };
+function linkRefs(w, text, refs, links) {
+  const out = refs ? refs.slice() : [], ix = w.nameIx; if (!ix || !text) return out;
+  const words = text.match(/[A-Z][\w’'-]+/g); if (!words) return out;
+  for (const wd of words) { const L = ix[wd]; if (!L) continue; for (let k = L.length - 1; k >= 0; k--) { const [nm, tok] = L[k]; if (!out.includes(tok) && text.includes(nm)) { out.push(tok); if (links) links.push([nm, tok]); break; } } }
+  return out;
 }
 
 // Almanac pages. They start blank; a page is filled in the first time the world produces the
@@ -47,6 +68,7 @@ export const PAGES = [
     ['locusts', 'Swarm', 'After the rains came back, so did something else.'],
     ['nets', 'Empty nets', 'A sea fished until there was nothing left to catch.'],
     ['boom', 'Boom and crash', 'Too many grazers, then bare ground, then bones.'],
+    ['whales', 'Empty whale roads', 'The great whales were hunted until the sea was quiet.'],
   ]],
   ['Peoples', [
     ['village', 'First village', 'Wanderers stopped wandering.'],
@@ -88,13 +110,28 @@ export const PAGES = [
     ['relic', 'Old knowledge', 'Someone dug in a ruin and learned something.'],
     ['haunt', 'Haunted ruin', 'Nobody goes there. Something does.'],
     ['curse', 'Curse', 'Diggers opened a haunted place and brought something home.'],
+    ['found', 'Lost and found', 'Something lost for generations turned up again.'],
+  ]],
+  ['Legends', [
+    ['beast', 'Legendary beast', 'A creature with a name and a lair.'],
+    ['hero', 'Hero', 'Someone the songs will remember.'],
+    ['villain', 'Villain', 'Someone the songs will curse.'],
+    ['prophet', 'Prophet', 'Someone who heard a voice and made others listen.'],
+    ['myth', 'Myth', 'A people told a story about you.'],
+    ['yourfaith', 'Your faith', 'A people began to pray to you.'],
+    ['schismgod', 'Two of you', 'Two faiths, both about you, at war over what you meant.'],
+    ['works', 'Great works', 'A people bent a river or a coast to their will.'],
+    ['wall', 'Great wall', 'A wall across a whole frontier.'],
+    ['canal', 'Canal', 'A cut that joined two waters.'],
+    ['polder', 'Land from the sea', 'A people built dikes and drained the shallows.'],
+    ['clearcut', 'Clear-cut', 'A people cut down a forest the size of a country.'],
   ]],
 ];
 export function discover(w, id, x, y) {
   if (w.found[id]) return false;
   w.found[id] = { year: w.year, x, y }; w.foundNew = true;
   let name = id; for (const g of PAGES) for (const p of g[1]) if (p[0] === id) name = p[1];
-  w.events.push({ year: w.year, text: `Almanac: ${name}.`, x, y, color: null, page: id });
+  const e = { id: w.evN = (w.evN || 0) + 1, year: w.year, text: `Almanac: ${name}.`, x, y, color: null, page: id, refs: [] }; w.events.push(e);
   return true;
 }
 export const pageCount = () => PAGES.reduce((a, g) => a + g[1].length, 0);

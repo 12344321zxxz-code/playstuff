@@ -3,7 +3,7 @@
 // in the warm deep. Boats take from it, it grows back, and a fleet that takes too much for too
 // long finds the nets empty. Further out, in deep water where the magic pools, something else.
 import { W, H, N, CS, CW, CH, CN, clamp, wx, wrapDx } from './core';
-import { ev, discover } from './story';
+import { ev, discover, nameIt } from './story';
 
 export const FISH_FEEDS = 190;   // people one full coarse cell could feed if you emptied it
 export function initSea(w) { w.fish = new Float32Array(CN); w.fishK = new Float32Array(CN); w.krakens = []; seaCap(w); w.fish.set(w.fishK); }
@@ -44,17 +44,22 @@ export function fishNear(w, x, y, r) {
 
 /* ---------- the deep ones ---------- */
 const KNAME = ['the Drowned King', 'Mother of Eels', 'Old Maw', 'the Pale Hand', 'Thousand-Arms', 'the Sleeper Below'];
-export function addKraken(w, x, y) {
-  x = wx(Math.round(x)); y = clamp(Math.round(y), 2, H - 3); if (w.water[y * W + x] !== 1 || w.krakens.length >= 4) return null;
-  const k = { x, y, name: KNAME[(w.krakenNames = (w.krakenNames || 0) + 1) % KNAME.length], sunk: 0, born: w.year, wake: 0 }; w.krakens.push(k); return k;
+const SNAME = ['the Long Coil', 'Saltwyrm', 'the Grey Ribbon', 'Jormun', 'the Leviathan', 'Old Scales'];
+export function addKraken(w, x, y, kind) {
+  x = wx(Math.round(x)); y = clamp(Math.round(y), 2, H - 3); if (w.water[y * W + x] !== 1 || w.krakens.length >= 5) return null;
+  kind = kind || 'kraken'; const L = kind === 'serpent' ? SNAME : KNAME, n = (w.krakenNames = (w.krakenNames || 0) + 1);
+  const k = { id: w.nextId++, kind, x, y, px: x, py: y, hx: x, hy: y, name: L[n % L.length], sunk: 0, born: w.year, wake: 0 }; w.krakens.push(k); nameIt(w, 'b' + k.id, k.name); (w.beastLog || (w.beastLog = [])).push(k); return k;
 }
 function krakenYear(w) {
   const rnd = w.rnd, sea = w.params.sea;
   if (w.krakens.length < 2 && w.year > 150 && (w.stats.ships || 0) > 3 && rnd() < 0.006) {
     for (let q = 0; q < 300; q++) { const i = (rnd() * N) | 0; if (w.water[i] === 1 && sea - w.h[i] > 0.3 && !w.ice[i] && (w.magic[i] > 0.1 || rnd() < 0.05)) { const k = addKraken(w, i % W, (i / W) | 0); if (k) ev(w, `Sailors speak of ${k.name}, and of a patch of sea they will not cross.`, k.x, k.y, null); break; } }
   }
-  for (const k of w.krakens) { const i = k.y * W + k.x; if (w.water[i] !== 1) { k.dead = true; ev(w, `The sea has left ${k.name} on dry rock. It does not last the summer.`, k.x, k.y, null); continue; } w.magic[i] = Math.min(1, w.magic[i] + 0.04); if (k.wake > 0) k.wake--; }
-  if (w.krakens.some((k) => k.dead)) w.krakens = w.krakens.filter((k) => !k.dead);
+  for (const k of w.krakens) { const i = k.y * W + k.x; if (w.water[i] !== 1) { k.dead = true; ev(w, `The sea has left ${k.name} on dry rock. It does not last the summer.`, k.x, k.y, null); continue; } w.magic[i] = Math.min(1, w.magic[i] + 0.04); if (k.wake > 0) k.wake--;
+    if (k.kind === 'serpent') { for (let q = 0; q < 8; q++) { const nx = wx(Math.round(k.hx + (rnd() - 0.5) * 30)), ny = clamp(Math.round(k.hy + (rnd() - 0.5) * 22), 2, H - 3); if (w.water[ny * W + nx] === 1) { k.tx = nx; k.ty = ny; break; } } } }
+  if (w.krakens.some((k) => k.dead)) { for (const k of w.krakens) if (k.dead) k.died = w.year; w.krakens = w.krakens.filter((k) => !k.dead); }
 }
+// serpents glide; krakens stay put
+export function krakensTick(w) { for (const k of w.krakens) { k.px = k.x; k.py = k.y; if (k.tx == null) continue; const dx = wrapDx(k.tx - k.x), dy = k.ty - k.y, l = Math.hypot(dx, dy); if (l < 0.6) { k.tx = null; continue; } const nx = wx(k.x + (dx / l) * 0.6), ny = k.y + (dy / l) * 0.6; if (w.water[clamp(Math.round(ny), 0, H - 1) * W + wx(Math.round(nx))] !== 1) { k.tx = null; continue; } k.x = nx; k.y = ny; } }
 // called for every ship each tick it is at sea
 export function krakenNear(w, x, y) { for (const k of w.krakens) if (wrapDx(k.x - x) ** 2 + (k.y - y) ** 2 < 30) return k; return null; }
