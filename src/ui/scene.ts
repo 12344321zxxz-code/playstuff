@@ -49,7 +49,7 @@ export function buildScene(m: Mirror, cam: Cam, G: GlyphList, labels: Label[], n
   if (!bare) {
     if (z > 2.5) for (const r of E.ruins) { if (!seen(r.x, r.y)) continue; push(r.kind === 'drowned' ? 'ruinDrowned' : 'ruin', r.x + 0.5, r.y + 0.6, clamp(z * (0.9 + r.tier * 0.25), 14, 44), r.haunt ? 0.75 : 0.95); if (z > 9) labels.push({ text: 'Ruins of ' + r.name, x: r.x + 0.5, y: r.y + 1.4, px: 11, kind: 'ruin', pri: 30 + r.tier, italic: true, ref: r.sid ? 's' + r.sid : undefined }); }
     if (z > 4) for (const w of E.wells || []) if (seen(w.x, w.y)) push('well', w.x + 0.5, w.y + 0.6, clamp(z * 2, 18, 46), 0.55 + 0.25 * Math.sin(now * 0.002 + w.x));
-    if (z > 1.5) for (const v of E.volc) if (seen(v.x, v.y)) push(v.hot ? 'volcanoHot' : 'volcano', v.x + 0.5, v.y + 0.6, clamp(z * 3, 24, 60), 1, WHITE, 0, false, 0.3);
+    if (z > 1.5) for (const v of E.volc) if (seen(v.x, v.y) && !m.water[v.y * W + v.x]) push(v.hot ? 'volcanoHot' : 'volcano', v.x + 0.5, v.y + 0.6, clamp(z * 3, 24, 60), 1, WHITE, 0, false, 0.3);
     if (z > 8) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x; if (m.ore[i] && !m.water[i]) push('ore', x + 0.5, y + 0.7, clamp(z * 0.5, 10, 20), 0.95); }
     // works: dams, mines, the great walls
     if (z > 4) { const wk = m.works; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * W + x, v = wk[i * 4]; if (!v) continue; if (v & 16) push('mine', x + 0.5, y + 0.7, clamp(z * 1.2, 14, 30)); if ((v & 2) && h1(i) < 0.3) push('dam', x + 0.5, y + 0.6, clamp(z * 1.1, 12, 28)); } }

@@ -81,7 +81,7 @@ void main() {
     col *= .90 + .2 * sh;
     float wv = sin(wc.x * 9. + uTime * 1.2 + sin(wc.y * 7.) * 2.) * sin(wc.y * 11. - uTime * .9);
     col += .028 * zf * wv;
-    float si = max(smoothstep(-1.5, -6., temp + (fbm(wc * .18) - .5) * 7.), step(.99, snow) * .9) * (.86 + .14 * vnoise(wc * .45)) * (1. - smoothstep(0., 12., outside));
+    float si = max(smoothstep(-1.5, -6., temp + (fbm(wc * .18) - .5) * 7.), step(.99, snow) * .9) * (.86 + .14 * vnoise(wc * .45)) * (1. - smoothstep(0., 2.5, outside));
     col = mix(col, vec3(.90, .94, .97), si);
     col = mix(col, vec3(.80, .92, .94), smoothstep(.014, 0., d) * .45 * (1. - si));
     vec4 F = texture(uCoarse, vec2(uv.x, uv.y * 0.5 + 0.5));
