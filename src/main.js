@@ -68,7 +68,7 @@ function buildOpts(t) {
   const g = $('optgrp'); g.hidden = !t.opts; if (!t.opts) return; const box = g.lastChild; box.textContent = ''; const cur = S.opt[t.id] || 0;
   t.opts.forEach((l, k) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = l; b.setAttribute('aria-pressed', k === cur); b.addEventListener('click', () => { S.opt[t.id] = k; buildOpts(t); }); box.appendChild(b); });
 }
-function setLens(id) { S.lens = id; for (const b of document.querySelectorAll('[data-lens]')) b.setAttribute('aria-pressed', +b.dataset.lens === id); S.dirty = true; }
+function setLens(id) { S.lens = id; legend(); for (const b of document.querySelectorAll('[data-lens]')) b.setAttribute('aria-pressed', +b.dataset.lens === id); S.dirty = true; }
 function setSpeed(v) { S.speed = v; for (let k = 0; k < 4; k++) $('sp' + k).setAttribute('aria-pressed', k === v); }
 function setBrush(r) { S.brush = r; for (const b of document.querySelectorAll('[data-brush]')) b.setAttribute('aria-pressed', +b.dataset.brush === r); }
 
@@ -118,7 +118,7 @@ function bindInput() {
     const p = evp(e), was = pts.get(e.pointerId); S.hover = p;
     if (was) pts.set(e.pointerId, p);
     if (pts.size === 2 && was) { const q = [...pts.values()], d = Math.hypot(q[0].sx - q[1].sx, q[0].sy - q[1].sy), mx = (q[0].sx + q[1].sx) / 2, my = (q[0].sy + q[1].sy) / 2; if (S.pinch > 0) zoomAt(mx, my, d / S.pinch); S.pinch = d; if (S.press) { cam.x -= (mx - S.press.sx) / cam.z; cam.y -= (my - S.press.sy) / cam.z; S.press.sx = mx; S.press.sy = my; clampCam(); } return; }
-    const pr = S.press; if (!pr) return;
+    const pr = S.press; if (!pr) { tipAt(p); return; }
     if (pr.pan) { const dx = p.sx - pr.sx, dy = p.sy - pr.sy; pr.moved += Math.abs(dx) + Math.abs(dy); cam.x -= dx / cam.z; cam.y -= dy / cam.z; pr.sx = p.sx; pr.sy = p.sy; clampCam(); return; }
     if (S.tool.kind === 'plates') { pr.moved += 1; if (pr.plate) { const pl = pr.plate; pl.vx = clamp(wrapDx(p.x - pl.cx) / 16, -1.6, 1.6); pl.vy = clamp((p.y - pl.cy) / 16, -1.6, 1.6); } return; }
     if (S.tool.kind === 'brush') {
@@ -142,7 +142,7 @@ function bindInput() {
     finishEdit();
   };
   ov.addEventListener('pointerup', up); ov.addEventListener('pointercancel', up);
-  ov.addEventListener('pointerleave', () => { if (!S.press) S.hover = null; });
+  ov.addEventListener('pointerleave', () => { if (!S.press) S.hover = null; $('tip').hidden = true; });
   ov.addEventListener('wheel', (e) => { e.preventDefault(); const r = ov.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0016)); }, { passive: false });
   window.addEventListener('keydown', (e) => {
     if (e.target.closest && e.target.closest('input,textarea,select')) return; const k = e.key, st = 40 / cam.z;
@@ -154,13 +154,57 @@ function bindInput() {
   $('zin').addEventListener('click', () => zoomAt(jar.clientWidth / 2, jar.clientHeight / 2, 1.5)); $('zout').addEventListener('click', () => zoomAt(jar.clientWidth / 2, jar.clientHeight / 2, 1 / 1.5));
 }
 
+/* ---------- legend, hover name, headlines ---------- */
+const LEG = {
+  1: ['Heat, this season', 'linear-gradient(90deg,#29338c,#5a9ecc,#eeeecc,#ee9940,#b31f1f)', '-30°', '35°'],
+  2: ['Rain over the year', 'linear-gradient(90deg,#dbbd85,#ccd180,#5ca86b,#1a6b7a,#1a3373)', 'desert', 'rainforest'],
+  3: ['Soil', 'linear-gradient(90deg,#bfa88c,#40290f)', 'thin', 'deep'],
+  5: ['Height', 'linear-gradient(90deg,#1a2e66,#8cbfd9,#73a061,#dbcc8c,#fafafa)', 'deep sea', 'peaks'],
+  7: ['Magic', 'linear-gradient(90deg,#29233a,#cc73ff)', 'none', 'thick'],
+  4: ['Plates', null, 'Drag an arrow to change a drift; tap a plate to flip it.'],
+  8: ['Wind and currents', null, 'White: wind. Blue: sea currents.'],
+};
+function legend() {
+  const el = $('legend'), L = LEG[S.lens]; el.textContent = ''; const w = S.w;
+  if (S.lens === 6 || S.lens === 9) {
+    const items = S.lens === 6 ? w.cults.filter((c) => c.alive && c.count > 0).sort((a, b) => b.pop - a.pop).slice(0, 7).map((c) => [c.color, c.name + ' · ' + c.kind]) : w.faiths.filter((f) => f.alive && f.towns > 0).sort((a, b) => b.towns - a.towns).slice(0, 7).map((f) => [f.color, f.name.replace(/^the /, '') + ' · ' + f.towns + (f.towns === 1 ? ' place' : ' places')]);
+    if (!items.length) { el.hidden = true; return; }
+    const b = document.createElement('b'); b.textContent = S.lens === 6 ? 'Largest peoples' : 'Faiths'; const k = document.createElement('div'); k.className = 'keys';
+    for (const [c, t] of items) { const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = c; r.append(i, document.createTextNode(t)); k.appendChild(r); }
+    el.append(b, k); el.hidden = false; S.legT = performance.now(); return;
+  }
+  if (!L) { el.hidden = true; return; }
+  const b = document.createElement('b'); b.textContent = L[0]; el.appendChild(b);
+  if (L[1]) { const bar = document.createElement('div'); bar.className = 'bar'; bar.style.background = L[1]; const e = document.createElement('div'); e.className = 'ends'; const a1 = document.createElement('span'), a2 = document.createElement('span'); a1.textContent = L[2]; a2.textContent = L[3]; e.append(a1, a2); el.append(bar, e); }
+  else { const p = document.createElement('div'); p.className = 'ends'; p.textContent = L[2]; el.appendChild(p); }
+  el.hidden = false;
+}
+// with Look, the name of whatever is under the pointer
+let tipT = 0;
+function tipAt(p) {
+  const tip = $('tip'); if (S.tool.kind !== 'look' || !S.w) { tip.hidden = true; return; } const now = performance.now(); if (now - tipT < 90) return; tipT = now;
+  const info = describe(S.w, p.x, p.y); if (!info) { tip.hidden = true; return; }
+  tip.textContent = info.title; { const sub = info.sub; if (sub) { const sp = document.createElement('span'); sp.textContent = ' · ' + sub; tip.appendChild(sp); } }
+  tip.style.left = p.sx + 'px'; tip.style.top = p.sy + 'px'; tip.hidden = false;
+}
+// the big things also appear over the map for a few seconds
+export function toast(e) {
+  const box = $('toasts'); if (box.children.length >= 3) box.firstChild.remove();
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'toast'; const y = document.createElement('span'); y.className = 'y'; y.textContent = e.year; const c = document.createElement('span'); c.className = 'chip' + (e.color ? '' : ' none'); if (e.color) c.style.background = e.color; const t = document.createElement('span'); t.textContent = e.text;
+  b.append(y, c, t); b.addEventListener('click', () => { if (e.x != null) flyTo(e.x + 0.5, e.y + 0.5, 6); b.remove(); }); box.appendChild(b); setTimeout(() => b.remove(), 7000);
+}
+
 /* ---------- panels ---------- */
 function look(p) { const info = describe(S.w, p.x, p.y); S.sel = info && info.follow ? info.follow : null; showInfo(info); }
 export function showInfo(info) {
   const box = $('inspect'); box.textContent = '';
   if (!info) { const el = document.createElement('p'); el.className = 'muted'; el.textContent = 'Pick Look and tap anything on the map to read it.'; box.appendChild(el); return; }
   const h = document.createElement('h3'); if (info.color) { const d = document.createElement('span'); d.className = 'chip'; d.style.background = info.color; h.appendChild(d); } h.appendChild(document.createTextNode(info.title)); box.appendChild(h);
-  for (const l of info.lines) { const el = document.createElement('p'); el.textContent = l; box.appendChild(el); }
+  if (info.sub) { const el = document.createElement('p'); el.className = 'sub'; el.textContent = info.sub; box.appendChild(el); }
+  if (info.bar) { const bar = document.createElement('div'); bar.className = 'fbar'; const key = document.createElement('div'); key.className = 'fkey';
+    for (const [v, col, lab] of info.bar) { if (v < 0.03) continue; const seg = document.createElement('i'); seg.style.flex = v; seg.style.background = col; seg.title = lab; bar.appendChild(seg); if (v >= 0.1) { const k = document.createElement('span'); const dot = document.createElement('i'); dot.style.background = col; k.append(dot, document.createTextNode(lab + ' ' + Math.round(v * 100) + '%')); key.appendChild(k); } }
+    box.append(bar, key); }
+  let split = info.split || 0; info.lines.forEach((l, k) => { if (k === split && split) { const hr = document.createElement('p'); hr.className = 'part'; hr.textContent = info.splitTitle || ''; box.appendChild(hr); } const el = document.createElement('p'); el.textContent = l; box.appendChild(el); });
 }
 function vitals() {
   const w = S.w; let land = 0, forest = 0, ice = 0, desert = 0, grass = 0;
@@ -253,7 +297,7 @@ function frame(now) {
   climateWatch(now);
   if (R) { if (S.dirty) { R.upload(w, S.lens); S.dirty = false; } R.draw(w, cam, S.lens === 8 ? 0 : S.lens, now / 1000, pal, S.q); }
   const t2 = performance.now(); overlay(now); const t3 = performance.now(); P.gl += (t2 - t1 - P.gl) * 0.05; P.ov += (t3 - t2 - P.ov) * 0.05;
-  if (now - S.hudT > 500) { S.hudT = now; vitals(); if (S.sel && S.sel.info) { const inf = S.sel.info(); if (inf) showInfo(inf); else { S.sel = null; } } }
+  if (now - S.hudT > 500) { S.hudT = now; vitals(); if ((S.lens === 6 || S.lens === 9) && now - (S.legT || 0) > 3000) legend(); if (S.sel && S.sel.info) { const inf = S.sel.info(); if (inf) showInfo(inf); else { S.sel = null; } } }
   requestAnimationFrame(frame);
 }
 

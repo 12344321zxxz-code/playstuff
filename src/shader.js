@@ -6,7 +6,8 @@ in vec2 p; void main(){ gl_Position = vec4(p, 0., 1.); }`;
 
 export const FRAG = `#version 300 es
 precision highp float;
-uniform sampler2D uElev, uA, uB, uC;
+uniform sampler2D uElev, uA, uB, uC, uD;
+uniform vec3 uFaith[16];
 uniform vec2 uRes, uCenter;
 uniform float uZoom, uSea, uTime, uPhase;
 uniform int uLens;
@@ -32,6 +33,14 @@ float detail(vec2 c, float zf){ return (fbm(c*1.3) - .5)*0.05 + (fbm(c*5.1) - .5
 float heightD(vec2 c, float zf){ float h = elevAt(c) - uSea; return h + detail(c, zf)*smoothstep(-0.01, 0.07, h)*(0.35 + 2.2*max(h,0.)); }
 vec4 cellAt(vec2 c){ return texelFetch(uC, ivec2(int(mod(floor(c.x), SZ.x)), int(clamp(floor(c.y), 0., SZ.y - 1.))), 0); }
 
+float dAt(ivec2 p, int ch){ p.x = (p.x % 128 + 128) % 128; p.y = clamp(p.y, 0, 63); vec4 v = texelFetch(uD, p, 0); return floor((ch == 0 ? v.r : v.g)*255. + .5); }
+// which region holds wc, and how firmly (.5 is the border), blended smoothly between texels
+vec2 regionPick(vec2 wc, int ch){ vec2 c = wc/4. - .5, i = floor(c), f = c - i; f = f*f*(3. - 2.*f); ivec2 p = ivec2(i);
+  vec4 ids = vec4(dAt(p, ch), dAt(p + ivec2(1,0), ch), dAt(p + ivec2(0,1), ch), dAt(p + ivec2(1,1), ch));
+  vec4 wt = vec4((1. - f.x)*(1. - f.y), f.x*(1. - f.y), (1. - f.x)*f.y, f.x*f.y);
+  float bid = 0., bm = 0.;
+  for(int k = 0; k < 4; k++){ float id = ids[k]; if(id < .5) continue; float m = dot(wt, vec4(equal(ids, vec4(id)))); if(m > bm){ bm = m; bid = id; } }
+  return vec2(bid, bm); }
 vec3 heatPal(float t){ t = clamp(t, 0., 1.);
   vec3 a = vec3(.16,.20,.55), b = vec3(.35,.62,.80), c = vec3(.93,.93,.80), d = vec3(.93,.60,.25), e = vec3(.70,.12,.12);
   return t < .25 ? mix(a,b,t*4.) : t < .5 ? mix(b,c,(t-.25)*4.) : t < .75 ? mix(c,d,(t-.5)*4.) : mix(d,e,(t-.75)*4.); }
@@ -118,7 +127,9 @@ void main(){
       col = mix(col, ucol, .92);
     }
     if(fAsh) col = mix(col, vec3(.22,.19,.18), .7);
-    float sn = smoothstep(.2, .7, snow + smoothstep(.5, .75, land)*.5);
+    // snow lies in patches with a crisp edge, thicker on the shaded side, rather than as a haze
+    float sraw = snow + smoothstep(.5, .75, land)*.5 + (vnoise(wc*1.7) - .5)*.32 + (fbm(wc*4.3) - .5)*.18*zf - (sh - .6)*.12;
+    float sn = smoothstep(.40, .40 + .06 + .14*(1. - zf), sraw);
     col = mix(col, vec3(.95,.96,.98), sn);
     col = mix(col, mix(vec3(.90,.94,.98), vec3(.80,.88,.95), fbm(wc*.35)), smoothstep(.9, .99, snow)*.85);
     if(lake > .085){ float ld = (lake - .085)*1.5; col = mix(mix(vec3(.36,.62,.72), vec3(.16,.40,.60), clamp(ld*2.5,0.,1.)), vec3(.92,.95,.97), smoothstep(.5,.9,snow)); sh = mix(sh, 1., .8); }
@@ -143,19 +154,17 @@ void main(){
     else if(uLens == 5) lc = isSea ? mix(vec3(.55,.75,.85), vec3(.10,.18,.40), clamp(-land*2.2,0.,1.)) : mix(mix(vec3(.45,.62,.38), vec3(.86,.80,.55), clamp(land*4.,0.,1.)), vec3(.98), clamp((land-.3)*2.5,0.,1.));
     else if(uLens == 7){ vec2 st = wc - .5, fi = floor(st), ff = st - fi; float m = mix(mix(cellAt(fi + .5).a, cellAt(fi + vec2(1.5,.5)).a, ff.x), mix(cellAt(fi + vec2(.5,1.5)).a, cellAt(fi + 1.5).a, ff.x), ff.y);
       lc = isSea ? mix(vec3(.10,.10,.16), vec3(.30,.20,.45), clamp(m*1.2,0.,1.)) : mix(vec3(.16,.14,.22), vec3(.80,.45,1.), clamp(m*1.4, 0., 1.)); lc += vec3(.25,.2,.3)*smoothstep(.55,.6,m)*smoothstep(.66,.6,m); }
-    if(uLens == 6) col = mix(vec3(gray)*.9 + .08, col, .25); else col = lc*(isSea ? 1. : mix(.72, 1.18, clamp(sh,0.,1.)));
+    if(uLens == 6 || uLens == 9) col = mix(vec3(gray)*.9 + .08, col, .25); else col = lc*(isSea ? 1. : mix(.72, 1.18, clamp(sh,0.,1.)));
   }
-  // peoples: borders and a faint wash
-  float cid = floor(Cc.r*255. + .5);
-  if(cid > .5 && !isSea && uLens != 4 && uLens != 5){
-    vec3 pc = uPal[int(mod(cid - 1., 32.))];
-    vec2 f = fract(wc); float bw = clamp(1.7/uZoom, .04, .34); float edge = 0.;
-    if(cellAt(wc + vec2(1.,0.)).r != Cc.r) edge = max(edge, smoothstep(1. - bw*1.4, 1. - bw*.6, f.x));
-    if(cellAt(wc - vec2(1.,0.)).r != Cc.r) edge = max(edge, smoothstep(bw*1.4, bw*.6, f.x));
-    if(cellAt(wc + vec2(0.,1.)).r != Cc.r) edge = max(edge, smoothstep(1. - bw*1.4, 1. - bw*.6, f.y));
-    if(cellAt(wc - vec2(0.,1.)).r != Cc.r) edge = max(edge, smoothstep(bw*1.4, bw*.6, f.y));
-    col = mix(col, pc, uLens == 6 ? .45 : .07);
-    col = mix(col, pc*.9, edge*.9);
+  // realms (or faiths, in that lens) as smooth regions: a faint wash and a clean border line
+  int ch = uLens == 9 ? 1 : 0;
+  vec2 rg = regionPick(wc, ch); float rid = rg.x, m = rg.y, fw = fwidth(m);
+  if(rid > .5 && !isSea && uLens != 4 && uLens != 5){
+    vec3 pc = ch == 1 ? uFaith[int(mod(rid - 1., 16.))] : uPal[int(mod(rid - 1., 32.))];
+    bool strong = uLens == 6 || uLens == 9;
+    float inside = smoothstep(.38, .62, m), line = 1. - smoothstep(fw*.6, fw*2.4 + .004, abs(m - .5));
+    col = mix(col, pc, (strong ? .5 : .07)*inside);
+    col = mix(col, pc*(strong ? .7 : .9), line*(strong ? .95 : .75));
   }
   o = vec4(col, 1.);
 }`;

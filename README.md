@@ -30,5 +30,6 @@ Some things to try:
 - Bury Copper and Tin near the same people.
 - Cull the wolves and watch the grass.
 - Turn Weather up to wild.
+- Drop a star near a town, then watch the Faiths lens.
 
 See `DESIGN.md` for how it fits together and what is still rough.

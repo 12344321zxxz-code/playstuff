@@ -5,6 +5,7 @@ import { ignite } from './life.js';
 import { coarse, sampleCoarse } from './climate.js';
 import { near, endSet, colorOf, whereAbouts, flee, gift, infect } from './people.js';
 import { hitMovers } from './movers.js';
+import { holySite } from './faith.js';
 import { wetAt } from './weather.js';
 
 const fall = (d, r) => { const u = d / (r + 0.5); return u >= 1 ? 0 : (1 - u * u) * (1 - u * u); };
@@ -19,7 +20,7 @@ export function meteor(w, x, y) {
     w.t[i] = 0; w.g[i] *= 0.2; w.farm[i] = 0; w.ash[i] = 1; w.magic[i] = Math.min(1, w.magic[i] + 0.5 * fall(d, 8)); if (d > 5 && !w.water[i]) ignite(w, i); }
   for (const hd of w.herds) if (wrapDx(hd.x - x) ** 2 + (hd.y - y) ** 2 < 100) hd.n = 0; for (const p of w.packs) if (wrapDx(p.x - x) ** 2 + (p.y - y) ** 2 < 100) p.n = 0;
   ev(w, `A star falls ${wh}.`, x, y, null); discover(w, 'crater', x, y);
-  hitTowns(w, x, y, 14, (s, d) => { if (d < 6) endSet(w, s, 'crater'); else { flee(w, s, s.pop * 0.2); s.pop *= 0.55; } }); hitMovers(w, x, y, 12);
+  hitTowns(w, x, y, 14, (s, d) => { if (d < 6) endSet(w, s, 'crater'); else { flee(w, s, s.pop * 0.2); s.pop *= 0.55; } }); hitMovers(w, x, y, 12); holySite(w, x, y, 'crater', 0.6);
   w.aerosol = Math.min(1.5, w.aerosol + 0.3); w.fx.push({ k: 'boom', x, y, T: 2.2 }, { k: 'flash', x, y, T: 0.5 });
   w.stamp.land++; w.need.water = true; w.need.climate = true; w.edited = true;
   if (wet) tsunami(w, x, y, true);

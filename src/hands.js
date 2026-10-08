@@ -53,4 +53,4 @@ registerTools([
   { id: 'hush', label: 'Hush', group: 'Other world', kind: 'brush', lens: 7, hint: 'Hold to drain the magic out of a place for good.',
     apply(w, p, f, r) { const x = Math.round(p.x - 0.5), y = Math.round(p.y - 0.5); for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(x + o[0]); w.magic[i] *= 0.8; w.ley[i] *= 0.8; } return true; } },
 ]);
-addLens(6, 'Peoples'); addLens(7, 'Magic');
+addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Magic');

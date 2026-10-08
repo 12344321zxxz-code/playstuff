@@ -5,6 +5,7 @@ import { toScreen } from './render.js';
 import { SPECIES } from './fauna.js';
 import { COLORS, TIER, ART, ORES, colorOf, near } from './people.js';
 import { hook, palette } from './main.js';
+import { TENET } from './faith.js';
 
 for (let k = 0; k < 32; k++) { const c = COLORS[k % COLORS.length]; palette[k * 3] = parseInt(c.slice(1, 3), 16) / 255; palette[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; palette[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; }
 
@@ -14,9 +15,18 @@ const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-m
 let view = null;
 const seen = (x, y, m) => Math.abs(wrapDx(x - view.x)) < view.hw + m && Math.abs(y - view.y) < view.hh + m;
 
-function label(ctx, text, x, y, px, col, italic) {
-  ctx.font = `${italic ? 'italic ' : ''}600 ${px}px "Instrument Sans", system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.lineWidth = Math.max(2.5, px * 0.28); ctx.strokeStyle = 'rgba(12,16,18,.82)'; ctx.lineJoin = 'round'; ctx.strokeText(text, x, y); ctx.fillStyle = col || '#fff'; ctx.fillText(text, x, y);
+// Labels are queued and drawn last, most important first; one that would overlap a label
+// already placed is left out, so the map never turns into a pile of names.
+const LQ = [];
+function label(ctx, text, x, y, px, col, italic, pri) { LQ.push({ text, x, y, px, col, italic, pri: pri || 1 }); }
+function flushLabels(ctx) {
+  LQ.sort((a, b) => b.pri - a.pri); const placed = []; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
+  for (const l of LQ) {
+    ctx.font = `${l.italic ? 'italic ' : ''}600 ${l.px}px "Instrument Sans", system-ui, sans-serif`; const wd = ctx.measureText(l.text).width + 4, x0 = l.x - wd / 2, y0 = l.y - 1, x1 = x0 + wd, y1 = y0 + l.px * 1.15;
+    let hit = false; for (const p of placed) if (x0 < p[2] && x1 > p[0] && y0 < p[3] && y1 > p[1]) { hit = true; break; } if (hit) continue; placed.push([x0, y0, x1, y1]);
+    ctx.lineWidth = Math.max(2.5, l.px * 0.28); ctx.strokeStyle = 'rgba(12,16,18,.82)'; ctx.strokeText(l.text, l.x, l.y); ctx.fillStyle = l.col || '#fff'; ctx.fillText(l.text, l.x, l.y);
+  }
+  LQ.length = 0;
 }
 
 function drawRoads(ctx, w, cam, s) {
@@ -55,7 +65,7 @@ function drawRuins(ctx, w, cam, s) {
     if (r.haunt) { ctx.beginPath(); ctx.arc(A[0], A[1], u * 2.6, 0, TAU); ctx.fillStyle = 'rgba(190,110,255,.28)'; ctx.fill(); }
     ctx.lineCap = 'butt'; ctx.lineWidth = Math.max(1.6, u * 0.9) + 2 * cam.dpr; ctx.strokeStyle = 'rgba(16,18,20,.75)'; pillars(ctx, A[0], A[1], u);
     ctx.lineWidth = Math.max(1.6, u * 0.9); ctx.strokeStyle = wet ? '#9fd0e0' : r.kind === 'buried' || r.kind === 'burned' || r.kind === 'sacked' ? '#b9a79c' : '#e8e2d4'; pillars(ctx, A[0], A[1], u);
-    if (s >= 9) label(ctx, r.name, A[0], A[1] + u * 2 + 2, Math.round(clamp(s * 0.55, 10, 13) * cam.dpr), '#d9d2c2', true);
+    if (s >= 9) label(ctx, r.name, A[0], A[1] + u * 2 + 2, Math.round(clamp(s * 0.55, 10, 13) * cam.dpr), '#d9d2c2', true, 5);
   }
 }
 function pillars(ctx, x, y, u) { ctx.beginPath(); ctx.moveTo(x - u * 1.5, y + u * 1.3); ctx.lineTo(x - u * 1.5, y - u * 1.3); ctx.moveTo(x, y + u * 1.3); ctx.lineTo(x, y - u * 0.2); ctx.moveTo(x + u * 1.5, y + u * 1.3); ctx.lineTo(x + u * 1.5, y - u * 0.8); ctx.stroke(); }
@@ -99,8 +109,10 @@ function drawPeople(ctx, w, cam, s, lens, frac) {
     if (st.tower && s >= 4) { const q = u * 0.7, tx = x - u * 3.2, ty = y - u * 1.5; ctx.fillStyle = '#c58bff'; ctx.strokeStyle = '#1c0f2a'; ctx.lineWidth = 1.2 * cam.dpr; ctx.beginPath(); ctx.rect(tx - q, ty - q * 3, q * 2, q * 5); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(tx - q * 1.6, ty - q * 3); ctx.lineTo(tx, ty - q * 5.5); ctx.lineTo(tx + q * 1.6, ty - q * 3); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     if (st.name && (st.tier === 3 ? s >= 2.9 : st.tier === 2 ? s >= 6.5 : s >= 12)) names.push(st, x, y + u * (st.tier === 3 ? 3.9 : 2.4) + 2);
   }
-  for (let k = 0; k < names.length; k += 3) { const st = names[k]; label(ctx, st.name, names[k + 1], names[k + 2], Math.round((st.tier === 3 ? 13 : st.tier === 2 ? 11.5 : 10.5) * cam.dpr), '#fff'); }
-  if (lens === 6) for (const c of w.cults) { if (!c.alive || !c.big || c.count < 2 || !seen(c.big.x, c.big.y, 10)) continue; toScreen(cam, c.big.x + 0.5, c.big.y + 0.5, A); const px = Math.round(clamp(9 + Math.sqrt(c.count) * 1.6, 11, 22) * cam.dpr), yy = A[1] - clamp(s * 2.4, 22, 46) * cam.dpr; label(ctx, c.name.toUpperCase(), A[0], yy, px, colorOf(c)); if (s >= 3.4) label(ctx, c.kind, A[0], yy + px * 1.15, Math.round(10.5 * cam.dpr), '#fff', true); }
+  for (let k = 0; k < names.length; k += 3) { const st = names[k]; label(ctx, st.name, names[k + 1], names[k + 2], Math.round((st.tier === 3 ? 13 : st.tier === 2 ? 11.5 : 10.5) * cam.dpr), '#fff', false, st.tier * 100 + Math.log(st.pop + 1)); }
+  if (lens === 6 || lens === 0) for (const c of w.cults) if (lens === 6 || (s < 4 && c.count >= 8)) { if (!c.alive || !c.big || c.count < 2 || !seen(c.big.x, c.big.y, 10)) continue; toScreen(cam, c.big.x + 0.5, c.big.y + 0.5, A); const px = Math.round(clamp(9 + Math.sqrt(c.count) * 1.6, 11, 22) * cam.dpr), yy = A[1] - clamp(s * 2.4, 22, 46) * cam.dpr; label(ctx, c.name.toUpperCase(), A[0], yy, px, colorOf(c), false, 1000 + c.pop / 100); if (s >= 3.4) label(ctx, c.kind, A[0], yy + px * 1.15, Math.round(10.5 * cam.dpr), '#fff', true, 999 + c.pop / 100); }
+  if (lens === 9) { const top = new Map(); for (const st of w.sets) if (!st.dead && st.faith != null && (!top.has(st.faith) || top.get(st.faith).pop < st.pop)) top.set(st.faith, st);
+    for (const [id, st] of top) { const f = w.faiths[id]; if (!f.alive || f.towns < 2 || !seen(st.x, st.y, 10)) continue; toScreen(cam, st.x + 0.5, st.y + 0.5, A); label(ctx, f.name.replace(/^the /, '').toUpperCase(), A[0], A[1] - clamp(s * 2.4, 22, 46) * cam.dpr, Math.round(clamp(10 + Math.sqrt(f.towns), 12, 21) * cam.dpr), f.color, false, 1000 + f.towns); } }
 }
 
 function boat(ctx, x, y, u, col, lw) {
@@ -140,12 +152,12 @@ function drawSea(ctx, w, cam, s, now) {
   for (const k of w.krakens) { if (!seen(k.x, k.y, 6)) continue; toScreen(cam, k.x + 0.5, k.y + 0.5, A); const t = still ? 0 : now * 0.002, R = clamp(s * 2.6, 9, 110) * cam.dpr, up = k.wake > 0 || s >= 5;
     ctx.strokeStyle = 'rgba(210,225,235,.5)'; ctx.lineWidth = 1.4 * cam.dpr; for (let q = 0; q < 2; q++) { ctx.beginPath(); ctx.ellipse(A[0], A[1], R * (0.7 + 0.5 * q + 0.1 * Math.sin(t + q)), R * (0.4 + 0.3 * q), 0, 0, TAU); ctx.stroke(); }
     if (up) { ctx.lineCap = 'round'; for (let q = 0; q < 6; q++) { const a = (q / 6) * TAU + 0.3, wv = Math.sin(t * 1.7 + q * 1.3) * 0.5; ctx.beginPath(); ctx.moveTo(A[0] + Math.cos(a) * R * 0.15, A[1] + Math.sin(a) * R * 0.1); ctx.quadraticCurveTo(A[0] + Math.cos(a + wv) * R * 0.5, A[1] + Math.sin(a + wv) * R * 0.35 - R * 0.25, A[0] + Math.cos(a + wv * 1.6) * R * 0.75, A[1] + Math.sin(a + wv * 1.6) * R * 0.45); ctx.lineWidth = Math.max(2, R * 0.12); ctx.strokeStyle = '#141018'; ctx.stroke(); ctx.lineWidth = Math.max(1, R * 0.07); ctx.strokeStyle = '#6a3f86'; ctx.stroke(); } }
-    if (s >= 7) label(ctx, k.name, A[0], A[1] + R * 0.8, Math.round(11 * cam.dpr), '#d9c2ee', true); }
+    if (s >= 7) label(ctx, k.name, A[0], A[1] + R * 0.8, Math.round(11 * cam.dpr), '#d9c2ee', true, 50); }
 }
 
 function drawDragons(ctx, w, cam, s, now, frac) {
   for (const d of w.dragons) {
-    if (s >= 3 && seen(d.lx, d.ly, 2)) { toScreen(cam, d.lx + 0.5, d.ly + 0.5, A); const u = clamp(s * 0.28, 3, 9) * cam.dpr; ctx.beginPath(); ctx.arc(A[0], A[1], u, Math.PI, 0); ctx.closePath(); ctx.fillStyle = '#16100e'; ctx.fill(); ctx.lineWidth = 1.4 * cam.dpr; ctx.strokeStyle = '#ff7a2a'; ctx.stroke(); if (s >= 6) label(ctx, d.name, A[0], A[1] + 3 * cam.dpr, Math.round(11 * cam.dpr), '#ffb27a', true); }
+    if (s >= 3 && seen(d.lx, d.ly, 2)) { toScreen(cam, d.lx + 0.5, d.ly + 0.5, A); const u = clamp(s * 0.28, 3, 9) * cam.dpr; ctx.beginPath(); ctx.arc(A[0], A[1], u, Math.PI, 0); ctx.closePath(); ctx.fillStyle = '#16100e'; ctx.fill(); ctx.lineWidth = 1.4 * cam.dpr; ctx.strokeStyle = '#ff7a2a'; ctx.stroke(); if (s >= 6) label(ctx, d.name, A[0], A[1] + 3 * cam.dpr, Math.round(11 * cam.dpr), '#ffb27a', true, 50); }
     const fly = d.st === 'fly' || d.st === 'home'; if (!fly && d.st !== 'wake') continue;
     const x = d.px + wrapDx(d.x - d.px) * frac + 0.5, y = d.py + (d.y - d.py) * frac + 0.5; if (!seen(x, y, 4)) continue; toScreen(cam, x, y, A);
     const u = clamp(s * 0.9, 7, 30) * cam.dpr, flap = fly ? Math.sin(now * 0.012) : 0.2, dir = wrapDx(d.tx - d.x) >= 0 ? 1 : -1, by = A[1] - (fly ? u * 0.9 : 0);
@@ -197,7 +209,7 @@ hook('overlay', (ctx, w, cam, S, now) => {
   view = { x: cam.x, y: cam.y, hw: cam.w / (2 * s), hh: cam.h / (2 * s) };
   const bare = S.lens === 4 || S.lens === 5;
   if (!bare) { drawRoads(ctx, w, cam, z); drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); if (S.lens !== 6) drawAnimals(ctx, w, cam, s, frac); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
-  drawFx(ctx, w, cam, s, now); drawSel(ctx, cam, S, now);
+  flushLabels(ctx); drawFx(ctx, w, cam, s, now); drawSel(ctx, cam, S, now);
 });
 
 /* ---------- reading things ---------- */
@@ -209,25 +221,27 @@ const list = (a) => (a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' 
 const cap = (t) => t[0].toUpperCase() + t.slice(1);
 export function cultLines(w, c) {
   const L = [];
-  L.push(`The ${c.name}: ${c.kind}. ${big(c.pop)} people in ${c.count} ${c.count === 1 ? 'place' : 'places'}.`);
+  L.push(`${c.kind[0].toUpperCase() + c.kind.slice(1)}. ${big(c.pop)} people in ${c.count} ${c.count === 1 ? 'place' : 'places'}.`);
   const arts = Object.keys(c.arts).sort((a, b) => c.arts[a] - c.arts[b]).map((k) => ART[k].say); L.push(arts.length ? `They know ${list(arts)}.` : 'They know fire, stone and each other.');
   const tame = Object.keys(c.tame), met = []; if (c.arts.bronze) met.push('bronze'); if (c.arts.iron) met.push('iron'); if (c.gold) met.push('gold');
   if (tame.length || met.length) L.push((tame.length ? `They keep ${list(tame.map((k) => (k === 'cattle' ? 'cattle' : k === 'pig' ? 'pigs' : k + 's')))}. ` : '') + (met.length ? `They have ${list(met)}.` : ''));
   L.push(`${c.ruler.name} leads them. ${c.coh > 0.7 ? 'They hold together well.' : c.coh > 0.45 ? 'There are quarrels, but they hold.' : c.coh > 0.25 ? 'They are pulling apart.' : 'They are one people in name only.'}`);
+  if (c.faith != null) { const f = w.faiths[c.faith]; L.push(`They pray to ${f.name}, whose teaching ${TENET[f.tenet]}.${c.faithShare < 0.6 ? ' Not all of them.' : ''}`); }
   if (c.war) { const f = w.cults[c.war.foe]; L.push(`At war with the ${f.name} since year ${c.war.since}.`); }
   if (c.parent) L.push(`They split from the ${c.parent} in year ${c.born}.`);
   return L;
 }
 function setInfo(w, s) {
   const c = w.cults[s.cult], L = [], tot = s.src.reduce((a, b) => a + b, 0) || 1;
-  const eats = s.src.map((v, k) => [v / tot, SRC[k]]).filter((e) => e[0] >= 0.12).sort((a, b) => b[0] - a[0]).map((e) => `${e[1]} (${Math.round(e[0] * 100)}%)`);
+const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fish'], ['#e3b23c', 'fields'], ['#9a7b5b', 'herds']];
+  const bar = s.src.map((v, k) => [v / tot, FOOD[k][0], FOOD[k][1]]);
   if (s.nomad) L.push(`${big(s.pop)} people on the move.`); else L.push(`A ${TIER[s.tier]} of ${big(s.pop)} people, ${s.age} years old.`);
-  if (eats.length) L.push(`It lives on ${list(eats)}.`);
   L.push(s.plague > 0 ? NOTE.plague : NOTE[s.note] || NOTE.grow);
+  if (s.faith != null && s.faith !== c.faith) L.push(`Its people pray to ${w.faiths[s.faith].name}, not the god of their rulers.`);
   if (!s.nomad) { const ex = []; if (s.walls) ex.push('stone walls'); if (s.links) ex.push(s.links === 1 ? 'a road' : s.links + ' roads'); if (s.port && c.arts.boats) ex.push('a harbour'); if (s.wonder) ex.push('a wonder'); if (s.tower) ex.push('a tower nobody built'); if (ex.length) L.push(`It has ${list(ex)}.`);
     const o = []; for (let k = 1; k <= 6; k++) if (s.ores & (1 << k)) o.push(ORES[k]); if (o.length) L.push(`${cap(list(o))} in its ground.`);
     if (s.burned) L.push(`A dragon has burned it ${s.burned === 1 ? 'once' : s.burned + ' times'}.`); }
-  return { title: s.name || `A band of the ${c.name}`, color: colorOf(c), lines: L.concat(cultLines(w, c)), follow: { pos: () => (s.dead ? null : [s.x, s.y, s.R + 0.6]), info: () => (s.dead ? null : setInfo(w, s)) } };
+  return { title: s.name || `A band of the ${c.name}`, sub: s.nomad ? c.kind : `${TIER[s.tier]} of the ${c.name}`, color: colorOf(c), bar, lines: L.concat(cultLines(w, c)), split: L.length, splitTitle: 'The ' + c.name, follow: { pos: () => (s.dead ? null : [s.x, s.y, s.R + 0.6]), info: () => (s.dead ? null : setInfo(w, s)) } };
 }
 export const describeSet = setInfo;
 const MOVE = { settlers: (w, m, c) => [`Settlers of the ${c.name}`, `${Math.round(m.n)} people with everything they own, looking for a place to stop.`], army: (w, m, c) => [`A war band of the ${c.name}`, `About ${Math.round(m.n)} spears${m.to && !m.to.dead && m.to.name ? ', marching on ' + m.to.name : ''}.`], home: (w, m, c) => [`A war band of the ${c.name}`, 'On the way home.'], trade: (w, m, c) => [m.wet0 ? `A trading ship of the ${c.name}` : `A caravan of the ${c.name}`, `${m.from && m.from.name ? 'From ' + m.from.name : 'On its way'}${m.to && m.to.name ? ' to ' + m.to.name : ''}. It carries goods, news, and whatever else is going around.`], refugees: (w, m, c) => [`People of the ${c.name}, fleeing`, `${Math.round(m.n)} people walking away from hunger or worse.`] };

@@ -1,6 +1,8 @@
 // WebGL terrain plus a 2D overlay for everything that is a line or a sprite.
 import { W, H, N, clamp, hash2, wrapDx } from './core.js';
 import { VERT, FRAG } from './shader.js';
+import { FAITH_COLORS } from './faith.js';
+const CW = 128, CH = 64;
 
 export function createRenderer(glc) {
   const gl = glc.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: true });
@@ -11,10 +13,12 @@ export function createRenderer(glc) {
   gl.useProgram(prog);
   const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  const U = {}; for (const n of ['uElev', 'uA', 'uB', 'uC', 'uRes', 'uCenter', 'uZoom', 'uSea', 'uTime', 'uPhase', 'uLens', 'uPal']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uElev', 'uA', 'uB', 'uC', 'uRes', 'uCenter', 'uZoom', 'uSea', 'uTime', 'uPhase', 'uLens', 'uPal', 'uD', 'uFaith']) U[n] = gl.getUniformLocation(prog, n);
   const mk = (unit, filter) => { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); return t; };
-  const tE = mk(0, gl.LINEAR), tA = mk(1, gl.LINEAR), tB = mk(2, gl.LINEAR), tC = mk(3, gl.NEAREST);
-  gl.uniform1i(U.uElev, 0); gl.uniform1i(U.uA, 1); gl.uniform1i(U.uB, 2); gl.uniform1i(U.uC, 3);
+  const tE = mk(0, gl.LINEAR), tA = mk(1, gl.LINEAR), tB = mk(2, gl.LINEAR), tC = mk(3, gl.NEAREST), tD = mk(4, gl.NEAREST);
+  gl.uniform1i(U.uElev, 0); gl.uniform1i(U.uA, 1); gl.uniform1i(U.uB, 2); gl.uniform1i(U.uC, 3); gl.uniform1i(U.uD, 4);
+  const fp = new Float32Array(48); FAITH_COLORS.forEach((c, k) => { fp[k * 3] = parseInt(c.slice(1, 3), 16) / 255; fp[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; fp[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; }); gl.uniform3fv(U.uFaith, fp);
+  const bD = new Uint8Array(CW * CH * 2); let mapStamp = -1, mapW = null;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   const bA = new Uint8Array(N * 4), bB = new Uint8Array(N * 4), bC = new Uint8Array(N * 4);
   let landStamp = -1, lastW = null;
@@ -31,6 +35,7 @@ export function createRenderer(glc) {
       }
       const up = (unit, tex, data) => { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, data); };
       up(1, tA, bA); up(2, tB, bB); up(3, tC, bC);
+      if (w.realm && (w.mapStamp !== mapStamp || w !== mapW)) { mapStamp = w.mapStamp; mapW = w; for (let i = 0; i < CW * CH; i++) { bD[i * 2] = w.realm[i]; bD[i * 2 + 1] = w.faithMap[i]; } gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, tD); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, CW, CH, 0, gl.RG, gl.UNSIGNED_BYTE, bD); }
     },
     draw(w, cam, lens, time, pal, q) {
       gl.viewport(0, 0, glc.width, glc.height);

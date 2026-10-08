@@ -12,6 +12,7 @@ import { discover, ev } from './story.js';
 import { initWeather, weatherYear } from './weather.js';
 import { initSea, seaYear, seaCap } from './sea.js';
 import { moversTick } from './movers.js';
+import { initFaith } from './faith.js';
 
 const F = () => new Float32Array(N), U = () => new Uint8Array(N);
 
@@ -41,7 +42,7 @@ export function makeWorld(seed, opts) {
   seasonFields(w);
   seedOre(w);
   w.ice0 = w.landIce; w.landCount = countLand(w); w.mi0 = Float32Array.from(w.mi); baseline(w);
-  initSea(w); initFauna(w); initMagic(w); initPeople(w, opts && opts.bands);
+  initFaith(w); initSea(w); initFauna(w); initMagic(w); initPeople(w, opts && opts.bands);
   w.events.length = 0; w.found = {};
   return w;
 }

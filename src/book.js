@@ -1,6 +1,6 @@
 // The keeper's notebook: the chronicle of what happened, the roster of who is alive, the almanac
 // of what this world has produced, and the head counts.
-import { hook, flyTo, showInfo, state } from './main.js';
+import { hook, flyTo, showInfo, state, toast } from './main.js';
 import { PAGES, pageCount } from './story.js';
 import { describeSet, cultLines } from './entities.js';
 
@@ -9,7 +9,7 @@ let log = [], shown = '', almDirty = true, tab = 'chron', rosterKey = '';
 const short = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'm' : n >= 10000 ? Math.round(n / 1000) + 'k' : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n || 0)));
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
-function drain(w) { if (!w.events.length) return; for (const e of w.events) { log.push(e); if (e.page) almDirty = true; } w.events.length = 0; if (log.length > 500) log = log.slice(-400); }
+function drain(w) { if (!w.events.length) return; for (const e of w.events) { log.push(e); if (e.page) almDirty = true; if (e.big && state.speed) toast(e); } w.events.length = 0; if (log.length > 500) log = log.slice(-400); }
 function chronicle() {
   const key = log.length + ':' + (log.length ? log[log.length - 1].year : 0), ol = $('log'); if (key === shown || (shown && ol.matches(':hover'))) return; shown = key;   // hold still while the pointer is on it
   ol.textContent = '';
@@ -27,7 +27,7 @@ function roster() {
   if (!live.length) box.appendChild(el('p', 'muted', 'Nobody lives here. The People tool wakes a new band wherever you tap.'));
   for (const c of live) {
     const b = el('button', 'pp'); b.type = 'button'; const chip = el('span', 'chip'); chip.style.background = c.color;
-    b.append(chip, el('span', 'nm', c.name), el('span', 'num', short(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
+    b.append(chip, el('span', 'nm', c.name), el('span', 'num', short(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (c.faith != null ? ' · ' + w.faiths[c.faith].name : '') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
     b.addEventListener('click', () => { const s = c.big; if (!s) return; flyTo(s.x + 0.5, s.y + 0.5, 6); const info = describeSet(w, s); state.sel = info.follow; showInfo(info); });
     box.appendChild(b);
   }

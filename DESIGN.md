@@ -40,6 +40,12 @@ plates ──► mountains, coasts ──► winds, currents ──► heat and 
                    │
                    ▼
    ruins gather magic, get dug up for old knowledge, get built on, get haunted
+                   │
+                   ▼
+   faiths are born at holy sites (craters, drowned and buried cities, glowing woods,
+   a slain dragon, plague survivors) and travel with trade, ships, refugees and conquest;
+   shared faith keeps peace and holds realms together, zealous faiths start holy wars,
+   big faiths split
    magic: ley lines on plate seams ──► enchanted woods, dragons, towers, deep ones
 ```
 
@@ -58,6 +64,7 @@ plates ──► mountains, coasts ──► winds, currents ──► heat and 
 | `people.js` | cultures, settlements, arts, food, war, plague, collapse, roads |
 | `movers.js` | everyone on the road or at sea |
 | `fantasy.js` | the magic field, dragons |
+| `faith.js` | faiths, holy sites, conversion, reformation; the yearly realm and faith maps |
 | `disasters.js` | meteor, eruption, wave, quake, storm, locusts, and the natural versions |
 | `story.js` | chronicle events, almanac pages |
 | `world.js` | allocates the world, runs the tick, spreads heavy work over ticks |
@@ -81,6 +88,9 @@ runs centuries headless and prints what happened. Use it before and after any ba
 - **Pastoral peoples are born from farmers with animals** next to grass that will not grow grain.
 - **Knowledge is two things:** a slow total that grows with numbers, and arts that need the
   right place. This is what stops every people climbing the same ladder at the same speed.
+- **Borders are drawn from influence, not ownership.** Each year every town pushes a claim over
+  the land around it; the strongest claim on each patch wins, and the shader blends the coarse
+  map into smooth borders. Wanderers hold no borders.
 - **The chronicle is rationed.** Three levels: headline, normal, minor (one every nine years at
   most). Droughts, plagues and collapses are each reported once, as one event.
 
@@ -91,8 +101,7 @@ runs centuries headless and prints what happened. Use it before and after any ba
 - Most peoples still end up farmers. Fishers and nomads exist but are a minority.
 - One tick costs about 6 ms once the world is full, so Fast is not much faster than Steady on a
   slow machine. Moving the simulation to a worker would fix that.
-- Only one war at a time per people, no alliances, no religion, no named individuals other than
-  rulers.
+- Only one war at a time per people, no alliances, no named individuals other than rulers.
 - Phone layout works but the tools sit below the map.
 
 ## Next
