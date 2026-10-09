@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formicarium</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--APP-->
+<div id="app">
+  <div id="stage">
+    <canvas id="gl"></canvas>
+    <canvas id="ov" aria-label="The world. Drag to move, scroll to zoom, right-click or press Q for your powers."></canvas>
+  </div>
+
+  <header id="cartouche">
+    <div class="cart-in">
+      <div id="wname" class="wname">Formicarium</div>
+      <div class="when"><span id="yr">Year 0</span> · <span id="season">midwinter</span></div>
+      <div id="age" class="age"></div>
+      <div class="speeds" role="group" aria-label="Speed">
+        <button type="button" data-speed="0" title="Pause (space)" aria-label="Pause"><svg viewBox="0 0 20 20"><rect x="5" y="4" width="3.4" height="12"/><rect x="11.6" y="4" width="3.4" height="12"/></svg></button>
+        <button type="button" data-speed="1" title="Slow (1)" aria-label="Slow"><svg viewBox="0 0 20 20"><path d="M7 4l8 6-8 6z"/></svg></button>
+        <button type="button" data-speed="2" title="Steady (2)" aria-label="Steady"><svg viewBox="0 0 20 20"><path d="M3 4l7 6-7 6zM10 4l7 6-7 6z"/></svg></button>
+        <button type="button" data-speed="3" title="Fast (3)" aria-label="Fast"><svg viewBox="0 0 24 20"><path d="M1 4l7 6-7 6zM8 4l7 6-7 6zM15 4l7 6-7 6z"/></svg></button>
+        <button type="button" data-speed="4" title="Ages (4)" aria-label="Ages"><svg viewBox="0 0 28 20"><path d="M1 4l6 6-6 6zM7 4l6 6-6 6zM13 4l6 6-6 6zM19 4l6 6-6 6z"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <nav id="tabs" aria-label="The book">
+    <button type="button" data-tab="chronicle">Chronicle</button>
+    <button type="button" data-tab="legends">Legends</button>
+    <button type="button" data-tab="peoples">Peoples</button>
+    <button type="button" data-tab="almanac">Almanac</button>
+    <button type="button" data-tab="world">World</button>
+    <button type="button" id="mute" class="icon" title="Sound (M)" aria-label="Sound"><svg viewBox="0 0 20 20"><path d="M3 8h3l4-4v12l-4-4H3z"/><path class="waves" d="M13 7c1.5 1.5 1.5 4.5 0 6M15.5 5c3 3 3 7 0 10" fill="none" stroke-width="1.6"/></svg></button>
+  </nav>
+
+  <aside id="book" hidden>
+    <div class="book-head"><h2 id="book-title">Chronicle</h2><button type="button" id="book-close" class="icon" aria-label="Close the book">×</button></div>
+    <div id="book-body"></div>
+  </aside>
+
+  <div id="toasts" aria-live="polite"></div>
+  <div id="card" hidden></div>
+  <div id="tip" hidden></div>
+  <div id="radial" hidden></div>
+
+  <footer id="dock">
+    <div id="lenses" role="group" aria-label="Map lens"></div>
+    <button type="button" id="power" title="Your powers (right-click on the map, or Q)">
+      <span id="power-ic" class="pic"></span>
+      <span class="ptxt"><b id="power-name">Look</b><span id="power-hint">Drag to move, scroll to zoom. Click anything to read it.</span></span>
+    </button>
+    <div id="opts" hidden></div>
+    <div id="brush" hidden><span class="lab">Brush</span><button type="button" data-brush="2">S</button><button type="button" data-brush="5">M</button><button type="button" data-brush="9">L</button><button type="button" data-brush="15">XL</button></div>
+  </footer>
+
+  <div id="compass" aria-hidden="true"></div>
+  <div id="scale" aria-hidden="true"><div class="bar"></div><span id="scale-l"></span></div>
+  <div id="say" aria-live="polite"></div>
+
+  <div id="making" hidden><div class="mk-in"><div class="mk-t">Drawing the world…</div><div class="mk-s" id="making-s"></div></div></div>
+  <div id="welcome" hidden></div>
+  <p id="nogl" hidden>This needs WebGL2, which this browser is not offering.</p>
+  <input type="file" id="loadfile" accept=".world,.formicarium,application/octet-stream" hidden>
+</div>
+<!--/APP-->
+<script type="module" src="dist/dev.js"></script>
+</body>
+</html>
