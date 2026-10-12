@@ -2,6 +2,7 @@
 // the brief flashes when something big happens. Drawn on the 2D overlay, on top of the shader.
 import { KINDS, STANCES, memAt, kindAt } from './memory.js';
 import { GOODS } from './trade.js';
+import { ERA, blockedReasons } from './tech.js';
 import { SPIRIT_KINDS } from './spirits.js';
 import { PLANTS, luckOf } from './origins.js';
 import { W, H, TAU, TPY, CS, CW, CH, clamp, wrapDx, hash2 } from './core.js';
@@ -187,7 +188,9 @@ const cap = (t) => t[0].toUpperCase() + t.slice(1);
 export function cultLines(w, c) {
   const L = [];
   L.push(`${c.kind[0].toUpperCase() + c.kind.slice(1)}. ${big(c.pop)} people in ${c.count} ${c.count === 1 ? 'place' : 'places'}.`);
-  const arts = Object.keys(c.arts).sort((a, b) => c.arts[a] - c.arts[b]).map((k) => ART[k].say); L.push(arts.length ? `They know ${list(arts)}.` : 'They know fire, stone and each other.');
+  const keys = Object.keys(c.arts).filter((k) => ART[k]).sort((a, b) => c.arts[b] - c.arts[a]);
+  L.push(`They live in the age of ${ERA[Math.min(6, c.tech)]}. ${keys.length ? `They know ${keys.length} things; lately ${list(keys.slice(0, 4).map((k) => ART[k].say))}.` : 'They know fire, stone and each other.'}`);
+  const why = blockedReasons(c); if (why.length) L.push(cap(list(why.slice(0, 2))) + '.');
   const tame = Object.keys(c.tame), met = []; if (c.arts.bronze) met.push('bronze'); if (c.arts.iron) met.push('iron'); if (c.gold) met.push('gold');
   if (tame.length || met.length) L.push((tame.length ? `They keep ${list(tame.map((k) => (k === 'cattle' ? 'cattle' : k === 'pig' ? 'pigs' : k + 's')))}. ` : '') + (met.length ? `They have ${list(met)}.` : ''));
   const lk = luckOf(w, c); L.push(lk.crops.length ? `They sow ${list(lk.crops)}.` : c.arts.farming ? 'Their crops do not grow here.' : 'Nothing that grows wild near them could be sown.');
@@ -217,6 +220,7 @@ const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fis
 export const describeSet = setInfo;
 const MOVE = { settlers: (w, m, c) => [`Settlers of the ${c.name}`, `${Math.round(m.n)} people with everything they own, looking for a place to stop.`], army: (w, m, c) => [`A war band of the ${c.name}`, `About ${Math.round(m.n)} spears${m.to && !m.to.dead && m.to.name ? ', marching on ' + m.to.name : ''}.`], home: (w, m, c) => [`A war band of the ${c.name}`, 'On the way home.'], trade: (w, m, c) => [m.wet0 ? `A trading ship of the ${c.name}` : `A caravan of the ${c.name}`, `${m.from && m.from.name ? 'From ' + m.from.name : 'On its way'}${m.to && m.to.name ? ' to ' + m.to.name : ''}. It carries goods, news, and whatever else is going around.`], refugees: (w, m, c) => [`People of the ${c.name}, fleeing`, `${Math.round(m.n)} people walking away from hunger or worse.`] };
 const RUIN_SAY = { abandoned: 'Its people left, or died out.', sacked: 'It was sacked and burned.', drowned: 'The sea took it.', buried: 'Ash and lava buried it.', burned: 'Fire took it.', plague: 'Plague emptied it.', frozen: 'The ice closed over it.', overgrown: 'The forest swallowed it.', crater: 'A falling star erased it.', swallowed: 'The earth opened under it.', dragon: 'A dragon made it a roost.' };
+const WORK_SAY = { dam: ['A dam', 'A wall across the river. The lake behind it waters the fields below.'], canal: ['A canal', 'Dug through the land so ships can pass from one sea to the other.'], ditch: ['Irrigation canals', 'River water carried out into dry country.'], polder: ['Polders', 'Fields on what used to be the sea floor, behind dikes.'], wall: ['A great wall', 'Built across the grass to keep the riders out. Most raids stop at it.'], pass: ['A blasted pass', 'A mountain cut through for a road.'], raised: ['Raised land', 'Called up out of the sea by sorcerers.'] };
 const SP_SAY = { host: 'A dead army that fights its war again every night. Nobody settles near it; those who live close sicken and leave.', shamblers: 'The dead of a plague, walking. Wherever they reach, the sickness comes back.', lich: 'A dead king in a ruined hall. It sends the dead against the living, and against its enemies first.', hunger: 'Something in the cold woods that is never full. It takes travellers, herders and game.', drowned: 'Bells under the water. Ships founder nearby; the drowned come ashore in storms.', fey: 'A court under old trees. It steals children, unless a people bargains with it; then their fields never fail.', saint: 'A holy place. Plagues turn back here, and the faithful hold together.' };
 function looker(w, x, y, i, r) {
   let hit = null, bd = r * r;
@@ -224,6 +228,7 @@ function looker(w, x, y, i, r) {
   if (hit) { const d = hit; return { title: d.name, color: '#b3201c', lines: [`A dragon, ${d.age} years on this mountain.`, d.st === 'sleep' ? 'It is asleep on its hoard.' : d.st === 'fly' ? 'It is hunting.' : d.st === 'home' ? 'It is flying home, fed.' : 'It is awake, and looking around.', d.hoard > 20 ? 'Its hoard is the richest thing in the world.' : d.hoard > 6 ? 'It has a respectable hoard.' : 'It has not gathered much yet.'], follow: { pos: () => (d.dead ? null : [d.x, d.y, 2]) } }; }
   for (const sp of w.spirits) if (wrapDx(sp.x - x) ** 2 + (sp.y - y) ** 2 <= Math.max(4, bd * 1.5)) { const pc = sp.pact != null ? w.cults[sp.pact] : null;
     return { title: cap(sp.name), color: KINDS[SPIRIT_KINDS[sp.kind].mem].col, lines: [SP_SAY[sp.kind], `It rose in year ${sp.born}. What it remembers: ${sp.why}.`, pc ? `The ${pc.name} have a bargain with it.` : '', 'It will fade if this place forgets. Peoples who know iron and letters wear memory away; Hush and Forget do it faster.'].filter(Boolean) }; }
+  for (const q of w.works || []) if (wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 <= Math.max(4, bd)) { const c = w.cults[q.cult]; return { title: WORK_SAY[q.kind][0], color: c ? c.color : null, lines: [WORK_SAY[q.kind][1], `Built by the ${c ? c.name : 'old ones'} in year ${q.year}.`] }; }
   for (const q of w.wells) if (wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 <= Math.max(4, bd)) return { title: q.name ? cap(q.name) : 'A wellspring', color: KINDS[q.kind || 0].col, lines: ['The ley lines run here, carrying what the world remembers.', `It is ${q.fill > 10 ? 'nearly full' : q.fill > 4 ? 'filling' : 'low'}, mostly with ${KINDS[q.kind || 0].name}.`, q.spilt ? `It has spilled over ${q.spilt === 1 ? 'once' : q.spilt + ' times'}.` : 'When it is full it will spill a storm back up the lines.'] };
   for (const k of w.krakens) if (wrapDx(k.x - x) ** 2 + (k.y - y) ** 2 <= Math.max(9, bd)) return { title: cap(k.name), color: '#6a3f86', lines: [`Something very large, in this water since year ${k.born}.`, k.sunk ? `It has taken ${k.sunk} ${k.sunk === 1 ? 'ship' : 'ships'}.` : 'No ship has come close enough yet.'] };
   for (const m of w.movers) if (!m.done && wrapDx(m.x - x) ** 2 + (m.y - y) ** 2 <= bd * 1.5) { const c = w.cults[m.cult], t = MOVE[m.kind](w, m, c); return { title: t[0], color: c.color, lines: [t[1]], follow: { pos: () => (m.done ? null : [m.x, m.y, 1.4]) } }; }

@@ -8,6 +8,7 @@
 // the ruins, and come creeping back when a civilisation falls.
 import { W, H, N, clamp, wx, wrapDx, cyl, DISC, NB8, Heap } from './core.js';
 import { ev, discover, once } from './story.js';
+import { drainOf } from './tech.js';
 
 export const KINDS = [
   { key: 'death', name: 'death', col: '#9aa3b8', place: 'haunted' },
@@ -122,7 +123,7 @@ function wearAway(w) {
   const { mem, memLock } = w;
   for (const s of w.sets) {
     if (s.dead) continue; const c = w.cults[s.cult], A = c.arts, st = STANCES[c.stance || 'revere'];
-    const d = (0.002 * c.tech + (A.bronze ? 0.003 : 0) + (A.iron ? 0.008 : 0) + (A.writing ? 0.005 : 0) + (A.engines ? 0.04 : 0)) * (s.nomad ? 0.3 : 0.5 + 0.5 * s.tier) * st.drain;
+    const d = (0.002 * c.tech + drainOf(A)) * (s.nomad ? 0.3 : 0.5 + 0.5 * s.tier) * st.drain;
     if (d <= 0) continue; const R = Math.min(12, s.R + 2);
     for (const o of DISC[R]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(s.x + o[0]); if (memLock[j]) continue; const k = 1 - d * (1 - o[2] / (R + 1)), b = j * NK; for (let q = 0; q < NK; q++) mem[b + q] *= k; }
     if (s.tower) for (const o of DISC[6]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(s.x + o[0])) * NK; for (let q = 0; q < NK; q++) mem[b + q] *= 0.97; }   // sorcerers draw the place dry

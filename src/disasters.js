@@ -99,9 +99,9 @@ export function babel(w, x, y) {
   const s = near(w, Math.round(x), Math.round(y), 8, null, false); if (!s) return false; const c = w.cults[s.cult]; if (c.count < 3) return false;
   ev(w, `The ${c.name} wake one morning and cannot understand each other.`, s.x, s.y, colorOf(c)); c.coh = 0.06; c.born = w.year - 2200; w.babel = (w.babel || 0) + 1; return true;
 }
-export function inspire(w, x, y) {
+export function inspire(w, x, y, fam) {
   const s = near(w, Math.round(x), Math.round(y), 8, null, false); if (!s) return false; const c = w.cults[s.cult];
-  const art = gift(w, c); ev(w, art ? `The ${c.name} wake one morning knowing ${art}. Nobody can say who thought of it.` : `An idea takes hold among the ${c.name} and will not let go.`, s.x, s.y, colorOf(c)); w.fx.push({ k: 'spark', x: s.x, y: s.y, T: 1.6 }); return true;
+  const art = gift(w, c, fam); ev(w, art ? `The ${c.name} wake one morning knowing ${art}. Nobody can say who thought of it.` : `An idea takes hold among the ${c.name} and will not let go.`, s.x, s.y, colorOf(c)); w.fx.push({ k: 'spark', x: s.x, y: s.y, T: 1.6 }); return true;
 }
 export function stormAt(w, x, y) { x = wx(Math.round(x)); y = clamp(Math.round(y), 2, H - 3); if (w.storms.length >= 6) return false; w.storms.push({ x, y, str: w.water[y * W + x] === 1 ? 1 : 0.8, life: 22, mine: true, spin: w.rnd() * 6 }); return true; }
 

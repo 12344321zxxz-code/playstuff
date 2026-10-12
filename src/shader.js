@@ -73,7 +73,7 @@ void main(){
   float lake = b.r, riv = b.g * 4.25; int rdir = int(b.b * 255. + .5);
   int fl = int(cc.g * 255. + .5);
   int mb = int(b.a * 255. + .5), kind = (mb & 7) - 1, flo = (mb >> 5) & 7; bool onLey = (mb & 8) != 0, kept = (mb & 16) != 0;
-  float road = (fl & 32) != 0 ? 1. : 0.; bool farm = (fl & 1) != 0, urban = (fl & 2) != 0, fire = (fl & 4) != 0, ash = (fl & 8) != 0, ice = (fl & 16) != 0, lava = (fl & 64) != 0;
+  float road = (fl & 32) != 0 ? 1. : 0.; bool wallC = (fl & 128) != 0, ditch = int(cc.b * 255. + .5) >= 128; bool farm = (fl & 1) != 0, urban = (fl & 2) != 0, fire = (fl & 4) != 0, ash = (fl & 8) != 0, ice = (fl & 16) != 0, lava = (fl & 64) != 0;
   float rnd = hash(vec2(c));
   bool sea = hh < 0.;
   vec3 col;
@@ -122,6 +122,8 @@ void main(){
       } else col = rc;
     }
     if (road > .1 && !urban && riv < .5 && cellPx > 2.5) { vec3 rd = vec3(.66, .55, .40); if (cellPx >= 7.) { float w = abs(f.x - .5) < .18 || abs(f.y - .5) < .18 ? 1. : 0.; col = mix(col, rd, w); } else col = mix(col, rd, .7); }
+    if (ditch && cellPx > 2.5) { vec3 dc = vec3(.32, .62, .84); if (cellPx >= 7.) { if (abs(f.x - .5) < .12 || abs(f.y - .5) < .12) col = dc; } else col = mix(col, dc, .6); }
+    if (wallC) { vec3 wc = vec3(.62, .58, .52); if (cellPx >= 7.) { vec2 sb = floor(f * 6.); col = mod(sb.x + sb.y * 2., 3.) < 1. ? wc * .8 : wc; } else col = wc; }
     if (ash) col = mix(col, vec3(.25, .23, .22), .7);
     if (fire) col = mod(floor(uTime * 6. + rnd * 10.), 2.) < 1. ? vec3(1., .45, .1) : vec3(1., .8, .3);
     if (lava) col = mod(floor(uTime * 3. + rnd * 10.), 2.) < 1. ? vec3(.95, .3, .05) : vec3(.6, .12, .04);
@@ -146,7 +148,7 @@ void main(){
   if (uLens == 1) col = heatPal((Tm + 30.) / 65.) * (sea ? .8 : .9 + .2 * lit);
   else if (uLens == 2) col = sea ? vec3(.18, .22, .30) : wetPal(mi / 2.2) * (.9 + .2 * lit);
   else if (uLens == 3) col = sea ? vec3(.18, .22, .30) : mix(vec3(.75, .66, .55), vec3(.25, .16, .08), clamp(cc.a * 1.5, 0., 1.));
-  else if (uLens == 4) { float id = floor(cc.b * 255. + .5); vec3 pc = .45 + .4 * cos(6.2832 * (id * .137 + vec3(0., .33, .67))); col = sea ? pc * .55 : pc; if (C(c + ivec2(1, 0)).b != cc.b || C(c + ivec2(0, 1)).b != cc.b) col = vec3(.08); }
+  else if (uLens == 4) { float id = mod(floor(cc.b * 255. + .5), 128.); vec3 pc = .45 + .4 * cos(6.2832 * (id * .137 + vec3(0., .33, .67))); col = sea ? pc * .55 : pc; if (C(c + ivec2(1, 0)).b != cc.b || C(c + ivec2(0, 1)).b != cc.b) col = vec3(.08); }
   else if (uLens == 5) col = sea ? seaCol(-hh) : mix(mix(vec3(.30, .55, .30), vec3(.85, .78, .50), clamp(hh * 3.5, 0., 1.)), vec3(.97), clamp((hh - .4) * 3., 0., 1.)) * (.85 + .3 * lit);
   else if (uLens == 7) {   // lore: what each place remembers, the ley lines, and how each people stands toward it
     float m = cc.a; vec3 base = sea ? vec3(.07, .08, .13) : vec3(.15, .14, .18) * (.85 + .3 * lit);
@@ -155,6 +157,7 @@ void main(){
     if (kept && (cellPx < 6. || mod(floor(f.x * 6.) + floor(f.y * 6.), 2.) < 1.)) col = mix(col, vec3(1.), .25);
   }
   else if (uLens == 14) col = col * .42 + .04;
+  else if (uLens == 15) { col = col * .4 + .04; int ow = int(cc.r * 255. + .5); if (!sea && ow > 0) col = mix(col, uStance[(ow - 1) % 32], .75); }
   else if (uLens == 13) {  // beasts: which wild animal lives where, bright if a people could tame it
     int sp = int(ff.b * 255. + .5); col = sea ? vec3(.10, .12, .18) : vec3(.24, .23, .22) * (.85 + .3 * lit);
     if (!sea && sp < 20) { float tm = uTame[sp]; col = mix(col, uSpecL[sp], tm > .5 ? .95 : .6); if (tm < .5 && cellPx >= 5. && mod(floor(f.x * 4.) + floor(f.y * 4.), 2.) < 1.) col *= .7; }
@@ -168,7 +171,7 @@ void main(){
   // peoples: their land outlined in their colour (filled, in the Peoples lens)
   int own = int(cc.r * 255. + .5);
   if (!sea && uLens != 4 && uLens != 5 && uLens != 10 && uLens != 11 && uLens != 13 && uLens != 1 && uLens != 2) {
-    vec3 pc0 = own > 0 ? (uLens == 7 ? uStance[(own - 1) % 32] : uPal[(own - 1) % 32]) : vec3(0.);
+    vec3 pc0 = own > 0 ? (uLens == 7 || uLens == 15 ? uStance[(own - 1) % 32] : uPal[(own - 1) % 32]) : vec3(0.);
     if (uLens == 9) { ivec2 q = ivec2(c.x / 4, c.y / 4); int fid = int(texelFetch(uD, ivec2(q.x % 128, clamp(q.y, 0, 63)), 0).g * 255. + .5); if (fid > 0) col = mix(col, uFaith[(fid - 1) % 16], .6); }
     else if (own > 0) {
       vec3 pc = pc0;

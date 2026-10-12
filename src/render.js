@@ -6,6 +6,7 @@ import { SPECIES } from './fauna.js';
 import { ZONES, zoneMap } from './zones.js';
 import { KINDS, STANCES } from './memory.js';
 import { PLANTS } from './origins.js';
+export const ERA_COL = ['#8a7a6a', '#6aa84f', '#d4a03a', '#c0503a', '#4a8ad4', '#9a5ad4', '#e8e8e8'];
 const CW = 128, CH = 64;
 
 export function createRenderer(glc) {
@@ -39,7 +40,7 @@ export function createRenderer(glc) {
       for (let i = 0, j = 0; i < N; i++, j += 4) {
         let v = (tMean[i] + 40) * 3.1875; bA[j] = v < 0 ? 0 : v > 255 ? 255 : v; v = mi[i] * 102; bA[j + 1] = v > 255 ? 255 : v; bA[j + 2] = g[i] * 255; bA[j + 3] = t[i] * 255;
         bB[j] = water[i] === 2 ? clamp(20 + (filled[i] - h[i]) * 2500, 20, 255) : 0; bB[j + 1] = river[i] * 60; bB[j + 2] = 0; if (river[i]) { const d = down[i]; if (d >= 0) { let dx = (d % W) - (i % W); if (dx > 1) dx = -1; else if (dx < -1) dx = 1; const dy = ((d / W) | 0) - ((i / W) | 0); bB[j + 2] = (dx + 1) + (dy + 1) * 3 + 1; } } let kd = 0, kv = 0.15; const mb = i * 5; for (let q = 0; q < 5; q++) if (mem[mb + q] > kv) { kv = mem[mb + q]; kd = q + 1; } bB[j + 3] = kd | (ley[i] > 0.15 ? 8 : 0) | (memLock[i] ? 16 : 0) | ((flora[i] === 255 ? 7 : flora[i]) << 5);
-        bC[j] = ocult[i] + 1; bC[j + 1] = (farm[i] ? 1 : 0) | (urban[i] ? 2 : 0) | (fireT[i] ? 4 : 0) | (ash[i] > 0.3 ? 8 : 0) | (ice[i] ? 16 : 0) | (lava[i] ? 64 : 0) | (road[i] ? 32 : 0); bC[j + 2] = plate[i];
+        bC[j] = ocult[i] + 1; bC[j + 1] = (farm[i] ? 1 : 0) | (urban[i] ? 2 : 0) | (fireT[i] ? 4 : 0) | (ash[i] > 0.3 ? 8 : 0) | (ice[i] ? 16 : 0) | (lava[i] ? 64 : 0) | (road[i] ? 32 : 0) | (w.wall && w.wall[i] ? 128 : 0); bC[j + 2] = plate[i] | (w.canal && w.canal[i] === 2 ? 128 : 0);
         v = lens === 12 ? wildCrop[i] * 255 : lens === 3 ? soil[i] * 170 : magic[i] * 255; bC[j + 3] = v > 255 ? 255 : v;
         v = graze[i] * 127; bF[j] = v > 255 ? 255 : v; bF[j + 1] = hunt[i] * 255; bF[j + 2] = spAt[i]; bF[j + 3] = zones[i];
       }
@@ -50,7 +51,7 @@ export function createRenderer(glc) {
     draw(w, cam, lens, time, pal, q) {
       gl.viewport(0, 0, glc.width, glc.height);
       gl.uniform2f(U.uRes, glc.width, glc.height); gl.uniform2f(U.uCenter, cam.x, cam.y); gl.uniform1f(U.uZoom, cam.z * cam.dpr * (q || 1)); gl.uniform1f(U.uDpr, cam.dpr * (q || 1));
-      for (const c of w.cults) { if (!c.alive) continue; const col = STANCES[c.stance || 'revere'].col, k = c.slot * 3; stanceRGB[k] = parseInt(col.slice(1, 3), 16) / 255; stanceRGB[k + 1] = parseInt(col.slice(3, 5), 16) / 255; stanceRGB[k + 2] = parseInt(col.slice(5, 7), 16) / 255; } gl.uniform3fv(U.uStance, stanceRGB);
+      for (const c of w.cults) { if (!c.alive) continue; const col = lens === 15 ? ERA_COL[Math.min(6, c.tech)] : STANCES[c.stance || 'revere'].col, k = c.slot * 3; stanceRGB[k] = parseInt(col.slice(1, 3), 16) / 255; stanceRGB[k + 1] = parseInt(col.slice(3, 5), 16) / 255; stanceRGB[k + 2] = parseInt(col.slice(5, 7), 16) / 255; } gl.uniform3fv(U.uStance, stanceRGB);
       gl.uniform1f(U.uSea, w.params.sea); gl.uniform1f(U.uTime, time); gl.uniform1i(U.uLens, lens); gl.uniform3fv(U.uPal, pal);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },

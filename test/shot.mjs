@@ -21,7 +21,7 @@ for (const [z, name] of [[8, '2-region'], [20, '3-close']]) {
   await page.evaluate(([c, z]) => { const f = window.__f; if (c) { f.cam.x = c[0] + 0.5; f.cam.y = c[1] + 0.5; } f.cam.z = z; f.S.dirty = true; }, [city, z]);
   await page.waitForTimeout(600); await page.screenshot({ path: `${out}/${name}.png` });
 }
-for (const [l, name] of [[10, '4-climate'], [11, '5-life'], [7, '6-lore'], [12, '7-origins'], [13, '9-beasts'], [14, '10-trade']]) { await page.evaluate((l) => { const f = window.__f; f.cam.x = 256; f.cam.y = 128; f.cam.z = f.cam.fitZ || f.cam.minZ; f.setLens(l); f.S.dirty = true; }, l); await page.waitForTimeout(600); await page.screenshot({ path: `${out}/${name}.png` }); }
+for (const [l, name] of [[10, '4-climate'], [11, '5-life'], [7, '6-lore'], [12, '7-origins'], [13, '9-beasts'], [14, '10-trade'], [15, '11-knowledge']]) { await page.evaluate((l) => { const f = window.__f; f.cam.x = 256; f.cam.y = 128; f.cam.z = f.cam.fitZ || f.cam.minZ; f.setLens(l); f.S.dirty = true; }, l); await page.waitForTimeout(600); await page.screenshot({ path: `${out}/${name}.png` }); }
 const sp = await page.evaluate(() => { const w = window.__f.S.w, p = w.spirits[0] || w.wells[0]; return p ? [p.x, p.y, p.name || p.kind, w.spirits.map((q) => q.kind).join(',')] : null; }); console.log('spirit', sp);
 if (sp) { await page.evaluate((c) => { const f = window.__f; f.setLens(0); f.cam.x = c[0] + 0.5; f.cam.y = c[1] + 0.5; f.cam.z = 14; f.S.dirty = true; }, sp); await page.waitForTimeout(600); await page.screenshot({ path: out + '/8-spirit.png' }); }
 console.log(errs.slice(0, 30).join('\n'));

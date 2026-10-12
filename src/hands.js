@@ -28,8 +28,8 @@ registerTools([
     apply(w, p, f, r) { return cull(w, p.x - 0.5, p.y - 0.5, r); } },
   { id: 'people', label: 'People', group: 'Peoples', hint: 'Tap land to wake a new people there. What they become depends on where you put them.', miss: 'People need dry land.',
     apply(w, p) { return !!addBand(w, p.x - 0.5, p.y - 0.5); } },
-  { id: 'idea', label: 'Idea', group: 'Peoples', radius: 8, lens: 6, hint: 'Tap near a people to hand them a leap of knowledge. They can only learn what their land allows: no boats without a shore.', miss: 'Nobody is near enough to hear it.',
-    apply(w, p) { const ok = inspire(w, p.x, p.y); if (ok) say(w.events.length ? w.events[w.events.length - 1].text : 'An idea takes hold.'); return ok; } },
+  { id: 'idea', label: 'Idea', group: 'Peoples', radius: 8, lens: 15, opts: ['Their next step', 'Food', 'Metal', 'Getting about', 'Learning', 'War'], hint: 'Tap near a people to hand them a leap of knowledge. They can only learn what their land allows: no boats without a shore.', miss: 'Nobody is near enough to hear it.',
+    apply(w, p, f, r, st, opt) { const ok = inspire(w, p.x, p.y, opt); if (ok) say(w.events.length ? w.events[w.events.length - 1].text : 'An idea takes hold.'); return ok; } },
   { id: 'babel', label: 'Babel', group: 'Peoples', radius: 8, lens: 6, hint: 'Tap a large people to confuse their tongues. They will not stay one people for long.', miss: 'It needs a people with at least three settlements.',
     apply(w, p) { return babel(w, p.x, p.y); } },
   { id: 'meteor', label: 'Meteor', group: 'Wrath', radius: 6, hint: 'Tap to drop a star. On land it leaves a crater; at sea it sends a wave.',
@@ -61,4 +61,4 @@ registerTools([
   { id: 'sow', label: 'Wild seed', group: 'Life', opts: PLANTS.map((q) => q.wild[0].toUpperCase() + q.wild.slice(1)), lens: 12, hint: 'Tap land to seed a wild plant across that whole landmass. Whoever lives there may learn to farm it, if the climate suits.', miss: 'It needs land.',
     apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i]) return false; const m = w.mass[i], k = w.floraKinds[m] || (w.floraKinds[m] = []); if (!k.includes(opt)) k.push(opt); floraMap(w); say(`${PLANTS[opt].wild[0].toUpperCase() + PLANTS[opt].wild.slice(1)} takes root ${w.pSuit[opt * N + i] > 100 ? 'here' : 'here, though it will only thrive where the climate suits it'}.`); return true; } },
 ]);
-addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins'); addLens(13, 'Beasts'); addLens(14, 'Trade');
+addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins'); addLens(13, 'Beasts'); addLens(14, 'Trade'); addLens(15, 'Knowledge');
