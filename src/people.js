@@ -10,6 +10,7 @@ import { wetAt } from './weather.js';
 import { catchFish } from './sea.js';
 import { send, arrive } from './movers.js';
 import { holySite, carry, convert, faithYear, sameFaith, tenetOf } from './faith.js';
+import { pickGoods, deliver, importedMetals, leagued, G as GD } from './trade.js';
 import { remember, DEATH, WILD, FIRE, DEEP, FAITH, memAt, stanceYear, RUIN_KIND } from './memory.js';
 import { breakPacts } from './spirits.js';
 import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock } from './origins.js';
@@ -80,7 +81,7 @@ function canLearn(c, k, easy) {
     case 'masonry': return e.towns > 0;
     case 'writing': return easy ? e.towns > 0 : e.cities > 0 && c.surplus > 0.45;   // scribes need a city that feeds them
     case 'iron': return e.sed >= 3 && (c.metals & 8) !== 0;
-    case 'sailing': return a.boats && e.coast >= 3;
+    case 'sailing': return a.boats && e.coast >= 3 && c.timberOK !== false;   // no ships without timber, grown or bought
     case 'engines': return a.iron && a.writing && (c.metals & 64) !== 0;
   }
   return false;
@@ -198,13 +199,14 @@ arrive.trade = (w, m) => {
   const a = m.from, b = m.to; if (!a || !b || a.dead || b.dead) return; const ca = w.cults[a.cult], cb = w.cults[b.cult];
   a.trade = Math.min(6, a.trade + 1); b.trade = Math.min(6, b.trade + 1); if (ca !== cb) meet(w, ca, cb, 0.3);
   carry(w, a, b, m.wet0 ? 'ship' : 'trade'); if (w.rnd() < 0.4) carry(w, b, a, m.wet0 ? 'ship' : 'trade');
+  deliver(w, m);
   if (a.plague > 0) { if (w.rnd() < 0.3 + w.plagues[a.pid].catchy) infect(w, b, a.pid); }
   else if (ca !== cb) contact(w, ca, b, 'Traders');
   // sickness also travels home: a land the sailors had never seen has its own fevers
   if (m.wet0 && ca !== cb && w.mass[a.y * W + a.x] !== w.mass[b.y * W + b.x] && once(w, 'back-' + ca.id + '-' + cb.id) && w.rnd() < 0.35 && infect(w, a, null)) { const st = w.plagues[a.pid]; st.v = 0.09; st.catchy = 0.5; ev(w, `Sailors home from ${b.name} bring a fever no one on this shore has seen. It spreads through ${a.name} and the ports beyond.`, a.x, a.y, ca.color, 0); discover(w, 'backwash', a.x, a.y); }
   if (m.wet0 && discover(w, 'trade', b.x, b.y)) ev(w, `A ship from ${a.name} ties up at ${b.name} and sells everything aboard.`, b.x, b.y, ca.color);
 };
-export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (A.bronze ? 1.3 : 1) * (A.iron ? 1.45 : 1) * (A.riding ? 1.35 : 1) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1); }
+export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * (A.bronze && !c.bronzeCut ? 1.3 : 1) * (A.iron ? 1.45 : 1) * (A.riding ? 1.35 : 1) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1); }
 arrive.army = (w, m) => {
   const o = m.to, c = w.cults[m.cult], home = m.from, rnd = w.rnd; const back = (frac) => { if (home && !home.dead && m.n * frac > 3) send(w, { kind: 'home', cult: m.cult, x: m.x, y: m.y, tx: home.x, ty: home.y, n: m.n * frac, to: home, land: m.land }); };
   if (!c.alive) return; if (!o || o.dead || o.cult === m.cult) { back(1); return; }
@@ -291,7 +293,7 @@ export function* peopleSteps(w) {
     const fSea = want > 0 ? catchFish(w, s.x, s.y, s.R + (A.sailing ? 10 : A.boats ? 4 : 1), want) : 0, fF = fFr + fSea, fishGap = want > 8 ? fSea / want : 1;
     const fA = (rain * clamp(wa, 0.2, 1.3) + irrg * (A.irrigation ? 1.15 : 1) * (0.72 + 0.28 * Math.min(wa, 1.2)) * (wa > 1.5 ? 0.8 : 1)) * yieldF * sun;
     const fP = herder ? past * (s.nomad ? 3.4 : 2) * (c.tame.horse ? 1.15 : 1) * (0.5 + 0.5 * Math.min(wa, 1.3)) * sun : 0;
-    const food = (fW + fH + fF + fA + fP) * (s.blessed && w.year - s.blessed < 3 ? 1.15 : 1) * (1 + 0.06 * Math.min(4, s.trade)) * (c.tame.pig ? 1.05 : 1) * (s.plague > 0 ? 0.8 : 1); s.src = [fW, fH, fF, fA, fP]; c._sur += s.pop * Math.min(1, (fA + fP) / Math.max(1, food));
+    const imp = s.imp || {}, food = (fW + fH + fF + fA + fP) * (s.blessed && w.year - s.blessed < 3 ? 1.15 : 1) * (w.year - (s.fed ?? -99) < 3 ? 1.12 : 1) * (w.year - (imp[GD.salt] ?? -99) < 5 && (herder || seaN) ? 1.05 : 1) * (s.market ? 1.1 : 1) * (1 + 0.06 * Math.min(4, s.trade)) * (c.tame.pig ? 1.05 : 1) * (s.plague > 0 ? 0.8 : 1); s.src = [fW, fH, fF, fA, fP]; c._sur += s.pop * Math.min(1, (fA + fP) / Math.max(1, food));
     const mx = Math.max(fW, fH, fF, fA, fP); s.way = mx === fA ? 'farm' : mx === fP ? 'herd' : mx === fF ? 'fish' : mx === fH ? 'hunt' : 'forage'; c._ways[s.way] += s.pop;
     if (!s.nomad && A.farming && bestI >= 0 && farms < Math.ceil((s.pop * 1.3) / (yieldF * 0.6))) { farm[bestI] = 1; t[bestI] = 0; g[bestI] = 0.25; }
     // tallies that decide what this people can learn
@@ -313,7 +315,7 @@ export function* peopleSteps(w) {
       near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (1 - 0.8 * w.cults[o.cult].germ)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
-    c.know += s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    c.know += s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -371,7 +373,7 @@ function cultYear(w, c) {
   c.nomadsWas = c.env.nomads;
   if (b) { c.homeT = w.tMean[b.y * W + b.x]; c.homeM = w.mi[b.y * W + b.x]; }
   c.tenet = tenetOf(w, c); c.zeal = c.tenet === 'war';
-  c.kind = kindOf(c); c.metals = c._metals; c.gold = !!(c.metals & 16); c.tech = techOf(c.know);
+  c.kind = kindOf(c); c._ownMetals = c._metals; c.metals = c._metals | importedMetals(w, c); c.gold = !!(c.metals & 16); c.tech = techOf(c.know);
   for (const k of ART_KEYS) if (!A[k] && canLearn(c, k, false) && rnd() < 0.06) { learn(w, c, k); break; }
   originsYear(w, c, b); cropRisks(w, c, b);
   const was = stanceYear(w, c); if (was === 'revere') breakPacts(w, c);
@@ -390,7 +392,7 @@ function cultYear(w, c) {
   // war
   if (c.war) { const f = w.cults[c.war.foe]; if (!f.alive || w.year >= c.war.until) endWar(w, c); }
   else if (c.count >= 4 && b) {
-    let foe = null, fs = 1.5; for (const k in c.nb) { const o = w.cults[k]; if (o.alive && !o.war && c.nb[k] > fs) { fs = c.nb[k]; foe = o; } }
+    let foe = null, fs = 1.5; for (const k in c.nb) { const o = w.cults[k]; if (o.alive && !o.war && c.nb[k] > fs && !leagued(w, c.id, o.id)) { fs = c.nb[k]; foe = o; } }
     const horde = c.env.nomads > c.env.sed && c.env.nomads >= 9 && A.riding && tr === 'great' && !c.ruler.rode;
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
     if (foe && rnd() < ((horde ? 0.3 : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (c.tenet === 'peace' ? 0.15 : 0.4) : holy ? 2 : 1)) startWar(w, c, foe, horde, holy);
@@ -476,10 +478,15 @@ function townStep(w, s, c) {
   const war = c.war;
   if (s.pop > 60 && w.year >= s.busy && rnd() < 0.03 * (c.ruler.trait === 'great' ? 2 : 1) * (war ? 3.2 : 1)) raid(w, s, c);
   if (s.tier >= 2 && s.trade > 1.5 && rnd() < (s.tier === 3 ? 0.0016 : 0.0005) && infect(w, s, null) && w.plagues[s.pid].bad) ev(w, `A sickness nobody has a name for breaks out in ${s.name}.`, s.x, s.y, c.color);
+  // a town that badly lacks something sends for it, as far as its roads and ships can reach
+  if (s.need && s.tier >= 1 && rnd() < 0.12) { let g = -1, gv = 1.4; for (let k = 0; k < s.need.length; k++) if (s.need[k] > gv) { gv = s.need[k]; g = k; }
+    if (g >= 0) { let best = null, bd = 1e9; const reach = A.sailing ? 90 : A.boats ? 40 : A.roads || c.tame.horse || c.tame.camel ? 32 : 18;
+      near(w, s.x, s.y, reach, s, true, (o, q) => { if (!o.make || !o.make[g] || q >= bd) return; const oc = w.cults[o.cult]; if (oc.war && oc.war.foe === c.id) return; const wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet > 1 && !(A.boats || oc.arts.boats)) return; bd = q; best = { o, wet }; });
+      if (best) { const o = best.o; send(w, { kind: 'trade', cult: o.cult, x: o.x, y: o.y, tx: s.x, ty: s.y, n: 6, from: o, to: s, wet0: best.wet >= 5, land: 1, goods: g }); } } }
   // ships: ports trade with whatever other ports they can reach
   if (s.port && A.boats && s.tier >= 1 && rnd() < (s.tier >= 2 ? 0.2 : 0.07)) {
     const cand = []; near(w, s.x, s.y, A.sailing ? 80 : 26, s, true, (o) => { if (o.port && o.tier >= 1) cand.push(o); });
-    if (cand.length) { const o = cand[(rnd() * cand.length) | 0], wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet >= 5) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 8, from: s, to: o, wet0: true, land: 1.2 }); }
+    if (cand.length) { const o = cand[(rnd() * cand.length) | 0], wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet >= 5) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 8, from: s, to: o, wet0: true, land: 1.2, goods: pickGoods(w, s, o) }); }
   }
 }
 
@@ -515,7 +522,7 @@ function raid(w, s, c) {
   near(w, s.x, s.y, reach + 9, s, false, (u, q) => { if (u.cult === s.cult || (u.nomad && !s.nomad && !(war && u.cult === war.foe))) return; const lim = (reach + u.R) ** 2, pref = war && u.cult === war.foe ? 0.35 : 1; if (q < lim && q * pref < bd) { bd = q * pref; o = u; } });
   if (!o) return; const oc = w.cults[o.cult], foe = war && war.foe === oc.id;
   const wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet > 1 && !A.boats) return;
-  if (!foe && (oc.war || (c.tenet === 'peace' && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8 }); else meet(w, c, oc, 0.15); return; }
+  if (!foe && (oc.war || (c.tenet === 'peace' && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8, goods: pickGoods(w, s, o) }); else meet(w, c, oc, 0.15); return; }
   meet(w, c, oc, 0.1);
   const men = Math.max(6, s.pop * (s.nomad ? 0.3 : 0.14)); s.pop -= men; s.busy = w.year + 3;
   send(w, { kind: 'army', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: men, from: s, to: o, nomad: s.nomad, land: A.riding ? 1.5 : 0.8 });
@@ -547,7 +554,7 @@ function roads(w) {
   }
 }
 function caravans(w) {
-  const rnd = w.rnd; for (const L of w.links.values()) { if (rnd() > 0.3 || L.a.dead || L.b.dead) continue; const rev = rnd() < 0.5, a = rev ? L.a : L.b, b = rev ? L.b : L.a; send(w, { kind: 'trade', cult: a.cult, x: a.x, y: a.y, tx: b.x, ty: b.y, n: 6, from: a, to: b, path: L.path, rev }); }
+  const rnd = w.rnd; for (const L of w.links.values()) { if (rnd() > 0.3 || L.a.dead || L.b.dead) continue; const rev = rnd() < 0.5, a = rev ? L.a : L.b, b = rev ? L.b : L.a; send(w, { kind: 'trade', cult: a.cult, x: a.x, y: a.y, tx: b.x, ty: b.y, n: 6, from: a, to: b, path: L.path, rev, goods: pickGoods(w, a, b) }); }
 }
 
 /* ---------- start, and the god's hand ---------- */

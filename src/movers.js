@@ -4,6 +4,7 @@
 import { W, H, wx, wrapDx, clamp } from './core.js';
 import { ev, discover } from './story.js';
 import { krakenNear } from './sea.js';
+import { pirateNear } from './trade.js';
 
 export const arrive = {};          // kind -> what happens when they get there; filled in by people.js
 const MAXM = 300;
@@ -27,6 +28,7 @@ export function moversTick(w) {
     if (wet) { ships++;
       for (const s of w.storms) if (s.str > 0.6 && wrapDx(s.x - m.x) ** 2 + (s.y - m.y) ** 2 < 20 && rnd() < 0.3 * s.str) { sink(w, m, 'storm'); break; }
       if (!m.done) { const kr = krakenNear(w, m.x, m.y); if (kr && rnd() < 0.28) sink(w, m, kr); }
+      if (!m.done && (w.tickN & 3) === 0) { const pr = pirateNear(w, m); if (pr && rnd() < 0.3) { m.done = true; pr.taken++; pr.last = w.year; if (pr.taken === 1 || pr.taken % 10 === 0) ev(w, `${pr.name[0].toUpperCase() + pr.name.slice(1)} take a ship of the ${w.cults[m.cult].name}${m.goods >= 0 ? ' and everything in its hold' : ''}.`, Math.round(m.x), Math.round(m.y), null, 1); } }
     } else if (lava[i] || fireT[i]) { m.n *= 0.7; if (m.n < 2) m.done = true; }
     if (m.done) gone = true; else if (w.tickN - m.born > 420) { m.done = true; gone = true; }
   }

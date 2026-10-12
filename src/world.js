@@ -8,6 +8,7 @@ import { initFauna, fauna, faunaYear } from './fauna.js';
 import { initPeople, peopleSteps, roadsYear } from './people.js';
 import { initMagic, magicYear, magicTick, dragonsTick } from './fantasy.js';
 import { flowMemory } from './memory.js';
+import { initTrade, tradeYear } from './trade.js';
 import { naturalYear, stormsTick, swarmsTick } from './disasters.js';
 import { discover, ev } from './story.js';
 import { initWeather, weatherYear } from './weather.js';
@@ -44,7 +45,7 @@ export function makeWorld(seed, opts) {
   seasonFields(w);
   seedOre(w);
   w.ice0 = w.landIce; w.landCount = countLand(w); w.mi0 = Float32Array.from(w.mi); baseline(w);
-  initFaith(w); initSea(w); initFauna(w); initOrigins(w); initMagic(w); initPeople(w, opts && opts.bands);
+  initFaith(w); initTrade(w); initSea(w); initFauna(w); initOrigins(w); initMagic(w); initPeople(w, opts && opts.bands);
   w.events.length = 0; w.found = {};
   return w;
 }
@@ -79,7 +80,7 @@ export function tick(w) {
   fauna(w); dragonsTick(w); magicTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
   // the yearly work is spread over the year's ticks so no single tick is heavy
   const ph = w.tickN % TPY;
-  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); originsYear(w); } else if (ph === 3) { flowMemory(w); magicYear(w); } else if (ph === 7) flowMemory(w); else if (ph === 4) naturalYear(w); else if (ph === 5) roadsYear(w);
+  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); originsYear(w); } else if (ph === 3) { flowMemory(w); magicYear(w); } else if (ph === 7) flowMemory(w); else if (ph === 4) naturalYear(w); else if (ph === 5) { roadsYear(w); tradeYear(w); }
   if (ph === 0) {
     const y = w.year;
     for (let i = 0; i < N; i += 4) { const b = w.wetBias[i]; if (b !== 0) { w.wetBias[i] = b * 0.996; w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } else { w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } }

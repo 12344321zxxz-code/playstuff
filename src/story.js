@@ -85,6 +85,15 @@ export const PAGES = [
     ['ban', 'The burned fleet', 'A realm with no rivals decided it did not need something, and nobody could prove it wrong.'],
     ['isolated', 'The forgetting', 'A people alone for too long lost something they once knew.'],
   ]],
+  ['Trade', [
+    ['road-name', 'A road with a name', 'So much traffic one way that the way itself got a name.'],
+    ['searoute', 'Sea lane', 'A stretch of sea named for what crosses it.'],
+    ['market', 'Market of the world', 'A city where every road ends.'],
+    ['toll', 'Toll of the grass', 'Riders who tax every caravan that crosses their country.'],
+    ['pirates', 'Pirates', 'A busy sea lane, far from any navy.'],
+    ['league', 'Trading league', 'Ports of different peoples that agreed to stop fighting and keep trading.'],
+    ['tinstop', 'The tin stops coming', 'A people whose bronze came from someone else\'s mines.'],
+  ]],
   ['The other world', [
     ['leystorm', 'Ley storm', 'A wellspring filled with what the world remembered, and spilled it back up the lines.'],
     ['sp-host', 'Dead host', 'An old battlefield where the war never ended.'],

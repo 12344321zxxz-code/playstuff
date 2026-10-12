@@ -24,6 +24,7 @@ export const SPECIES = [
   { key: 'sloth', name: 'giant sloths', col: '#7a6040', tame: null, mega: true, hab: (T, m, tr) => (T > 14 && tr > 0.3 ? 1 : 0.08) },
   { key: 'moa', name: 'great walking birds', col: '#9a8a70', tame: null, mega: true, hab: (T, m) => (T > 2 && T < 22 && m > 0.3 ? 1 : 0.1) },
 ];
+SPECIES.forEach((sp, k) => { const h = (k * 0.618034) % 1, f = (n) => { const q = (n + h * 12) % 12; return Math.min(255, Math.round(240 * (0.6 - 0.4 * Math.max(-1, Math.min(q - 3, 9 - q, 1))))); }; sp.lc = '#' + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, '0')).join(''); });
 export const habitat = (w, sp, i) => SPECIES[sp].hab(w.tMean[i], w.mi[i], w.t[i], w.h[i] - w.params.sea);
 // What a cell of plants can feed: grass fully, woods partly (browse), fields a little (raided).
 // the dead blight what grows near them; deep wild country grows beasts bigger than they should be

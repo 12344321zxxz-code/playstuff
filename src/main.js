@@ -6,6 +6,7 @@ import { ZONES } from './zones.js';
 import { KINDS, STANCES } from './memory.js';
 import { PLANTS } from './origins.js';
 import { SPECIES } from './fauna.js';
+import { GOODS } from './trade.js';
 import { sculpt, erodeBrush, weather, plant, burn, plateAt } from './powers.js';
 import { describe } from './inspect.js';
 import { coarse, sampleCoarse, derive } from './climate.js';
@@ -180,7 +181,8 @@ function legend() {
   const keyList = (title, items, note) => { const b = document.createElement('b'); b.textContent = title; const k = document.createElement('div'); k.className = 'keys'; for (const [c, t] of items) { const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = c; r.append(i, document.createTextNode(t)); k.appendChild(r); } el.append(b, k); if (note) { const p = document.createElement('div'); p.className = 'ends'; p.textContent = note; el.appendChild(p); } el.hidden = false; };
   if (S.lens === 7) { keyList('What the land remembers', KINDS.map((k) => [k.col, k.name[0].toUpperCase() + k.name.slice(1)]).concat(Object.values(STANCES).map((q) => [q.col, 'Borders: ' + q.name.toLowerCase()])), 'Pale lines: ley lines, which carry memory to the wells.'); return; }
   if (S.lens === 12) { keyList('Wild plants worth sowing', PLANTS.map((q) => [q.col, q.wild[0].toUpperCase() + q.wild.slice(1)]).concat([['#3d3b39', 'Nothing a people could farm']]), 'Brighter: better harvests. Crops travel along the same climate.'); return; }
-  if (S.lens === 13) { const alive = new Set(); for (const m in w.massKinds) for (const s of w.massKinds[m]) alive.add(s); keyList('Wild beasts', SPECIES.map((q, k) => [q, k]).filter(([, k]) => alive.has(k)).map(([q]) => [q.col, q.name[0].toUpperCase() + q.name.slice(1) + (q.tame ? ' (can be tamed)' : '')]), 'Solid: a people could tame it. Checked: it will never be tamed.'); return; }
+  if (S.lens === 14) { keyList('Trade routes', GOODS.map((g) => [g.col, g.name[0].toUpperCase() + g.name.slice(1)]), 'Line colour: what a route mostly carries. Thicker: busier. Dashed: by sea. Gold squares: markets.'); return; }
+  if (S.lens === 13) { const alive = new Set(); for (const m in w.massKinds) for (const s of w.massKinds[m]) alive.add(s); keyList('Wild beasts', SPECIES.map((q, k) => [q, k]).filter(([, k]) => alive.has(k)).map(([q]) => [q.lc, q.name[0].toUpperCase() + q.name.slice(1) + (q.tame ? ' (can be tamed)' : '')]), 'Solid: a people could tame it. Checked: it will never be tamed.'); return; }
   if (S.lens === 10) { const b = document.createElement('b'); b.textContent = 'Climate zones'; const k = document.createElement('div'); k.className = 'keys'; for (const z of ZONES) { if (!z) continue; const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = z.col; r.append(i, document.createTextNode(z.name)); k.appendChild(r); } el.append(b, k); el.hidden = false; return; }
   if (!L) { el.hidden = true; return; }
   const b = document.createElement('b'); b.textContent = L[0]; el.appendChild(b);

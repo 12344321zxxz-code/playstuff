@@ -12,6 +12,7 @@ uniform vec3 uFaith[16];
 uniform vec3 uPal[32];
 uniform vec3 uSpec[20];
 uniform float uTame[20];
+uniform vec3 uSpecL[20];
 uniform vec3 uZone[19];
 uniform vec3 uKind[5];
 uniform vec3 uFlora[8];
@@ -153,9 +154,10 @@ void main(){
     if (onLey) col = mix(col, vec3(.85, .80, 1.), cellPx >= 6. ? (abs(f.x - .5) < .2 || abs(f.y - .5) < .2 ? .45 : .12) : .3);
     if (kept && (cellPx < 6. || mod(floor(f.x * 6.) + floor(f.y * 6.), 2.) < 1.)) col = mix(col, vec3(1.), .25);
   }
+  else if (uLens == 14) col = col * .42 + .04;
   else if (uLens == 13) {  // beasts: which wild animal lives where, bright if a people could tame it
     int sp = int(ff.b * 255. + .5); col = sea ? vec3(.10, .12, .18) : vec3(.24, .23, .22) * (.85 + .3 * lit);
-    if (!sea && sp < 20) { float tm = uTame[sp]; col = mix(col, uSpec[sp], tm > .5 ? .9 : .55); if (tm < .5 && cellPx >= 5. && mod(floor(f.x * 4.) + floor(f.y * 4.), 2.) < 1.) col *= .7; }
+    if (!sea && sp < 20) { float tm = uTame[sp]; col = mix(col, uSpecL[sp], tm > .5 ? .95 : .6); if (tm < .5 && cellPx >= 5. && mod(floor(f.x * 4.) + floor(f.y * 4.), 2.) < 1.) col *= .7; }
   }
   else if (uLens == 12) {  // origins: the wild plants each land was given
     col = sea ? vec3(.10, .12, .18) : vec3(.24, .23, .22) * (.85 + .3 * lit);

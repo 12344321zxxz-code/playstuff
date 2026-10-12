@@ -17,13 +17,13 @@ export function createRenderer(glc) {
   gl.useProgram(prog);
   const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  const U = {}; for (const n of ['uElev', 'uA', 'uB', 'uC', 'uD', 'uF', 'uRes', 'uCenter', 'uZoom', 'uSea', 'uTime', 'uDpr', 'uLens', 'uPal', 'uFaith', 'uSpec', 'uZone', 'uKind', 'uFlora', 'uStance', 'uTame']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uElev', 'uA', 'uB', 'uC', 'uD', 'uF', 'uRes', 'uCenter', 'uZoom', 'uSea', 'uTime', 'uDpr', 'uLens', 'uPal', 'uFaith', 'uSpec', 'uZone', 'uKind', 'uFlora', 'uStance', 'uTame', 'uSpecL']) U[n] = gl.getUniformLocation(prog, n);
   // every texture is read cell by cell: no smoothing anywhere, that is the look
   const mk = (unit) => { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.REPEAT], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v); return t; };
   const tE = mk(0), tA = mk(1), tB = mk(2), tC = mk(3), tD = mk(4), tF = mk(5);
   gl.uniform1i(U.uElev, 0); gl.uniform1i(U.uA, 1); gl.uniform1i(U.uB, 2); gl.uniform1i(U.uC, 3); gl.uniform1i(U.uD, 4); gl.uniform1i(U.uF, 5);
   const rgb = (list) => { const a = new Float32Array(list.length * 3); list.forEach((c, k) => { if (!c) return; a[k * 3] = parseInt(c.slice(1, 3), 16) / 255; a[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; a[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; }); return a; };
-  gl.uniform3fv(U.uFaith, rgb(FAITH_COLORS)); gl.uniform3fv(U.uSpec, rgb(SPECIES.map((s) => s.col).concat(['#7a6a5a']))); gl.uniform1fv(U.uTame, new Float32Array(20).map((_, k) => (SPECIES[k] && SPECIES[k].tame ? 1 : 0))); gl.uniform3fv(U.uZone, rgb(ZONES.map((z) => (z ? z.col : '#000000')))); gl.uniform3fv(U.uKind, rgb(KINDS.map((k) => k.col))); gl.uniform3fv(U.uFlora, rgb(PLANTS.map((q) => q.col).concat(['#555555'])));
+  gl.uniform3fv(U.uFaith, rgb(FAITH_COLORS)); gl.uniform3fv(U.uSpec, rgb(SPECIES.map((s) => s.col).concat(['#7a6a5a']))); gl.uniform3fv(U.uSpecL, rgb(SPECIES.map((s) => s.lc).concat(new Array(20 - SPECIES.length).fill('#777777')))); gl.uniform1fv(U.uTame, new Float32Array(20).map((_, k) => (SPECIES[k] && SPECIES[k].tame ? 1 : 0))); gl.uniform3fv(U.uZone, rgb(ZONES.map((z) => (z ? z.col : '#000000')))); gl.uniform3fv(U.uKind, rgb(KINDS.map((k) => k.col))); gl.uniform3fv(U.uFlora, rgb(PLANTS.map((q) => q.col).concat(['#555555'])));
   const stanceRGB = new Float32Array(96);
   const bD = new Uint8Array(CW * CH * 2); let mapStamp = -1, mapW = null;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);

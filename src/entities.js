@@ -1,6 +1,7 @@
 // Everything on the map that is not terrain: animals, peoples, roads, ruins, dragons, storms and
 // the brief flashes when something big happens. Drawn on the 2D overlay, on top of the shader.
 import { KINDS, STANCES, memAt, kindAt } from './memory.js';
+import { GOODS } from './trade.js';
 import { SPIRIT_KINDS } from './spirits.js';
 import { PLANTS, luckOf } from './origins.js';
 import { W, H, TAU, TPY, CS, CW, CH, clamp, wrapDx, hash2 } from './core.js';
@@ -81,7 +82,7 @@ function drawMovers(ctx, w, cam, z, frac) {
   if (z < 2.2) return; const k = pixScale(z, cam.dpr, 0.85);
   for (const m of w.movers) {
     if (m.done) continue; const x = m.px + wrapDx(m.x - m.px) * frac + 0.5, y = m.py + (m.y - m.py) * frac + 0.8; if (!seen(x, y, 2)) continue; const p = at(cam, x, y);
-    const c = w.cults[m.cult], col = c.color, flip = wrapDx(m.x - m.px) < 0;
+    const c = w.cults[m.cult], col = m.kind === 'trade' && m.goods >= 0 ? GOODS[m.goods].col : c.color, flip = wrapDx(m.x - m.px) < 0;
     if (m.wet && !m.path) { blit(ctx, m.kind === 'trade' || m.kind === 'army' ? 'ship' : 'boat', p[0], p[1], k, col, flip); if (m.kind === 'army') { ctx.fillStyle = '#e03a1f'; ctx.fillRect(Math.round(p[0] - k), Math.round(p[1] - 8 * k), 2 * k, k); } continue; }
     blit(ctx, m.kind === 'army' || m.kind === 'home' ? 'army' : m.kind === 'trade' ? 'caravan' : m.kind === 'settlers' ? 'settlers' : 'refugees', p[0], p[1], k, col, flip);
   }
@@ -108,6 +109,21 @@ function drawOther(ctx, w, cam, z, now, frac) {
   if (z >= 2.2) for (const sp of w.spirits) { if (!seen(sp.x, sp.y, 2)) continue; const x = sp.px + wrapDx(sp.x - sp.px) * frac + 0.5, y = sp.py + (sp.y - sp.py) * frac + 1; const p = at(cam, x, y); const bob = still || sp.kind === 'lich' || sp.kind === 'saint' || sp.kind === 'drowned' ? 0 : Math.round(Math.sin(now * 0.003 + sp.id) * k); blit(ctx, SPR_OF[sp.kind], p[0], p[1] + bob, k); if (z >= 6) label(ctx, cap(sp.name), p[0], p[1] + 2 * cam.dpr, Math.round(10 * cam.dpr), KINDS[SPIRIT_KINDS[sp.kind].mem].col, true, 40); }
   for (const st of w.storms2) { const x = st.px + wrapDx(st.x - st.px) * frac + 0.5, y = st.py + (st.y - st.py) * frac + 0.5; if (!seen(x, y, 4)) continue; const p = at(cam, x, y), col = KINDS[st.kind].col, q = Math.max(2, Math.round(z * cam.dpr * 0.35));
     for (let n = 0; n < 14; n++) { const a = n * 2.4 + (still ? 0 : now * 0.004), r = (0.4 + (n % 5) * 0.35) * z * cam.dpr; ctx.fillStyle = col; ctx.globalAlpha = 0.9 - (n % 5) * 0.15; ctx.fillRect(Math.round((p[0] + Math.cos(a) * r) / q) * q, Math.round((p[1] + Math.sin(a) * r) / q) * q, q, q); } ctx.globalAlpha = 1; }
+}
+// the Trade lens: every route as a line, as thick as its traffic, in the colour of what it carries
+function drawRoutes(ctx, w, cam, z, lens) {
+  if (lens !== 14) { if (z < 1.2 || z > 6) return; for (const r of w.routes.values()) if (r.name && seen(r.a.x, r.a.y, 30)) { const a = at(cam, r.a.x + 0.5, r.a.y + 0.5).slice(), b = at(cam, r.a.x + wrapDx(r.b.x - r.a.x) + 0.5, r.b.y + 0.5); label(ctx, r.name, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.round(10 * cam.dpr), r.wet ? '#bfe4ff' : '#f2e0b0', true, 20 + r.n); } return; }
+  const q = Math.max(1, Math.round(cam.dpr));
+  for (const r of w.routes.values()) {
+    if (r.n < 0.5) continue; let bg = 0; for (let g = 1; g < GOODS.length; g++) if (r.g[g] > r.g[bg]) bg = g;
+    const a = at(cam, r.a.x + 0.5, r.a.y + 0.5).slice(), dx = wrapDx(r.b.x - r.a.x), b = at(cam, r.a.x + dx + 0.5, r.b.y + 0.5); if (Math.max(a[0], b[0]) < 0 || Math.min(a[0], b[0]) > cam.w) continue;
+    ctx.strokeStyle = r.g[bg] > 0 ? GOODS[bg].col : '#d8d0c0'; ctx.globalAlpha = Math.min(1, 0.35 + r.n / 10); ctx.lineWidth = q * Math.min(7, 1 + Math.sqrt(r.n)); ctx.setLineDash(r.wet ? [4 * q, 3 * q] : []);
+    ctx.beginPath(); ctx.moveTo(Math.round(a[0]), Math.round(a[1])); ctx.lineTo(Math.round(b[0]), Math.round(b[1])); ctx.stroke();
+    if (r.name) label(ctx, r.name, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 6 * cam.dpr, Math.round(11 * cam.dpr), GOODS[r.good ?? bg].col, true, 60 + r.n);
+  }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  for (const s of w.sets) if (s.market && seen(s.x, s.y, 2)) { const p = at(cam, s.x + 0.5, s.y + 0.5), R = 4 * q + z * cam.dpr * 0.6; ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2 * q; ctx.strokeRect(Math.round(p[0] - R), Math.round(p[1] - R), Math.round(2 * R), Math.round(2 * R)); }
+  for (const p of w.pirates) { if (!seen(p.x, p.y, 3)) continue; const s = at(cam, p.x + 0.5, p.y + 0.5); blit(ctx, 'ship', s[0], s[1], pixScale(z, cam.dpr), '#1b1714'); label(ctx, p.name, s[0], s[1] + 4 * cam.dpr, Math.round(10 * cam.dpr), '#ff8a7a', true, 45); }
 }
 function drawDragons(ctx, w, cam, z, now, frac) {
   for (const d of w.dragons) {
@@ -157,7 +173,7 @@ hook('overlay', (ctx, w, cam, S, now) => {
   const s = cam.z * cam.dpr, z = cam.z, frac = clamp(S.acc, 0, 1);
   view = { x: cam.x, y: cam.y, hw: cam.w / (2 * s), hh: cam.h / (2 * s) };
   const bare = S.lens === 4 || S.lens === 5;
-  if (!bare) { drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
+  if (!bare) { drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawRoutes(ctx, w, cam, z, S.lens); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
   flushLabels(ctx); drawFx(ctx, w, cam, s, now); drawSel(ctx, cam, S, now);
 });
 
@@ -193,6 +209,9 @@ const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fis
   if (!s.nomad) { const ex = []; if (s.walls) ex.push('stone walls'); if (s.links) ex.push(s.links === 1 ? 'a road' : s.links + ' roads'); if (s.port && c.arts.boats) ex.push('a harbour'); if (s.wonder) ex.push('a wonder'); if (s.tower) ex.push('a tower nobody built'); if (ex.length) L.push(`It has ${list(ex)}.`);
     const o = []; for (let k = 1; k <= 6; k++) if (s.ores & (1 << k)) o.push(ORES[k]); if (o.length) L.push(`${cap(list(o))} in its ground.`);
     if (s.burned) L.push(`A dragon has burned it ${s.burned === 1 ? 'once' : s.burned + ' times'}.`); }
+  { const ex = Object.keys(s.exp || {}).filter((g) => w.year - s.exp[g] < 15).map((g) => GOODS[g].name), im = Object.keys(s.imp || {}).filter((g) => w.year - s.imp[g] < 15).map((g) => GOODS[g].name);
+    if (ex.length) L.push(`It sells ${list(ex)}.`); if (im.length) L.push(`It buys ${list(im)}.`);
+    const named = [...w.routes.values()].filter((r) => r.name && (r.a === s || r.b === s)).map((r) => r.name); if (s.market) L.push(`It is a great market${named.length ? ', on ' + list(named) : ''}.`); else if (named.length) L.push(`It lies on ${list(named)}.`); }
   return { title: s.name || `A band of the ${c.name}`, sub: s.nomad ? c.kind : `${TIER[s.tier]} of the ${c.name}`, color: colorOf(c), bar, lines: L.concat(cultLines(w, c)), split: L.length, splitTitle: 'The ' + c.name, follow: { pos: () => (s.dead ? null : [s.x, s.y, s.R + 0.6]), info: () => (s.dead ? null : setInfo(w, s)) } };
 }
 export const describeSet = setInfo;
