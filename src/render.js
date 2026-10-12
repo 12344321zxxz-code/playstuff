@@ -42,7 +42,7 @@ export function createRenderer(glc) {
         bB[j] = water[i] === 2 ? clamp(20 + (filled[i] - h[i]) * 2500, 20, 255) : 0; bB[j + 1] = river[i] * 60; bB[j + 2] = 0; if (river[i]) { const d = down[i]; if (d >= 0) { let dx = (d % W) - (i % W); if (dx > 1) dx = -1; else if (dx < -1) dx = 1; const dy = ((d / W) | 0) - ((i / W) | 0); bB[j + 2] = (dx + 1) + (dy + 1) * 3 + 1; } } let kd = 0, kv = 0.15; const mb = i * 5; for (let q = 0; q < 5; q++) if (mem[mb + q] > kv) { kv = mem[mb + q]; kd = q + 1; } bB[j + 3] = kd | (ley[i] > 0.15 ? 8 : 0) | (memLock[i] ? 16 : 0) | ((flora[i] === 255 ? 7 : flora[i]) << 5);
         bC[j] = ocult[i] + 1; bC[j + 1] = (farm[i] ? 1 : 0) | (urban[i] ? 2 : 0) | (fireT[i] ? 4 : 0) | (ash[i] > 0.3 ? 8 : 0) | (ice[i] ? 16 : 0) | (lava[i] ? 64 : 0) | (road[i] ? 32 : 0) | (w.wall && w.wall[i] ? 128 : 0); bC[j + 2] = plate[i] | (w.canal && w.canal[i] === 2 ? 128 : 0);
         v = lens === 12 ? wildCrop[i] * 255 : lens === 3 ? soil[i] * 170 : magic[i] * 255; bC[j + 3] = v > 255 ? 255 : v;
-        v = graze[i] * 127; bF[j] = v > 255 ? 255 : v; bF[j + 1] = hunt[i] * 255; bF[j + 2] = spAt[i]; bF[j + 3] = zones[i];
+        v = graze[i] * 127; bF[j] = v > 255 ? 255 : v; bF[j + 1] = hunt[i] * 255; bF[j + 2] = spAt[i]; bF[j + 3] = zones[i] | (w.fallout ? Math.min(7, Math.round(w.fallout[i] * 5)) << 5 : 0);
       }
       const up = (unit, tex, data) => { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, data); };
       up(1, tA, bA); up(2, tB, bB); up(3, tC, bC); up(5, tF, bF);

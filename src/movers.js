@@ -25,7 +25,7 @@ export function moversTick(w) {
     const sp = m.path ? 1.25 : wet ? m.sea : m.land, dx = wrapDx(tx - m.x), dy = ty - m.y, l = Math.hypot(dx, dy);
     if (l <= sp) { m.x = tx; m.y = ty; if (m.path && ++m.pi < m.path.length) continue; m.done = true; gone = true; const fn = arrive[m.kind]; if (fn) fn(w, m); continue; }
     m.x = wx(m.x + (dx / l) * sp); m.y += (dy / l) * sp;
-    if (wet) { ships++;
+    if (wet && m.kind !== 'missile') { ships++;
       for (const s of w.storms) if (s.str > 0.6 && wrapDx(s.x - m.x) ** 2 + (s.y - m.y) ** 2 < 20 && rnd() < 0.3 * s.str) { sink(w, m, 'storm'); break; }
       if (!m.done) { const kr = krakenNear(w, m.x, m.y); if (kr && rnd() < 0.28) sink(w, m, kr); }
       if (!m.done && (w.tickN & 3) === 0) { const pr = pirateNear(w, m); if (pr && rnd() < 0.3) { m.done = true; pr.taken++; pr.last = w.year; if (pr.taken === 1 || pr.taken % 10 === 0) ev(w, `${pr.name[0].toUpperCase() + pr.name.slice(1)} take a ship of the ${w.cults[m.cult].name}${m.goods >= 0 ? ' and everything in its hold' : ''}.`, Math.round(m.x), Math.round(m.y), null, 1); } }

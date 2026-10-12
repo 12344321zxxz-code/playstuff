@@ -10,6 +10,7 @@ import { initMagic, magicYear, magicTick, dragonsTick } from './fantasy.js';
 import { flowMemory } from './memory.js';
 import { initTrade, tradeYear } from './trade.js';
 import { initWorks, worksYear } from './works.js';
+import { initDoom, doomYear, doomTick } from './doom.js';
 import { naturalYear, stormsTick, swarmsTick } from './disasters.js';
 import { discover, ev } from './story.js';
 import { initWeather, weatherYear } from './weather.js';
@@ -46,7 +47,7 @@ export function makeWorld(seed, opts) {
   seasonFields(w);
   seedOre(w);
   w.ice0 = w.landIce; w.landCount = countLand(w); w.mi0 = Float32Array.from(w.mi); baseline(w);
-  initFaith(w); initTrade(w); initWorks(w); initSea(w); initFauna(w); initOrigins(w); initMagic(w); initPeople(w, opts && opts.bands);
+  initFaith(w); initTrade(w); initWorks(w); initDoom(w); initSea(w); initFauna(w); initOrigins(w); initMagic(w); initPeople(w, opts && opts.bands);
   w.events.length = 0; w.found = {};
   return w;
 }
@@ -55,8 +56,8 @@ function baseline(w) { let land = 0, des = 0, forest = 0, mon = 0; for (let i = 
 function countLand(w) { let n = 0; for (let i = 0; i < N; i++) if (w.water[i] !== 1) n++; return n; }
 // Ore goes where the rock is: metals in the hills, salt in dry basins.
 function seedOre(w) {
-  const rnd = w.rnd, sea = w.params.sea, want = [0, 26, 14, 40, 12, 16, 18];
-  for (let kind = 1; kind <= 6; kind++) for (let k = 0, tries = 0; k < want[kind] && tries < 6000; tries++) {
+  const rnd = w.rnd, sea = w.params.sea, want = [0, 26, 14, 40, 12, 16, 18, 10];
+  for (let kind = 1; kind <= 7; kind++) for (let k = 0, tries = 0; k < want[kind] && tries < 6000; tries++) {
     const i = (rnd() * N) | 0; if (w.water[i] === 1 || w.ore[i] || w.ice[i]) continue; const hh = w.h[i] - sea;
     if (kind === 5 ? !(w.mi[i] < 0.35 && hh < 0.15) : kind === 6 ? !(hh > 0.03 && hh < 0.28 && w.mi[i] > 0.7) : !(hh > (kind === 4 ? 0.2 : 0.1) && hh < 0.6)) continue;
     w.ore[i] = kind; k++;
@@ -78,10 +79,10 @@ export function tick(w) {
   w.tickN++; w.phase = (w.tickN % TPY) / TPY; w.year = Math.floor(w.tickN / TPY);
   if (w.aerosol > 0.001) w.aerosol *= 0.975; else w.aerosol = 0;
   seasonFields(w, w.tickN & 1); vegetation(w, w.tickN & 3); fireStep(w);
-  if (!(w.tickN & 1)) fauna(w); dragonsTick(w); magicTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
+  doomTick(w); if (!(w.tickN & 1)) fauna(w); dragonsTick(w); magicTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
   // the yearly work is spread over the year's ticks so no single tick is heavy
   const ph = w.tickN % TPY;
-  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); originsYear(w); } else if (ph === 3) magicYear(w); else if (ph === 7) flowMemory(w); else if (ph === 4) naturalYear(w); else if (ph === 5) { roadsYear(w); tradeYear(w); } else if (ph === 6) worksYear(w);
+  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); originsYear(w); } else if (ph === 3) magicYear(w); else if (ph === 7) flowMemory(w); else if (ph === 4) { naturalYear(w); doomYear(w); } else if (ph === 5) { roadsYear(w); tradeYear(w); } else if (ph === 6) worksYear(w);
   if (ph === 0) {
     const y = w.year;
     for (let i = 0; i < N; i += 4) { const b = w.wetBias[i]; if (b !== 0) { w.wetBias[i] = b * 0.996; w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } else { w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } }

@@ -1,6 +1,7 @@
 // The rest of the god's hands: animals, peoples, catastrophes and the unnatural.
 import { W, H, N, DISC, clamp, wx, wrapDx } from './core.js';
 import { route, forgetAt, sumMagic, NK } from './memory.js';
+import { nuke, disarm } from './doom.js';
 import { PLANTS, floraMap } from './origins.js';
 import { registerTools, addLens, say } from './main.js';
 import { SPECIES, addHerd, addPack, cull } from './fauna.js';
@@ -16,7 +17,7 @@ const SP_OPTS = ['Whatever fits'].concat(SPECIES.map((s) => s.name[0].toUpperCas
 registerTools([
   { id: 'spring', label: 'Spring', group: 'Land', hint: 'Tap high ground to open a spring. A river starts there and finds its own way down.', miss: 'A spring needs dry land.',
     apply(w, p) { const i = cell(p); if (w.water[i]) return false; w.springs.push({ x: i % W, y: (i / W) | 0, q: 420 }); if (w.springs.length > 40) w.springs.shift(); w.need.water = true; w.edited = true; say('Water comes up out of the rock.'); return true; } },
-  { id: 'ore', label: 'Ore', group: 'Land', opts: ['Copper', 'Tin', 'Iron', 'Gold', 'Salt', 'Coal'], hint: 'Tap to bury a seam. Copper and tin together make bronze; iron makes harder wars; coal, much later, makes smoke. Zoom in to see seams.', miss: 'Ore needs dry land.',
+  { id: 'ore', label: 'Ore', group: 'Land', opts: ['Copper', 'Tin', 'Iron', 'Gold', 'Salt', 'Coal', 'Uranium'], hint: 'Tap to bury a seam. Copper and tin together make bronze; iron makes harder wars; coal, much later, makes smoke. Zoom in to see seams.', miss: 'Ore needs dry land.',
     apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i] === 1) return false; w.ore[i] = opt + 1; w.oreStamp = (w.oreStamp || 0) + 1; say(`${ORES[opt + 1][0].toUpperCase() + ORES[opt + 1].slice(1)} lies under the ground here now.`); return true; } },
   { id: 'storm', label: 'Storm', group: 'Sky', radius: 4, hint: 'Tap warm sea to start a storm. The wind decides where it lands.', miss: 'The sky is already full of storms.',
     apply(w, p) { return stormAt(w, p.x, p.y); } },
@@ -30,6 +31,7 @@ registerTools([
     apply(w, p) { return !!addBand(w, p.x - 0.5, p.y - 0.5); } },
   { id: 'idea', label: 'Idea', group: 'Peoples', radius: 8, lens: 15, opts: ['Their next step', 'Food', 'Metal', 'Getting about', 'Learning', 'War'], hint: 'Tap near a people to hand them a leap of knowledge. They can only learn what their land allows: no boats without a shore.', miss: 'Nobody is near enough to hear it.',
     apply(w, p, f, r, st, opt) { const ok = inspire(w, p.x, p.y, opt); if (ok) say(w.events.length ? w.events[w.events.length - 1].text : 'An idea takes hold.'); return ok; } },
+  { id: 'disarm', label: 'Disarm', group: 'Peoples', radius: 10, lens: 15, hint: 'Tap a people with the bomb to make them give it up. They will not learn it again for a long time.', miss: 'Nobody near there has the bomb.', apply(w, p) { return disarm(w, p.x, p.y); } },
   { id: 'babel', label: 'Babel', group: 'Peoples', radius: 8, lens: 6, hint: 'Tap a large people to confuse their tongues. They will not stay one people for long.', miss: 'It needs a people with at least three settlements.',
     apply(w, p) { return babel(w, p.x, p.y); } },
   { id: 'meteor', label: 'Meteor', group: 'Wrath', radius: 6, hint: 'Tap to drop a star. On land it leaves a crater; at sea it sends a wave.',
@@ -42,6 +44,7 @@ registerTools([
     apply(w, p) { return tsunami(w, p.x - 0.5, p.y - 0.5); } },
   { id: 'plague', label: 'Plague', group: 'Wrath', radius: 8, lens: 6, hint: 'Tap a settlement to start a bad sickness. It travels with neighbours, caravans, ships and people fleeing it.', miss: 'Nobody is near enough to catch it.',
     apply(w, p) { return plagueAt(w, p.x, p.y); } },
+  { id: 'bomb', label: 'The bomb', group: 'Wrath', radius: 7, hint: 'Tap to drop a bomb. A city is gone in a moment; the fallout rides the wind; the dead remember.', apply(w, p) { nuke(w, Math.round(p.x - 0.5), Math.round(p.y - 0.5), null); return true; } },
   { id: 'locusts', label: 'Locusts', group: 'Wrath', radius: 3, hint: 'Tap land to hatch a swarm. It rides the wind for a couple of years, eating grass and grain.', miss: 'Too many swarms already, or no land there.',
     apply(w, p) { return locustAt(w, p.x - 0.5, p.y - 0.5); } },
   { id: 'overgrow', label: 'Overgrow', group: 'Wrath', kind: 'brush', hint: 'Hold to let the forest take everything back: fields, roads, towns.', miss: 'Nothing grows on water.',
@@ -61,4 +64,4 @@ registerTools([
   { id: 'sow', label: 'Wild seed', group: 'Life', opts: PLANTS.map((q) => q.wild[0].toUpperCase() + q.wild.slice(1)), lens: 12, hint: 'Tap land to seed a wild plant across that whole landmass. Whoever lives there may learn to farm it, if the climate suits.', miss: 'It needs land.',
     apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i]) return false; const m = w.mass[i], k = w.floraKinds[m] || (w.floraKinds[m] = []); if (!k.includes(opt)) k.push(opt); floraMap(w); say(`${PLANTS[opt].wild[0].toUpperCase() + PLANTS[opt].wild.slice(1)} takes root ${w.pSuit[opt * N + i] > 100 ? 'here' : 'here, though it will only thrive where the climate suits it'}.`); return true; } },
 ]);
-addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins'); addLens(13, 'Beasts'); addLens(14, 'Trade'); addLens(15, 'Knowledge');
+addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins'); addLens(13, 'Beasts'); addLens(14, 'Trade'); addLens(15, 'Knowledge'); addLens(16, 'Fallout');

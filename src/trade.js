@@ -25,17 +25,18 @@ export const GOODS = [
   { key: 'gold', name: 'gold', col: '#ffd24a', v: 4 },
   { key: 'crafts', name: 'fine goods', col: '#c070e0', v: 3 },
   { key: 'relics', name: 'relics', col: '#9a8aff', v: 4 },
+  { key: 'uranium', name: 'uranium', col: '#7aff5a', v: 5 },
 ];
 export const G = Object.fromEntries(GOODS.map((g, k) => [g.key, k]));
 const LUX = [G.furs, G.spice, G.wine, G.gold, G.crafts, G.relics];
-const ROAD = { tin: 'the Tin Road', salt: 'the Salt Way', spice: 'the Spice Road', furs: 'the Fur Road', wine: 'the Wine Road', horses: 'the Horse Road', gold: 'the Gold Road', copper: 'the Copper Road', grain: 'the Grain Road', fish: 'the Herring Road', timber: 'the Timber Road', iron: 'the Iron Road', crafts: 'the Silk Road', relics: 'the Pilgrim Road' };
-const SEA = { spice: 'the Spice Sea', wine: 'the Wine-Dark Sea', tin: 'the Tin Sea', grain: 'the Grain Sea', fish: 'the Herring Sea', gold: 'the Gold Coast', timber: 'the Timber Sea', salt: 'the Salt Sea', furs: 'the Fur Sea', crafts: 'the Silk Sea', relics: 'the Pilgrims’ Sea', copper: 'the Copper Sea', iron: 'the Iron Sea', horses: 'the Horse Sea' };
+const ROAD = { uranium: 'the Yellow Road', tin: 'the Tin Road', salt: 'the Salt Way', spice: 'the Spice Road', furs: 'the Fur Road', wine: 'the Wine Road', horses: 'the Horse Road', gold: 'the Gold Road', copper: 'the Copper Road', grain: 'the Grain Road', fish: 'the Herring Road', timber: 'the Timber Road', iron: 'the Iron Road', crafts: 'the Silk Road', relics: 'the Pilgrim Road' };
+const SEA = { uranium: 'the Yellow Sea', spice: 'the Spice Sea', wine: 'the Wine-Dark Sea', tin: 'the Tin Sea', grain: 'the Grain Sea', fish: 'the Herring Sea', gold: 'the Gold Coast', timber: 'the Timber Sea', salt: 'the Salt Sea', furs: 'the Fur Sea', crafts: 'the Silk Sea', relics: 'the Pilgrims’ Sea', copper: 'the Copper Sea', iron: 'the Iron Sea', horses: 'the Horse Sea' };
 
 export function initTrade(w) { w.routes = new Map(); w.pirates = []; w.leagues = []; }
 
 // What a place makes and what it lacks, once a year, from its land and its people.
 export function tradeYear(w) {
-  const { t, tMean, mi, water } = w; for (const c of w.cults) c.timberOK = !!(c.metals & 128);
+  const { t, tMean, mi, water } = w; for (const c of w.cults) c.timberOK = !!(c.metals & 256);
   for (const s of w.sets) {
     if (s.dead) continue; const c = w.cults[s.cult], A = c.arts, make = (s.make = s.make || new Float32Array(GOODS.length)), need = (s.need = s.need || new Float32Array(GOODS.length)); make.fill(0); need.fill(0);
     let forest = 0, land = 0; const i0 = s.y * W + s.x;
@@ -43,6 +44,7 @@ export function tradeYear(w) {
     const src = s.src || [0, 0, 0, 0, 0], food = src.reduce((a, b) => a + b, 0) || 1, T = tMean[i0], m = mi[i0];
     if (src[3] > s.pop * 1.05) make[G.grain] = Math.min(3, (src[3] - s.pop) / 40);
     if (src[2] > s.pop * 0.5 && s.port) make[G.fish] = Math.min(2, src[2] / 80);
+    if (s.ores & 128 && A.electricity) make[G.uranium] = 2; if ((A.atomic || A.printing && A.electricity) && !(c._ownMetals & 128)) need[G.uranium] = 3;
     if (s.ores & 32) make[G.salt] = 2; if (s.ores & 2) make[G.copper] = 2; if (s.ores & 4) make[G.tin] = 2; if (s.ores & 8 && A.iron) make[G.iron] = 2; if (s.ores & 16) make[G.gold] = 2;
     if (forest >= 6) { make[G.timber] = Math.min(2, forest / 12); c.timberOK = true; }
     if (T < 5 && forest >= 4 && (src[1] > 0 || s.nomad)) make[G.furs] = 1.5;
@@ -103,7 +105,7 @@ export function deliver(w, m) {
 // Imports count as owning: a people with copper at home and tin from a far shore can cast bronze,
 // for as long as the tin keeps coming.
 export function importedMetals(w, c) {
-  let bits = 0; const imp = c.imp || {}; if (w.year - (imp[G.copper] ?? -99) < 25) bits |= 2; if (w.year - (imp[G.tin] ?? -99) < 25) bits |= 4; if (w.year - (imp[G.iron] ?? -99) < 25) bits |= 8; if (w.year - (imp[G.gold] ?? -99) < 25) bits |= 16; if (w.year - (imp[G.timber] ?? -99) < 25) bits |= 128; return bits;
+  let bits = 0; const imp = c.imp || {}; if (w.year - (imp[G.copper] ?? -99) < 25) bits |= 2; if (w.year - (imp[G.tin] ?? -99) < 25) bits |= 4; if (w.year - (imp[G.iron] ?? -99) < 25) bits |= 8; if (w.year - (imp[G.gold] ?? -99) < 25) bits |= 16; if (w.year - (imp[G.timber] ?? -99) < 25) bits |= 256; if (G.uranium != null && w.year - (imp[G.uranium] ?? -99) < 25) bits |= 128; return bits;
 }
 
 // Where many roads meet, a market grows, and markets grow rich.

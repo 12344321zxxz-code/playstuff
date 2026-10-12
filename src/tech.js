@@ -53,6 +53,19 @@ export const ART = {
   engines: { say: 'smoke and engines', tier: 5, req: ['steel', 'mills'], can: (c) => (c.metals & 64) !== 0 },
   railways: { say: 'railways', tier: 6, req: ['engines', 'roads'] },
   dynamite: { say: 'blasting powder', tier: 6, req: ['gunpowder', 'engines'] },
+  // wires and wings
+  electricity: { say: 'electricity', tier: 6, req: ['engines', 'schools'] },
+  telegraph: { say: 'the telegraph', tier: 6, req: ['electricity', 'alphabet'] },
+  oil: { say: 'oil', tier: 6, req: ['engines', 'dynamite'] },
+  flight: { say: 'flight', tier: 7, req: ['oil', 'engines'], push: (c) => (c.war ? 2 : 0) },
+  radio: { say: 'radio', tier: 7, req: ['electricity', 'telegraph'] },
+  atomic: { say: 'the split atom', tier: 7, req: ['electricity', 'printing'], can: (c) => (c.metals & 128) !== 0, push: (c) => (c.threat ? 4 : 0) },
+  reactors: { say: 'atomic power', tier: 7, req: ['atomic'] },
+  rockets: { say: 'rockets', tier: 7, req: ['flight', 'gunpowder'], push: (c) => (c.threat ? 2 : 0) },
+  // the end of the world
+  bomb: { say: 'the bomb', tier: 8, req: ['atomic', 'steel'], can: (c, e) => e.cities >= 2, push: (c) => (c.threat ? 6 : 0) + (c.war ? 3 : 0) },
+  missiles: { say: 'missiles', tier: 8, req: ['bomb', 'rockets'], push: (c) => (c.threat ? 3 : 0) },
+  germlabs: { say: 'bred plagues', tier: 8, req: ['sanitation', 'electricity'], push: (c) => (c.war ? 2 : 0) },
   // the other road: what sorcerers learn instead
   craft: { say: 'the craft', tier: 9, req: [] },
   wards: { say: 'warding', tier: 2, req: ['craft'], can: (c) => c.stance === 'use', push: (c) => (c.hurt > 1 ? 3 : 0) },
@@ -62,7 +75,7 @@ export const ART = {
 };
 export const ART_KEYS = Object.keys(ART);
 // How much knowledge in general each era needs (the old thresholds, kept as the pace of history).
-export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 90000000];
+export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 70000000, 120000000, 200000000];
 export const techOf = (k) => { let t = 0; while (t < TECH.length && k >= TECH[t]) t++; return t; };
 
 export function canLearn(c, k, easy) {
@@ -81,25 +94,25 @@ export function nextInvention(c, rnd) {
   return { k: cand[cand.length - 1][0], push: cand[cand.length - 1][1] };
 }
 // Why a people cannot learn something yet, in words, for the Look panel.
-const WHY = { farming: 'nothing they could sow grows near them', riding: 'they have no horses or camels', copper: 'there is no copper in their ground', bronze: 'they lack copper or tin', iron: 'they have no iron', sailing: 'they have no timber for ships', wheel: 'they have no draft animals', plough: 'they have no ox or horse to pull it', engines: 'they have no coal', gunpowder: 'they have no saltpetre or coal', steel: 'they have no iron or coal', coinage: 'they have no gold, and too little trade', banking: 'they have no great market' };
+const WHY = { atomic: 'they have no uranium, mined or bought', bomb: 'they have too few cities',  farming: 'nothing they could sow grows near them', riding: 'they have no horses or camels', copper: 'there is no copper in their ground', bronze: 'they lack copper or tin', iron: 'they have no iron', sailing: 'they have no timber for ships', wheel: 'they have no draft animals', plough: 'they have no ox or horse to pull it', engines: 'they have no coal', gunpowder: 'they have no saltpetre or coal', steel: 'they have no iron or coal', coinage: 'they have no gold, and too little trade', banking: 'they have no great market' };
 export function blockedReasons(c) {
   const out = [];
-  for (const k of ['farming', 'riding', 'bronze', 'iron', 'sailing', 'wheel', 'plough', 'engines']) {
+  for (const k of ['farming', 'riding', 'bronze', 'iron', 'sailing', 'wheel', 'plough', 'engines', 'atomic']) {
     const T = ART[k]; if (c.arts[k] || !T.can || c.tech + 1 < T.tier || T.req.some((r) => !c.arts[r])) continue;
     if (!T.can(c, c.env, true) && WHY[k]) out.push(`no ${T.say}: ${WHY[k]}`);
   }
   return out;
 }
 // The age a people lives in, in words.
-export const ERA = ['the old stone', 'the first fields', 'bronze and kings', 'iron and empire', 'the long middle', 'powder and print', 'smoke and steam'];
+export const ERA = ['the old stone', 'the first fields', 'bronze and kings', 'iron and empire', 'the long middle', 'powder and print', 'smoke and steam', 'wires and wings', 'the bomb'];
 // What their knowledge does to an army.
 export function warMult(c) {
   const A = c.arts; let m = 1;
   if (A.bronze && !c.bronzeCut) m *= 1.3; if (A.iron) m *= 1.35; if (A.chariots) m *= 1.15; if (A.riding) m *= A.stirrups ? 1.55 : 1.3; if (A.steel) m *= 1.2;
-  if (A.gunpowder) m *= 1.45; if (A.cannon) m *= 1.3; if (A.railways) m *= 1.2; if (A.wards) m *= 1.1; if (A.bureaucracy) m *= 1.15;
+  if (A.gunpowder) m *= 1.45; if (A.cannon) m *= 1.3; if (A.railways) m *= 1.2; if (A.flight) m *= 1.35; if (A.radio) m *= 1.1; if (A.rockets) m *= 1.15; if (A.wards) m *= 1.1; if (A.bureaucracy) m *= 1.15;
   return m;
 }
 // How much walls still matter against them.
-export const wallsAgainst = (att) => (att.arts.cannon ? 1.0 : att.arts.siege ? 1.2 : 1.6);
+export const wallsAgainst = (att) => (att.arts.cannon || att.arts.flight ? 1.0 : att.arts.siege ? 1.2 : 1.6);
 // How much harder they are on the memory of the world, for magic.
-export function drainOf(A) { let d = 0; for (const k in A) { const T = ART[k]; if (!T || k === 'craft' || T.req.includes('craft')) continue; d += T.tier >= 5 ? 0.012 : T.tier >= 4 ? 0.005 : T.tier >= 3 ? 0.003 : 0.001; } return d + (A.engines ? 0.03 : 0); }
+export function drainOf(A) { let d = 0; for (const k in A) { const T = ART[k]; if (!T || k === 'craft' || T.req.includes('craft')) continue; d += T.tier >= 7 ? 0.03 : T.tier >= 5 ? 0.012 : T.tier >= 4 ? 0.005 : T.tier >= 3 ? 0.003 : 0.001; } return d + (A.engines ? 0.03 : 0); }

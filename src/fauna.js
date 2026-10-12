@@ -36,7 +36,7 @@ export function habMap(w, part) {
 export const habitat = (w, sp, i) => (w.hab ? w.hab[sp * N + i] / 100 : habRaw(w, sp, i));
 // What a cell of plants can feed: grass fully, woods partly (browse), fields a little (raided).
 // the dead blight what grows near them; deep wild country grows beasts bigger than they should be
-function forage(w, i) { if (w.water[i] || w.ice[i] || w.urban[i]) return 0; const b = i * 5, m = w.mem; const k = m ? (1 - 0.8 * Math.min(1, m[b])) * (1 + 0.5 * Math.min(1, m[b + 1])) : 1; if (w.farm[i]) return 0.15 * k; return (w.g[i] * 0.9 + w.t[i] * 0.4) * k; }
+function forage(w, i) { if (w.water[i] || w.ice[i] || w.urban[i]) return 0; const b = i * 5, m = w.mem; const k = (m ? (1 - 0.8 * Math.min(1, m[b])) * (1 + 0.5 * Math.min(1, m[b + 1])) : 1) * (w.fallout ? 1 - Math.min(1, w.fallout[i]) : 1); if (w.farm[i]) return 0.15 * k; return (w.g[i] * 0.9 + w.t[i] * 0.4) * k; }
 
 export function initFauna(w) {
   const rnd = w.rnd; w.graze = new Float32Array(N); w.hunt = new Float32Array(N); w.spAt = new Uint8Array(N).fill(255); w.species = SPECIES.map(() => ({ alive: false, ever: false, n: 0 })); w.massKinds = {};

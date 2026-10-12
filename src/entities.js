@@ -16,7 +16,7 @@ import { TENET } from './faith.js';
 for (let k = 0; k < 32; k++) { const c = COLORS[k % COLORS.length]; palette[k * 3] = parseInt(c.slice(1, 3), 16) / 255; palette[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; palette[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; }
 
 const A = [0, 0], B = [0, 0];
-const ORE_COL = ['', '#d9843b', '#cfd6dc', '#7b4a3a', '#ffd23a', '#ffffff', '#2a2a2e'];
+const ORE_COL = ['', '#d9843b', '#cfd6dc', '#7b4a3a', '#ffd23a', '#ffffff', '#2a2a2e', '#7aff5a'];
 const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 let view = null;
 const seen = (x, y, m) => Math.abs(wrapDx(x - view.x)) < view.hw + m && Math.abs(y - view.y) < view.hh + m;
@@ -84,6 +84,7 @@ function drawMovers(ctx, w, cam, z, frac) {
   for (const m of w.movers) {
     if (m.done) continue; const x = m.px + wrapDx(m.x - m.px) * frac + 0.5, y = m.py + (m.y - m.py) * frac + 0.8; if (!seen(x, y, 2)) continue; const p = at(cam, x, y);
     const c = w.cults[m.cult], col = m.kind === 'trade' && m.goods >= 0 ? GOODS[m.goods].col : c.color, flip = wrapDx(m.x - m.px) < 0;
+    if (m.kind === 'missile') { const t = (wrapDx(m.tx - m.x) < 0); blit(ctx, 'missile', p[0], p[1] - 6 * k, k, null, t); continue; }
     if (m.wet && !m.path) { blit(ctx, m.kind === 'trade' || m.kind === 'army' ? 'ship' : 'boat', p[0], p[1], k, col, flip); if (m.kind === 'army') { ctx.fillStyle = '#e03a1f'; ctx.fillRect(Math.round(p[0] - k), Math.round(p[1] - 8 * k), 2 * k, k); } continue; }
     blit(ctx, m.kind === 'army' || m.kind === 'home' ? 'army' : m.kind === 'trade' ? 'caravan' : m.kind === 'settlers' ? 'settlers' : 'refugees', p[0], p[1], k, col, flip);
   }
@@ -103,7 +104,7 @@ function drawSea(ctx, w, cam, z, now) {
     if (z >= 7) label(ctx, kr.name, p[0], p[1] + 2 * cam.dpr, Math.round(11 * cam.dpr), '#d9c2ee', true, 50); }
 }
 // the other world: wellsprings, the things that rose from memory, and ley storms on the move
-const SPR_OF = { host: 'host', shamblers: 'shamblers', lich: 'lich', hunger: 'hunger', drowned: 'drowned', fey: 'fey', saint: 'saint' };
+const SPR_OF = { burned: 'shamblers', host: 'host', shamblers: 'shamblers', lich: 'lich', hunger: 'hunger', drowned: 'drowned', fey: 'fey', saint: 'saint' };
 function drawOther(ctx, w, cam, z, now, frac) {
   const k = pixScale(z, cam.dpr);
   if (z >= 1.6) for (const q of w.wells) { if (!seen(q.x, q.y, 2)) continue; const p = at(cam, q.x + 0.5, q.y + 1); blit(ctx, 'well', p[0], p[1], k, KINDS[q.kind || 0].col); if (z >= 5 && q.name) label(ctx, cap(q.name), p[0], p[1] + 2 * cam.dpr, Math.round(10 * cam.dpr), '#e6dcff', true, 30); }
@@ -153,6 +154,8 @@ function drawFx(ctx, w, cam, s, now) {
     if (f.t0 == null) f.t0 = now; const u = (now - f.t0) / (f.T * 1000); if (u >= 1) { f.done = true; continue; }
     toScreen(cam, f.x + 0.5, f.y + 0.5, A);
     if (f.k === 'boom') { const R = (2 + 9 * Math.sqrt(u)) * s; ctx.beginPath(); ctx.arc(A[0], A[1], R, 0, TAU); ctx.fillStyle = `rgba(255,${Math.round(230 - 120 * u)},${Math.round(160 - 150 * u)},${0.8 * (1 - u)})`; ctx.fill(); ctx.lineWidth = 3 * cam.dpr; ctx.strokeStyle = `rgba(255,255,255,${1 - u})`; ctx.stroke(); shake = Math.max(shake, 1 - u); }
+    else if (f.k === 'nuke') { const q = Math.max(2, Math.round(s * 0.5)), R = (3 + 12 * Math.sqrt(u)) * s, rise = u * 16 * s; shake = Math.max(shake, 1 - u);
+      for (let k = 0; k < 90; k++) { const a = k * 2.399, r = R * Math.sqrt((k % 30) / 30), stem = k < 30, x = stem ? A[0] + Math.sin(a) * s * 1.2 : A[0] + Math.cos(a) * r, y = stem ? A[1] - (k / 30) * rise : A[1] - rise + Math.sin(a) * r * 0.45; ctx.fillStyle = `rgba(255,${(200 - 160 * u) | 0},${(120 - 110 * u) | 0},${1 - u})`; ctx.fillRect(Math.round(x / q) * q, Math.round(y / q) * q, q, q); } }
     else if (f.k === 'flash') { if (!still) { ctx.fillStyle = `rgba(255,255,255,${0.85 * (1 - u)})`; ctx.fillRect(0, 0, cam.w, cam.h); } }
     else if (f.k === 'plume') { for (let q = 0; q < 9; q++) { const a = u * 1.6 + q * 0.11, d = a * 9 * s, rr = (1 + a * 3) * s; ctx.beginPath(); ctx.arc(A[0] + f.ux * d + Math.sin(q * 7.1) * rr * 0.4, A[1] + f.uy * d - a * s * 1.5 + Math.cos(q * 5.3) * rr * 0.4, rr, 0, TAU); ctx.fillStyle = `rgba(52,46,44,${0.5 * (1 - u)})`; ctx.fill(); }
       ctx.beginPath(); ctx.arc(A[0], A[1], s * (0.8 + 0.5 * Math.sin(now * 0.02)), 0, TAU); ctx.fillStyle = `rgba(255,150,40,${1 - u})`; ctx.fill(); shake = Math.max(shake, 0.5 * (1 - u)); }
@@ -210,7 +213,7 @@ const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fis
   L.push(s.plague > 0 ? NOTE.plague : NOTE[s.note] || NOTE.grow);
   if (s.faith != null && s.faith !== c.faith) L.push(`Its people pray to ${w.faiths[s.faith].name}, not the god of their rulers.`);
   if (!s.nomad) { const ex = []; if (s.walls) ex.push('stone walls'); if (s.links) ex.push(s.links === 1 ? 'a road' : s.links + ' roads'); if (s.port && c.arts.boats) ex.push('a harbour'); if (s.wonder) ex.push('a wonder'); if (s.tower) ex.push('a tower nobody built'); if (ex.length) L.push(`It has ${list(ex)}.`);
-    const o = []; for (let k = 1; k <= 6; k++) if (s.ores & (1 << k)) o.push(ORES[k]); if (o.length) L.push(`${cap(list(o))} in its ground.`);
+    const o = []; for (let k = 1; k <= 7; k++) if (s.ores & (1 << k)) o.push(ORES[k]); if (o.length) L.push(`${cap(list(o))} in its ground.`);
     if (s.burned) L.push(`A dragon has burned it ${s.burned === 1 ? 'once' : s.burned + ' times'}.`); }
   { const ex = Object.keys(s.exp || {}).filter((g) => w.year - s.exp[g] < 15).map((g) => GOODS[g].name), im = Object.keys(s.imp || {}).filter((g) => w.year - s.imp[g] < 15).map((g) => GOODS[g].name);
     if (ex.length) L.push(`It sells ${list(ex)}.`); if (im.length) L.push(`It buys ${list(im)}.`);
@@ -221,7 +224,7 @@ export const describeSet = setInfo;
 const MOVE = { settlers: (w, m, c) => [`Settlers of the ${c.name}`, `${Math.round(m.n)} people with everything they own, looking for a place to stop.`], army: (w, m, c) => [`A war band of the ${c.name}`, `About ${Math.round(m.n)} spears${m.to && !m.to.dead && m.to.name ? ', marching on ' + m.to.name : ''}.`], home: (w, m, c) => [`A war band of the ${c.name}`, 'On the way home.'], trade: (w, m, c) => [m.wet0 ? `A trading ship of the ${c.name}` : `A caravan of the ${c.name}`, `${m.from && m.from.name ? 'From ' + m.from.name : 'On its way'}${m.to && m.to.name ? ' to ' + m.to.name : ''}. It carries goods, news, and whatever else is going around.`], refugees: (w, m, c) => [`People of the ${c.name}, fleeing`, `${Math.round(m.n)} people walking away from hunger or worse.`] };
 const RUIN_SAY = { abandoned: 'Its people left, or died out.', sacked: 'It was sacked and burned.', drowned: 'The sea took it.', buried: 'Ash and lava buried it.', burned: 'Fire took it.', plague: 'Plague emptied it.', frozen: 'The ice closed over it.', overgrown: 'The forest swallowed it.', crater: 'A falling star erased it.', swallowed: 'The earth opened under it.', dragon: 'A dragon made it a roost.' };
 const WORK_SAY = { dam: ['A dam', 'A wall across the river. The lake behind it waters the fields below.'], canal: ['A canal', 'Dug through the land so ships can pass from one sea to the other.'], ditch: ['Irrigation canals', 'River water carried out into dry country.'], polder: ['Polders', 'Fields on what used to be the sea floor, behind dikes.'], wall: ['A great wall', 'Built across the grass to keep the riders out. Most raids stop at it.'], pass: ['A blasted pass', 'A mountain cut through for a road.'], raised: ['Raised land', 'Called up out of the sea by sorcerers.'] };
-const SP_SAY = { host: 'A dead army that fights its war again every night. Nobody settles near it; those who live close sicken and leave.', shamblers: 'The dead of a plague, walking. Wherever they reach, the sickness comes back.', lich: 'A dead king in a ruined hall. It sends the dead against the living, and against its enemies first.', hunger: 'Something in the cold woods that is never full. It takes travellers, herders and game.', drowned: 'Bells under the water. Ships founder nearby; the drowned come ashore in storms.', fey: 'A court under old trees. It steals children, unless a people bargains with it; then their fields never fail.', saint: 'A holy place. Plagues turn back here, and the faithful hold together.' };
+const SP_SAY = { burned: 'The dead of a city that burned in a single moment. They walk out of the glass toward the living.',  host: 'A dead army that fights its war again every night. Nobody settles near it; those who live close sicken and leave.', shamblers: 'The dead of a plague, walking. Wherever they reach, the sickness comes back.', lich: 'A dead king in a ruined hall. It sends the dead against the living, and against its enemies first.', hunger: 'Something in the cold woods that is never full. It takes travellers, herders and game.', drowned: 'Bells under the water. Ships founder nearby; the drowned come ashore in storms.', fey: 'A court under old trees. It steals children, unless a people bargains with it; then their fields never fail.', saint: 'A holy place. Plagues turn back here, and the faithful hold together.' };
 function looker(w, x, y, i, r) {
   let hit = null, bd = r * r;
   for (const d of w.dragons) { for (const p of [[d.x, d.y], [d.lx, d.ly]]) { const q = wrapDx(p[0] - x) ** 2 + (p[1] - y) ** 2; if (q <= bd * 2.5) hit = d; } }

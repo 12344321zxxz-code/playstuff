@@ -120,7 +120,7 @@ export function memoryYear(w) {
   if (w.year > 300 && tot < (w.magicPeak || 0) * 0.35 && discover(w, 'quiet', null, null)) ev(w, 'The old places have gone quiet almost everywhere. Children are told the stories, and do not believe them.', null, null, null, 2);
   if (w.found.quiet && tot > w.magicPeak * 0.7 && w.year - w.found.quiet.year > 60 && discover(w, 'return', null, null)) ev(w, 'With the cities fallen, the old things are coming back.', null, null, null, 2);
 }
-export const RUIN_KIND = { sacked: DEATH, plague: DEATH, starved: DEATH, frozen: DEATH, abandoned: null, drowned: DEEP, buried: FIRE, crater: FIRE, dragon: FIRE, overgrown: WILD, swallowed: FIRE, burned: FIRE };
+export const RUIN_KIND = { nuked: DEATH, sacked: DEATH, plague: DEATH, starved: DEATH, frozen: DEATH, abandoned: null, drowned: DEEP, buried: FIRE, crater: FIRE, dragon: FIRE, overgrown: WILD, swallowed: FIRE, burned: FIRE };
 
 // Knowledge is corrosive. Every furnace, road and book wears the memory of a place away, and a
 // people's stance decides how hard they lean on it.

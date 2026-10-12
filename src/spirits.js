@@ -14,13 +14,14 @@ const KIND = {
   host: { mem: DEATH, name: (s) => `the Host of ${s.place}`, rise: (s) => `Where ${s.why}, the dead have not stopped fighting. On still nights the field fills with them.`, gone: (p) => `The host at ${p.place} lies down at last.` },
   shamblers: { mem: DEATH, name: (s) => `the dead of ${s.place}`, rise: (s) => `The dead of ${s.why} get up and start walking.`, gone: (p) => `The last of ${p.name} falls and does not get up.` },
   lich: { mem: DEATH, name: (s) => `the Dead King of ${s.place}`, rise: (s) => `In the ashes of ${s.place}, something puts on the old crown. It remembers who burned its city.`, gone: (p) => `${cap(p.name)} is gone. Its hall is only a ruin again.` },
+  burned: { mem: DEATH, name: (s) => `the Burned of ${s.place}`, rise: (s) => `Out of the glass where ${s.place} stood, the burned come walking. They do not feel the cold, and they are looking for everyone who was not there that day.`, gone: (p) => `The last of ${p.name} lie down in the ash.` },
   hunger: { mem: DEATH, name: (s) => `the Hunger of ${s.place}`, rise: (s) => `Something walks the cold woods around ${s.place}, where ${s.why}. It is never full.`, gone: (p) => `No one has seen ${p.name} in years.` },
   drowned: { mem: DEEP, name: (s) => `the Bells of ${s.place}`, rise: (s) => `Fishermen hear bells under the water where ${s.place} went down. On stormy nights the drowned walk up the beach.`, gone: (p) => `The bells of ${p.place} have stopped.` },
   fey: { mem: WILD, name: (s) => `the Court under ${s.place}`, rise: (s) => `There is a court under the trees of ${s.place}. People who go in come out years later, or not at all.`, gone: (p) => `The trees of ${p.place} are only trees now.` },
   saint: { mem: FAITH, name: (s) => `the Saint of ${s.place}`, rise: (s) => `Pilgrims say the sick are healed at ${s.place}. Some of them are.`, gone: (p) => `Nobody is healed at ${p.place} any more.` },
 };
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
-const SUB = { battle: 'host', plague: 'shamblers', sacked: 'lich', famine: 'hunger', drowned: 'drowned', holy: 'saint' };
+const SUB = { nuked: 'burned', battle: 'host', plague: 'shamblers', sacked: 'lich', famine: 'hunger', drowned: 'drowned', holy: 'saint' };
 const FADE = 0.22, RISE = 0.45;
 export const SPIRIT_KINDS = KIND;
 
@@ -30,18 +31,18 @@ const placeName = (w, x, y) => { const s = near(w, x, y, 20, null, true); if (s 
 
 function rise(w, kind, x, y, why, extra) {
   const dead = (k) => KIND[k].mem === DEATH;
-  if (w.spirits.length >= 16 || w.spirits.filter((p) => p.kind === kind).length >= (dead(kind) ? 2 : 4) || (dead(kind) && w.spirits.filter((p) => dead(p.kind)).length >= 4) || spiritNear(w, x, y, 14)) return null;
+  if (w.spirits.length >= (w.deadAge ? 40 : 16) || w.spirits.filter((p) => p.kind === kind).length >= (dead(kind) ? (w.deadAge ? 8 : 2) : 4) || (dead(kind) && w.spirits.filter((p) => dead(p.kind)).length >= (w.deadAge ? 24 : 4)) || spiritNear(w, x, y, w.deadAge ? 7 : 14)) return null;
   const place = extra && extra.place || placeName(w, x, y), s = { why: why || 'something happened', place };
   const p = Object.assign({ id: (w.spiritN = (w.spiritN || 0) + 1), kind, x, y, px: x, py: y, str: 1, born: w.year, span: (KIND[kind].mem === DEATH ? 90 : 220) + ((w.rnd() * 160) | 0), place, why: s.why, name: KIND[kind].name(s), last: -99, pact: null }, extra || {});
-  w.spirits.push(p); ev(w, KIND[kind].rise(s), x, y, null, 0); discover(w, 'sp-' + kind, x, y); return p;
+  w.spirits.push(p); const told = (w.riseN = w.riseN || {})[kind] = (w.riseN[kind] || 0) + 1; ev(w, KIND[kind].rise(s), x, y, null, told <= 2 || !w.deadAge ? 0 : 1); discover(w, 'sp-' + kind, x, y); return p;
 }
 
 export function spiritsYear(w) {
   const rnd = w.rnd;
   // a place that has remembered hard enough for long enough wakes
   for (const site of w.sites) {
-    if (site.risen || w.year - site.year < 12 || rnd() > 0.08) continue;
-    const i = site.y * W + site.x; if (memAt(w, i, site.kind) < RISE) continue;
+    if (site.risen || w.year - site.year < (w.deadAge ? 2 : 12) || rnd() > (w.deadAge ? 0.3 : 0.08)) continue;
+    const i = site.y * W + site.x; if (memAt(w, i, site.kind) < (w.deadAge ? 0.3 : RISE)) continue;
     let kind = SUB[site.sub]; if (!kind) continue;
     if (kind === 'hunger' && w.tMean[i] > 9) kind = 'host';
     if (kind === 'drowned' && w.water[i] !== 1 && w.dSea[i] > 3) continue;
@@ -61,6 +62,7 @@ const hurt = (w, s, k) => { s.pop *= 1 - k; const c = w.cults[s.cult]; c.hurt = 
 const warded = (w, s) => { const c = w.cults[s.cult]; return c.stance === 'fear' ? 0.45 : s.tower ? 0.6 : 1; };
 const ACT = {
   host(w, p) { near(w, p.x, p.y, 6, null, false, (s) => { hurt(w, s, 0.012 * warded(w, s)); if (s.pop > 200 && w.rnd() < 0.1) flee(w, s, s.pop * 0.05); }); },
+  burned(w, p) { ACT.shamblers(w, p); if (w.rnd() < 0.3) { const s = near(w, p.x, p.y, 8, null, false); if (s) hurt(w, s, 0.03); } },
   shamblers(w, p) {
     let tg = null; near(w, p.x, p.y, 30, null, false, (s, q) => { if (!tg || q < tg.q) tg = { s, q }; });
     if (!tg) { p.str *= 0.93; return; } const s = tg.s, dx = wrapDx(s.x - p.x), dy = s.y - p.y, l = Math.hypot(dx, dy);
