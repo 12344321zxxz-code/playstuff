@@ -10,8 +10,11 @@ precision highp float; precision highp int;
 uniform sampler2D uElev, uA, uB, uC, uD, uF;
 uniform vec3 uFaith[16];
 uniform vec3 uPal[32];
-uniform vec3 uSpec[10];
-uniform vec3 uZone[14];
+uniform vec3 uSpec[16];
+uniform vec3 uZone[19];
+uniform vec3 uKind[5];
+uniform vec3 uFlora[8];
+uniform vec3 uStance[32];
 uniform vec2 uRes, uCenter;
 uniform float uZoom, uSea, uTime, uDpr;
 uniform int uLens;
@@ -65,9 +68,10 @@ void main(){
   float hh = hAt(c);
   vec4 a = A(c), b = B(c), cc = C(c), ff = F(c);
   float Tm = a.r * 80. - 40., mi = a.g * 2.5, g = a.b, t = a.a;
-  float lake = b.r, riv = b.g * 4.25, road = b.b;
+  float lake = b.r, riv = b.g * 4.25; int rdir = int(b.b * 255. + .5);
   int fl = int(cc.g * 255. + .5);
-  bool farm = (fl & 1) != 0, urban = (fl & 2) != 0, fire = (fl & 4) != 0, ash = (fl & 8) != 0, ice = (fl & 16) != 0, lava = (fl & 64) != 0;
+  int mb = int(b.a * 255. + .5), kind = (mb & 7) - 1, flo = (mb >> 5) & 7; bool onLey = (mb & 8) != 0, kept = (mb & 16) != 0;
+  float road = (fl & 32) != 0 ? 1. : 0.; bool farm = (fl & 1) != 0, urban = (fl & 2) != 0, fire = (fl & 4) != 0, ash = (fl & 8) != 0, ice = (fl & 16) != 0, lava = (fl & 64) != 0;
   float rnd = hash(vec2(c));
   bool sea = hh < 0.;
   vec3 col;
@@ -107,12 +111,20 @@ void main(){
     // rivers and roads are cells too
     if (riv > .5 && (riv > 1.5 || cellPx > 3.)) {
       vec3 rc = riv > 2.5 ? vec3(.20, .45, .72) : vec3(.29, .58, .82);
-      if (cellPx >= 7. && riv < 2.5) { float w = abs(f.x - .5) < .3 || abs(f.y - .5) < .3 ? 1. : 0.; col = mix(col, rc, w); } else col = rc;
+      if (cellPx >= 7. && riv < 2.5) {
+        // a channel from the middle of the cell to where it flows, and from every cell flowing in
+        float wd = .16 + .07 * riv, dmin = 9.; vec2 q = (floor(f * 8.) + .5) / 8. - .5;
+        if (rdir > 0) { vec2 dv = vec2(float((rdir - 1) % 3 - 1), float((rdir - 1) / 3 - 1)); float tt = clamp(dot(q, dv) / dot(dv, dv), 0., 1.); dmin = min(dmin, length(q - dv * tt)); }
+        for (int k = 0; k < 9; k++) { if (k == 4) continue; ivec2 o2 = ivec2(k % 3 - 1, k / 3 - 1); vec4 nb = B(c + o2); int nd = int(nb.b * 255. + .5); if (nd == 0 || nb.g < .1) continue; if (nd - 1 == (-o2.x + 1) + (-o2.y + 1) * 3) { vec2 dv = vec2(o2); float tt = clamp(dot(q, dv) / dot(dv, dv), 0., 1.); dmin = min(dmin, length(q - dv * tt)); } }
+        if (dmin < wd) col = rc; else if (dmin > 8.) col = mix(col, rc, .6);
+      } else col = rc;
     }
     if (road > .1 && !urban && riv < .5 && cellPx > 2.5) { vec3 rd = vec3(.66, .55, .40); if (cellPx >= 7.) { float w = abs(f.x - .5) < .18 || abs(f.y - .5) < .18 ? 1. : 0.; col = mix(col, rd, w); } else col = mix(col, rd, .7); }
     if (ash) col = mix(col, vec3(.25, .23, .22), .7);
     if (fire) col = mod(floor(uTime * 6. + rnd * 10.), 2.) < 1. ? vec3(1., .45, .1) : vec3(1., .8, .3);
     if (lava) col = mod(floor(uTime * 3. + rnd * 10.), 2.) < 1. ? vec3(.95, .3, .05) : vec3(.6, .12, .04);
+    // where the world remembers hard, a pixel of its colour flickers now and then
+    if (kind >= 0 && cellPx >= 4. && uLens == 0) { float m = cc.a; vec2 sub = floor(f * 6.); float k = hash(vec2(c) * 1.3 + sub + floor(uTime * (1. + rnd))); if (k < m * m * .12) col = mix(col, uKind[kind], .85); }
     // animals: grazers and hunters as specks moving about their cell
     if (cellPx >= 5. && uLens != 4 && uLens != 5) {
       float gz = ff.r * 2., hu = ff.g; int sp = int(ff.b * 255. + .5);
@@ -123,7 +135,7 @@ void main(){
         if (gz < .12) break;
         float ph = uTime * (.15 + .1 * hash(vec2(c) + fk)) + hash(vec2(c) * 1.7 + fk) * 6.28;
         vec2 pos = floor((vec2(.5) + vec2(sin(ph), cos(ph * .8)) * .32 + (vec2(hash(vec2(c) + fk * 3.), hash(vec2(c) * 2. + fk)) - .5) * .3) * 8.);
-        if (sub == pos || (cellPx >= 12. && sub == pos + vec2(1., 0.))) col = sp < 10 ? uSpec[sp] : vec3(.5, .4, .3);
+        if (sub == pos || (cellPx >= 12. && sub == pos + vec2(1., 0.))) col = sp < 16 ? uSpec[sp] : vec3(.5, .4, .3);
       }
       if (hu > .12) { float ph = uTime * .4 + rnd * 6.28; vec2 pos = floor((vec2(.5) + vec2(cos(ph), sin(ph * 1.3)) * .35) * 8.); if (sub == pos) col = vec3(.18, .17, .2); }
     }
@@ -134,15 +146,25 @@ void main(){
   else if (uLens == 3) col = sea ? vec3(.18, .22, .30) : mix(vec3(.75, .66, .55), vec3(.25, .16, .08), clamp(cc.a * 1.5, 0., 1.));
   else if (uLens == 4) { float id = floor(cc.b * 255. + .5); vec3 pc = .45 + .4 * cos(6.2832 * (id * .137 + vec3(0., .33, .67))); col = sea ? pc * .55 : pc; if (C(c + ivec2(1, 0)).b != cc.b || C(c + ivec2(0, 1)).b != cc.b) col = vec3(.08); }
   else if (uLens == 5) col = sea ? seaCol(-hh) : mix(mix(vec3(.30, .55, .30), vec3(.85, .78, .50), clamp(hh * 3.5, 0., 1.)), vec3(.97), clamp((hh - .4) * 3., 0., 1.)) * (.85 + .3 * lit);
-  else if (uLens == 7) { float m = cc.a; col = sea ? mix(vec3(.08, .08, .14), vec3(.30, .20, .45), m) : mix(vec3(.16, .14, .22), vec3(.80, .45, 1.), m); }
+  else if (uLens == 7) {   // lore: what each place remembers, the ley lines, and how each people stands toward it
+    float m = cc.a; vec3 base = sea ? vec3(.07, .08, .13) : vec3(.15, .14, .18) * (.85 + .3 * lit);
+    col = kind >= 0 ? mix(base, uKind[kind], clamp(.2 + m * .9, 0., 1.)) : base;
+    if (onLey) col = mix(col, vec3(.85, .80, 1.), cellPx >= 6. ? (abs(f.x - .5) < .2 || abs(f.y - .5) < .2 ? .45 : .12) : .3);
+    if (kept && (cellPx < 6. || mod(floor(f.x * 6.) + floor(f.y * 6.), 2.) < 1.)) col = mix(col, vec3(1.), .25);
+  }
+  else if (uLens == 12) {  // origins: the wild plants each land was given
+    col = sea ? vec3(.10, .12, .18) : vec3(.24, .23, .22) * (.85 + .3 * lit);
+    if (!sea && flo < 7) col = mix(col, uFlora[flo], .35 + .65 * cc.a);
+  }
   else if (uLens == 10) { int z = int(ff.a * 255. + .5); col = sea ? vec3(.12, .16, .24) : uZone[z] * (.9 + .2 * lit); }
   else if (uLens == 11) { float gz = ff.r * 2., hu = ff.g; col = sea ? vec3(.10, .13, .20) : mix(vec3(.30, .27, .22), vec3(.52, .86, .32), sqrt(clamp(gz, 0., 1.))); if (!sea) col = mix(col, vec3(.80, .26, .18), clamp(hu * 1.4 - .1, 0., .6)); }
   // peoples: their land outlined in their colour (filled, in the Peoples lens)
   int own = int(cc.r * 255. + .5);
   if (!sea && uLens != 4 && uLens != 5 && uLens != 10 && uLens != 11 && uLens != 1 && uLens != 2) {
+    vec3 pc0 = own > 0 ? (uLens == 7 ? uStance[(own - 1) % 32] : uPal[(own - 1) % 32]) : vec3(0.);
     if (uLens == 9) { ivec2 q = ivec2(c.x / 4, c.y / 4); int fid = int(texelFetch(uD, ivec2(q.x % 128, clamp(q.y, 0, 63)), 0).g * 255. + .5); if (fid > 0) col = mix(col, uFaith[(fid - 1) % 16], .6); }
     else if (own > 0) {
-      vec3 pc = uPal[(own - 1) % 32];
+      vec3 pc = pc0;
       if (uLens == 6) col = mix(col * .6 + .1, pc, .6);
       bool edge = int(C(c + ivec2(1, 0)).r * 255. + .5) != own || int(C(c + ivec2(-1, 0)).r * 255. + .5) != own || int(C(c + ivec2(0, 1)).r * 255. + .5) != own || int(C(c + ivec2(0, -1)).r * 255. + .5) != own;
       if (edge) {

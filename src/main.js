@@ -3,6 +3,8 @@ import { W, H, N, TPY, CW, CH, TAU, clamp, idx, wrapDx, wx } from './core.js';
 import { makeWorld, tick, refreshWater, queueClimate, background, movePlates } from './world.js';
 import { createRenderer, toScreen, toWorld } from './render.js';
 import { ZONES } from './zones.js';
+import { KINDS, STANCES } from './memory.js';
+import { PLANTS } from './origins.js';
 import { sculpt, erodeBrush, weather, plant, burn, plateAt } from './powers.js';
 import { describe } from './inspect.js';
 import { coarse, sampleCoarse, derive } from './climate.js';
@@ -162,7 +164,6 @@ const LEG = {
   2: ['Rain over the year', 'linear-gradient(90deg,#dbbd85,#ccd180,#5ca86b,#1a6b7a,#1a3373)', 'desert', 'rainforest'],
   3: ['Soil', 'linear-gradient(90deg,#bfa88c,#40290f)', 'thin', 'deep'],
   5: ['Height', 'linear-gradient(90deg,#1a2e66,#8cbfd9,#73a061,#dbcc8c,#fafafa)', 'deep sea', 'peaks'],
-  7: ['Magic', 'linear-gradient(90deg,#29233a,#cc73ff)', 'none', 'thick'],
   4: ['Plates', null, 'Drag an arrow to change a drift; tap a plate to flip it.'],
   8: ['Wind and currents', null, 'White: wind. Blue: sea currents.'],
 };
@@ -175,6 +176,9 @@ function legend() {
     for (const [c, t] of items) { const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = c; r.append(i, document.createTextNode(t)); k.appendChild(r); }
     el.append(b, k); el.hidden = false; S.legT = performance.now(); return;
   }
+  const keyList = (title, items, note) => { const b = document.createElement('b'); b.textContent = title; const k = document.createElement('div'); k.className = 'keys'; for (const [c, t] of items) { const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = c; r.append(i, document.createTextNode(t)); k.appendChild(r); } el.append(b, k); if (note) { const p = document.createElement('div'); p.className = 'ends'; p.textContent = note; el.appendChild(p); } el.hidden = false; };
+  if (S.lens === 7) { keyList('What the land remembers', KINDS.map((k) => [k.col, k.name[0].toUpperCase() + k.name.slice(1)]).concat(Object.values(STANCES).map((q) => [q.col, 'Borders: ' + q.name.toLowerCase()])), 'Pale lines: ley lines, which carry memory to the wells.'); return; }
+  if (S.lens === 12) { keyList('Wild plants worth sowing', PLANTS.map((q) => [q.col, q.wild[0].toUpperCase() + q.wild.slice(1)]).concat([['#3d3b39', 'Nothing a people could farm']]), 'Brighter: better harvests. Crops travel along the same climate.'); return; }
   if (S.lens === 10) { const b = document.createElement('b'); b.textContent = 'Climate zones'; const k = document.createElement('div'); k.className = 'keys'; for (const z of ZONES) { if (!z) continue; const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = z.col; r.append(i, document.createTextNode(z.name)); k.appendChild(r); } el.append(b, k); el.hidden = false; return; }
   if (!L) { el.hidden = true; return; }
   const b = document.createElement('b'); b.textContent = L[0]; el.appendChild(b);

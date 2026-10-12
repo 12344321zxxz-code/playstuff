@@ -16,10 +16,16 @@ export const SPECIES = [
   { key: 'goat', name: 'mountain goats', col: '#e8e2d2', tame: 'goat', hab: (T, m, tr, hh) => (hh > 0.17 && T > -8 ? 1 : 0.1) },
   { key: 'reindeer', name: 'reindeer', col: '#b8b0a4', tame: 'reindeer', hab: (T) => (T < 5 && T > -14 ? 1 : 0.05) },
   { key: 'boar', name: 'wild boar', col: '#5a4a44', tame: 'pig', hab: (T, m, tr) => (tr > 0.4 && T > 7 ? 1 : 0.1) },
+  { key: 'zebra', name: 'zebra', col: '#e8e4dc', tame: null, hab: (T, m, tr) => (T > 18 && m > 0.25 && m < 1.1 && tr < 0.4 ? 1 : 0.08) },
+  { key: 'bison', name: 'bison', col: '#5e4630', tame: null, hab: (T, m, tr) => (T > -2 && T < 15 && m > 0.25 && m < 0.9 && tr < 0.35 ? 1 : 0.08) },
+  { key: 'llama', name: 'guanacos', col: '#c8a080', tame: 'llama', hab: (T, m, tr, hh) => (hh > 0.2 && T > -6 && T < 18 ? 1 : 0.05) },
+  { key: 'buffalo', name: 'wild buffalo', col: '#3e3a3a', tame: 'buffalo', hab: (T, m) => (T > 19 && m > 1.0 ? 1 : 0.06) },
+  { key: 'leaper', name: 'leapers', col: '#b07a52', tame: null, hab: (T, m, tr) => (T > 12 && m > 0.15 && m < 1.0 && tr < 0.4 ? 1 : 0.08) },
 ];
 export const habitat = (w, sp, i) => SPECIES[sp].hab(w.tMean[i], w.mi[i], w.t[i], w.h[i] - w.params.sea);
 // What a cell of plants can feed: grass fully, woods partly (browse), fields a little (raided).
-function forage(w, i) { if (w.water[i] || w.ice[i] || w.urban[i]) return 0; if (w.farm[i]) return 0.15; return w.g[i] * 0.9 + w.t[i] * 0.4; }
+// the dead blight what grows near them; deep wild country grows beasts bigger than they should be
+function forage(w, i) { if (w.water[i] || w.ice[i] || w.urban[i]) return 0; const b = i * 5, m = w.mem; const k = m ? (1 - 0.8 * Math.min(1, m[b])) * (1 + 0.5 * Math.min(1, m[b + 1])) : 1; if (w.farm[i]) return 0.15 * k; return (w.g[i] * 0.9 + w.t[i] * 0.4) * k; }
 
 export function initFauna(w) {
   const rnd = w.rnd; w.graze = new Float32Array(N); w.hunt = new Float32Array(N); w.spAt = new Uint8Array(N).fill(255); w.species = SPECIES.map(() => ({ alive: false, ever: false, n: 0 })); w.massKinds = {};
@@ -27,7 +33,7 @@ export function initFauna(w) {
   for (let i = 0; i < N; i += 3) { if (w.water[i] || w.ice[i]) continue; const m = w.mass[i]; if ((w.massSize[m] || 0) < 30) continue; (byMass[m] || (byMass[m] = [])).push(i); }
   for (const m in byMass) {
     const cells = byMass[m], kinds = [];
-    for (let s = 0; s < SPECIES.length; s++) { let good = 0; for (let k = 0; k < cells.length; k += 2) if (habitat(w, s, cells[k]) > 0.9) good++; if (good >= 6 && rnd() < 0.62) kinds.push(s); }
+    for (let s = 0; s < SPECIES.length; s++) { let good = 0; for (let k = 0; k < cells.length; k += 2) if (habitat(w, s, cells[k]) > 0.9) good++; if (good >= 6 && rnd() < (SPECIES[s].tame ? 0.42 : 0.7)) kinds.push(s); }
     w.massKinds[m] = kinds; for (const s of kinds) { w.species[s].alive = true; w.species[s].ever = true; }
   }
   // the land starts full of life, with hunters wherever there is game
@@ -87,7 +93,8 @@ export function faunaYear(w) {
   if (ps < 1 && w.year > 20 && !w.found.nopred && gs > 10) discover(w, 'nopred', lx, ly);
 }
 // hunting by people: take up to `want` from the grazers around a cell; returns what was taken
-export function takeGame(w, i, want) { const g = w.graze[i]; const t = Math.min(g * 0.2, want); w.graze[i] = g - t; return t; }
+// animals in wild-haunted country do not fear people, and are not caught by them
+export function takeGame(w, i, want) { const g = w.graze[i]; const t = Math.min(g * 0.2 * (w.mem ? 1 - 0.6 * Math.min(1, w.mem[i * 5 + 1]) : 1), want); w.graze[i] = g - t; return t; }
 export function dominantAt(w, i) { const s = w.spAt[i]; return s === 255 ? null : s; }
 
 // The god's hand: set animals down, loose hunters, or empty a country.

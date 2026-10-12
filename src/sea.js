@@ -49,11 +49,11 @@ export function addKraken(w, x, y) {
 }
 function krakenYear(w) {
   const rnd = w.rnd, sea = w.params.sea;
-  if (w.krakens.length < 2 && w.year > 150 && (w.stats.ships || 0) > 3 && rnd() < 0.006) {
-    for (let q = 0; q < 300; q++) { const i = (rnd() * N) | 0; if (w.water[i] === 1 && sea - w.h[i] > 0.3 && !w.ice[i] && (w.magic[i] > 0.1 || rnd() < 0.05)) { const k = addKraken(w, i % W, (i / W) | 0); if (k) ev(w, `Sailors speak of ${k.name}, and of a patch of sea they will not cross.`, k.x, k.y, null); break; } }
+  if (w.krakens.length < 3 && w.year > 100 && rnd() < 0.008) {
+    for (let q = 0; q < 300; q++) { const i = (rnd() * N) | 0; if (w.water[i] === 1 && sea - w.h[i] > 0.3 && !w.ice[i] && (w.mem[i * 5 + 3] > 0.3 || rnd() < 0.01)) { const k = addKraken(w, i % W, (i / W) | 0); if (k) ev(w, `Sailors speak of ${k.name}, and of a patch of sea they will not cross.`, k.x, k.y, null); break; } }
   }
-  for (const k of w.krakens) { const i = k.y * W + k.x; if (w.water[i] !== 1) { k.dead = true; ev(w, `The sea has left ${k.name} on dry rock. It does not last the summer.`, k.x, k.y, null); continue; } w.magic[i] = Math.min(1, w.magic[i] + 0.04); if (k.wake > 0) k.wake--; }
+  for (const k of w.krakens) { const i = k.y * W + k.x; if (w.water[i] !== 1) { k.dead = true; ev(w, `The sea has left ${k.name} on dry rock. It does not last the summer.`, k.x, k.y, null); continue; } w.mem[i * 5 + 3] = Math.min(1.5, w.mem[i * 5 + 3] + 0.04); if (k.wake > 0) k.wake--; }
   if (w.krakens.some((k) => k.dead)) w.krakens = w.krakens.filter((k) => !k.dead);
 }
 // called for every ship each tick it is at sea
-export function krakenNear(w, x, y) { for (const k of w.krakens) if (wrapDx(k.x - x) ** 2 + (k.y - y) ** 2 < 30) return k; return null; }
+export function krakenNear(w, x, y) { for (const k of w.krakens) if (wrapDx(k.x - x) ** 2 + (k.y - y) ** 2 < 30) return k; for (const p of w.spirits || []) if (p.kind === 'drowned' && wrapDx(p.x - x) ** 2 + (p.y - y) ** 2 < 40) { p.sunk = p.sunk || 0; return p; } return null; }

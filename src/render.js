@@ -4,6 +4,8 @@ import { VERT, FRAG } from './shader.js';
 import { FAITH_COLORS } from './faith.js';
 import { SPECIES } from './fauna.js';
 import { ZONES, zoneMap } from './zones.js';
+import { KINDS, STANCES } from './memory.js';
+import { PLANTS } from './origins.js';
 const CW = 128, CH = 64;
 
 export function createRenderer(glc) {
@@ -15,13 +17,14 @@ export function createRenderer(glc) {
   gl.useProgram(prog);
   const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  const U = {}; for (const n of ['uElev', 'uA', 'uB', 'uC', 'uD', 'uF', 'uRes', 'uCenter', 'uZoom', 'uSea', 'uTime', 'uDpr', 'uLens', 'uPal', 'uFaith', 'uSpec', 'uZone']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uElev', 'uA', 'uB', 'uC', 'uD', 'uF', 'uRes', 'uCenter', 'uZoom', 'uSea', 'uTime', 'uDpr', 'uLens', 'uPal', 'uFaith', 'uSpec', 'uZone', 'uKind', 'uFlora', 'uStance']) U[n] = gl.getUniformLocation(prog, n);
   // every texture is read cell by cell: no smoothing anywhere, that is the look
   const mk = (unit) => { const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.REPEAT], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v); return t; };
   const tE = mk(0), tA = mk(1), tB = mk(2), tC = mk(3), tD = mk(4), tF = mk(5);
   gl.uniform1i(U.uElev, 0); gl.uniform1i(U.uA, 1); gl.uniform1i(U.uB, 2); gl.uniform1i(U.uC, 3); gl.uniform1i(U.uD, 4); gl.uniform1i(U.uF, 5);
   const rgb = (list) => { const a = new Float32Array(list.length * 3); list.forEach((c, k) => { if (!c) return; a[k * 3] = parseInt(c.slice(1, 3), 16) / 255; a[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; a[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; }); return a; };
-  gl.uniform3fv(U.uFaith, rgb(FAITH_COLORS)); gl.uniform3fv(U.uSpec, rgb(SPECIES.map((s) => s.col).concat(['#7a6a5a']))); gl.uniform3fv(U.uZone, rgb(ZONES.map((z) => (z ? z.col : '#000000'))));
+  gl.uniform3fv(U.uFaith, rgb(FAITH_COLORS)); gl.uniform3fv(U.uSpec, rgb(SPECIES.map((s) => s.col).concat(['#7a6a5a']))); gl.uniform3fv(U.uZone, rgb(ZONES.map((z) => (z ? z.col : '#000000')))); gl.uniform3fv(U.uKind, rgb(KINDS.map((k) => k.col))); gl.uniform3fv(U.uFlora, rgb(PLANTS.map((q) => q.col).concat(['#555555'])));
+  const stanceRGB = new Float32Array(96);
   const bD = new Uint8Array(CW * CH * 2); let mapStamp = -1, mapW = null;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
   const bA = new Uint8Array(N * 4), bB = new Uint8Array(N * 4), bC = new Uint8Array(N * 4), bF = new Uint8Array(N * 4), zones = new Uint8Array(N);
@@ -32,12 +35,12 @@ export function createRenderer(glc) {
       if (w.stamp.land !== landStamp || w !== lastW) { landStamp = w.stamp.land; gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tE); gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16F, W, H, 0, gl.RED, gl.FLOAT, w.h); }
       if (w.climateStamp !== zoneStamp || w !== lastW) { zoneStamp = w.climateStamp; zoneMap(w, zones); }
       lastW = w;
-      const { mi, g, t, water, filled, h, tMean, ocult, farm, urban, fireT, ash, ice, lava, plate, soil, magic, river, road, graze, hunt, spAt } = w;
+      const { mi, g, t, water, filled, h, tMean, ocult, farm, urban, fireT, ash, ice, lava, plate, soil, magic, river, road, graze, hunt, spAt, mem, ley, memLock, flora, wildCrop, down } = w;
       for (let i = 0, j = 0; i < N; i++, j += 4) {
         let v = (tMean[i] + 40) * 3.1875; bA[j] = v < 0 ? 0 : v > 255 ? 255 : v; v = mi[i] * 102; bA[j + 1] = v > 255 ? 255 : v; bA[j + 2] = g[i] * 255; bA[j + 3] = t[i] * 255;
-        bB[j] = water[i] === 2 ? clamp(20 + (filled[i] - h[i]) * 2500, 20, 255) : 0; bB[j + 1] = river[i] * 60; bB[j + 2] = road[i] ? 255 : 0; bB[j + 3] = 0;
-        bC[j] = ocult[i] + 1; bC[j + 1] = (farm[i] ? 1 : 0) | (urban[i] ? 2 : 0) | (fireT[i] ? 4 : 0) | (ash[i] > 0.3 ? 8 : 0) | (ice[i] ? 16 : 0) | (lava[i] ? 64 : 0); bC[j + 2] = plate[i];
-        v = lens === 7 ? magic[i] * 255 : soil[i] * 170; bC[j + 3] = v > 255 ? 255 : v;
+        bB[j] = water[i] === 2 ? clamp(20 + (filled[i] - h[i]) * 2500, 20, 255) : 0; bB[j + 1] = river[i] * 60; bB[j + 2] = 0; if (river[i]) { const d = down[i]; if (d >= 0) { let dx = (d % W) - (i % W); if (dx > 1) dx = -1; else if (dx < -1) dx = 1; const dy = ((d / W) | 0) - ((i / W) | 0); bB[j + 2] = (dx + 1) + (dy + 1) * 3 + 1; } } let kd = 0, kv = 0.06; const mb = i * 5; for (let q = 0; q < 5; q++) if (mem[mb + q] > kv) { kv = mem[mb + q]; kd = q + 1; } bB[j + 3] = kd | (ley[i] > 0.15 ? 8 : 0) | (memLock[i] ? 16 : 0) | ((flora[i] === 255 ? 7 : flora[i]) << 5);
+        bC[j] = ocult[i] + 1; bC[j + 1] = (farm[i] ? 1 : 0) | (urban[i] ? 2 : 0) | (fireT[i] ? 4 : 0) | (ash[i] > 0.3 ? 8 : 0) | (ice[i] ? 16 : 0) | (lava[i] ? 64 : 0) | (road[i] ? 32 : 0); bC[j + 2] = plate[i];
+        v = lens === 12 ? wildCrop[i] * 255 : lens === 3 ? soil[i] * 170 : magic[i] * 255; bC[j + 3] = v > 255 ? 255 : v;
         v = graze[i] * 127; bF[j] = v > 255 ? 255 : v; bF[j + 1] = hunt[i] * 255; bF[j + 2] = spAt[i]; bF[j + 3] = zones[i];
       }
       const up = (unit, tex, data) => { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, data); };
@@ -47,6 +50,7 @@ export function createRenderer(glc) {
     draw(w, cam, lens, time, pal, q) {
       gl.viewport(0, 0, glc.width, glc.height);
       gl.uniform2f(U.uRes, glc.width, glc.height); gl.uniform2f(U.uCenter, cam.x, cam.y); gl.uniform1f(U.uZoom, cam.z * cam.dpr * (q || 1)); gl.uniform1f(U.uDpr, cam.dpr * (q || 1));
+      for (const c of w.cults) { if (!c.alive) continue; const col = STANCES[c.stance || 'revere'].col, k = c.slot * 3; stanceRGB[k] = parseInt(col.slice(1, 3), 16) / 255; stanceRGB[k + 1] = parseInt(col.slice(3, 5), 16) / 255; stanceRGB[k + 2] = parseInt(col.slice(5, 7), 16) / 255; } gl.uniform3fv(U.uStance, stanceRGB);
       gl.uniform1f(U.uSea, w.params.sea); gl.uniform1f(U.uTime, time); gl.uniform1i(U.uLens, lens); gl.uniform3fv(U.uPal, pal);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },

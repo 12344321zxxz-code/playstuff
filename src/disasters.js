@@ -8,6 +8,7 @@ import { near, endSet, colorOf, whereAbouts, flee, gift, infect } from './people
 import { hitMovers } from './movers.js';
 import { holySite } from './faith.js';
 import { wetAt } from './weather.js';
+import { remember, FIRE, DEEP } from './memory.js';
 
 const fall = (d, r) => { const u = d / (r + 0.5); return u >= 1 ? 0 : (1 - u * u) * (1 - u * u); };
 const cell = (x, y) => clamp(Math.round(y), 1, H - 2) * W + wx(Math.round(x));
@@ -16,9 +17,10 @@ function windAt(w, x, y) { const f = 0.5 - 0.5 * Math.cos(w.phase * TAU), o0 = c
 
 export function meteor(w, x, y) {
   x = wx(Math.round(x)); y = clamp(Math.round(y), 6, H - 7); const { h } = w, sea = w.params.sea, wet = w.water[y * W + x] === 1, wh = whereAbouts(w, x, y);
+  remember(w, x, y, wet ? DEEP : FIRE, 0.9, 7, 'star', 'the star fell');
   for (const o of DISC[8]) { const i = (y + o[1]) * W + wx(x + o[0]), d = o[2];
     if (d <= 5) h[i] = Math.max(-1, h[i] - 0.2 * (1 - d / 6.2)); else h[i] = Math.min(1.2, h[i] + 0.05 * Math.max(0, 1 - Math.abs(d - 6.3) / 1.8));
-    w.t[i] = 0; w.g[i] *= 0.2; w.farm[i] = 0; w.ash[i] = 1; w.magic[i] = Math.min(1, w.magic[i] + 0.5 * fall(d, 8)); if (d > 5 && !w.water[i]) ignite(w, i); }
+    w.t[i] = 0; w.g[i] *= 0.2; w.farm[i] = 0; w.ash[i] = 1; if (d > 5 && !w.water[i]) ignite(w, i); }
   cull(w, x, y, 10);
   ev(w, `A star falls ${wh}.`, x, y, null); discover(w, 'crater', x, y);
   hitTowns(w, x, y, 14, (s, d) => { if (d < 6) endSet(w, s, 'crater'); else { flee(w, s, s.pop * 0.2); s.pop *= 0.55; } }); hitMovers(w, x, y, 12); holySite(w, x, y, 'crater', 0.6);
@@ -30,6 +32,7 @@ export function meteor(w, x, y) {
 
 export function erupt(w, v, big) {
   const { h } = w, sea = w.params.sea, rnd = w.rnd, x = v.x, y = v.y; v.last = w.year; let rose = false;
+  remember(w, x, y, FIRE, big ? 0.8 : 0.45, big ? 6 : 4, 'fire', 'the mountain opened');
   for (const o of DISC[3]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(x + o[0]), was = h[i] < sea; h[i] = Math.min(1.2, h[i] + (big ? 0.1 : 0.06) * fall(o[2], 3)); if (was && h[i] >= sea && w.dSea[i] === 0) rose = true; }
   for (let s = 0; s < (big ? 5 : 3); s++) { let c = y * W + x;
     for (let st = 0; st < (big ? 20 : 12); st++) { if (w.water[c] === 1) { h[c] = Math.min(sea + 0.01, h[c] + 0.03); break; } w.lava[c] = 5; w.t[c] = 0; w.g[c] = 0; w.farm[c] = 0; w.soil[c] = 0.3;
@@ -40,7 +43,7 @@ export function erupt(w, v, big) {
   for (let a = 0; a < L; a++) for (const o of DISC[Math.min(6, 2 + (a >> 2))]) { const yy = Math.round(y + uy * a + o[1]); if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(Math.round(x + ux * a + o[0])); if (w.water[i] === 1) continue; w.ash[i] = 1; w.soil[i] = Math.min(1.4, w.soil[i] + 0.03); if (w.farm[i] && rnd() < 0.2) w.farm[i] = 0; w.g[i] *= 0.85; }
   cull(w, x, y, 6);
   hitTowns(w, x, y, L, (s, d) => { if (d < 4) endSet(w, s, 'buried'); else if (wrapDx(s.x - x) * ux + (s.y - y) * uy > 0 || d < 8) { flee(w, s, s.pop * 0.15); s.pop *= 0.8; } }); hitMovers(w, x, y, 6);
-  w.aerosol = Math.min(1.5, w.aerosol + (big ? 0.6 : 0.28)); w.magic[y * W + x] = Math.min(1, w.magic[y * W + x] + 0.2);
+  w.aerosol = Math.min(1.5, w.aerosol + (big ? 0.6 : 0.28));
   w.fx.push({ k: 'plume', x, y, T: 4, ux, uy });
   ev(w, `A mountain opens ${whereAbouts(w, x, y)}${big ? '. The sky goes dark for a thousand miles' : ''}.`, x, y, null, !big && !v.mine && !near(w, x, y, 16, null, true)); discover(w, 'eruption', x, y);
   if (rose && discover(w, 'island', x, y)) ev(w, 'Fire under the sea has built a new island.', x, y, null);
@@ -75,6 +78,7 @@ export function tsunami(w, x, y, quiet) {
 
 export function quake(w, x, y) {
   x = wx(Math.round(x)); y = clamp(Math.round(y), 10, H - 11); const rnd = w.rnd; let n = 0, lost = 0;
+  if (w.ley) { for (const o of DISC[6]) { const i = (y + o[1]) * W + wx(x + o[0]); w.ley[i] = Math.max(0, w.ley[i] + (rnd() - 0.45) * 0.3 * fall(o[2], 6)); } w.leyDirty = true; }
   for (const o of DISC[9]) { const i = (y + o[1]) * W + wx(x + o[0]); w.h[i] += (rnd() - 0.5) * 0.02 * fall(o[2], 9); }
   hitTowns(w, x, y, 11, (s, d) => { n++; const k = 1 - d / 12; if (s.tier >= 1 && rnd() < 0.16 * k + (s.tier === 3 ? 0.05 : 0)) { endSet(w, s, 'swallowed'); lost++; } else s.pop *= 1 - 0.5 * k * (s.walls ? 1.15 : 1); });
   w.fx.push({ k: 'shake', x, y, T: 1.6 });
@@ -87,7 +91,7 @@ export function quake(w, x, y) {
 export function plagueAt(w, x, y) { const s = near(w, Math.round(x), Math.round(y), 8, null, false); if (!s) return false; s.immune = 0; s.plague = 0; infect(w, s, null, true); ev(w, `A sickness comes to ${s.name || 'a band of the ' + w.cults[s.cult].name}.`, s.x, s.y, colorOf(w.cults[s.cult])); return true; }
 export function overgrow(w, x, y, r) {
   x = Math.round(x); y = Math.round(y); let any = false;
-  for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(x + o[0]); if (w.water[i]) continue; const k = fall(o[2], r); if (k < 0.15) continue; w.farm[i] = 0; w.road[i] = 0; w.t[i] = Math.max(w.t[i], 0.9 * k); w.wetBias[i] = Math.min(2.5, w.wetBias[i] + 0.05 * k); w.magic[i] = Math.min(1, w.magic[i] + 0.04 * k); any = true; }
+  for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(x + o[0]); if (w.water[i]) continue; const k = fall(o[2], r); if (k < 0.15) continue; w.farm[i] = 0; w.road[i] = 0; w.t[i] = Math.max(w.t[i], 0.9 * k); w.wetBias[i] = Math.min(2.5, w.wetBias[i] + 0.05 * k); w.mem[i * 5 + 1] = Math.min(1.5, w.mem[i * 5 + 1] + 0.04 * k); any = true; }
   hitTowns(w, x, y, r, (s) => { s.pop *= 0.82; if (s.pop < 45) endSet(w, s, 'overgrown'); });
   w.need.derive = true; return any;
 }

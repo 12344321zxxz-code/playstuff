@@ -13,7 +13,7 @@ export function seasonFields(w, half) {
       const i = row + x, T = tJan[i] + (tJul[i] - tJan[i]) * f; temp[i] = T;
       if (water[i] === 1) { snow[i] = ice[i] ? 1 : T < -1.5 ? 0.85 : 0; continue; }
       const R = (rJan[i] + (rJul[i] - rJan[i]) * f) * (wetA ? wetA[crow + (x >> 2)] : 1); rain[i] = R;
-      let target = ice[i] ? 1 : T > 1.5 ? 0 : T < -3.5 ? 1 : (1.5 - T) * 0.2; if (R < 0.04) target *= 0.3;
+      let target = ice[i] ? 1 : T > 1.5 ? 0 : T < -3.5 ? 1 : (1.5 - T) * 0.2; if (R < 0.04) target *= 0.3; if (w.mem && w.mem[i * 5 + 2] > 0.5) target = 0;
       snow[i] += (target - snow[i]) * 0.45;
       const m = mi[i], wet = (0.65 * R + 0.21 * (m > 2 ? 2 : m)) / (0.22 + 0.03 * (T > 0 ? T : 0));
       const a = T < 2 ? 0 : T > 9 ? 1 : (T - 2) / 7, b = wet < 0.1 ? 0 : wet > 0.5 ? 1 : (wet - 0.1) * 2.5;

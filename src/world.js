@@ -6,13 +6,15 @@ import { computeHydro, hydroSteps, erode } from './hydro.js';
 import { seasonFields, initLife, vegetation, fireStep } from './life.js';
 import { initFauna, fauna, faunaYear } from './fauna.js';
 import { initPeople, peopleSteps, roadsYear } from './people.js';
-import { initMagic, magicYear, dragonsTick } from './fantasy.js';
+import { initMagic, magicYear, magicTick, dragonsTick } from './fantasy.js';
+import { flowMemory } from './memory.js';
 import { naturalYear, stormsTick, swarmsTick } from './disasters.js';
 import { discover, ev } from './story.js';
 import { initWeather, weatherYear } from './weather.js';
 import { initSea, seaYear, seaCap } from './sea.js';
 import { moversTick } from './movers.js';
 import { initFaith } from './faith.js';
+import { initOrigins, originsYear } from './origins.js';
 
 const F = () => new Float32Array(N), U = () => new Uint8Array(N);
 
@@ -42,7 +44,7 @@ export function makeWorld(seed, opts) {
   seasonFields(w);
   seedOre(w);
   w.ice0 = w.landIce; w.landCount = countLand(w); w.mi0 = Float32Array.from(w.mi); baseline(w);
-  initFaith(w); initSea(w); initFauna(w); initMagic(w); initPeople(w, opts && opts.bands);
+  initFaith(w); initSea(w); initFauna(w); initOrigins(w); initMagic(w); initPeople(w, opts && opts.bands);
   w.events.length = 0; w.found = {};
   return w;
 }
@@ -68,16 +70,16 @@ function landChanged(w) {
 }
 export function refreshWater(w) { if (w.job && w.job.k === 'water') w.job = null; computeHydro(w); derive(w); w.need.water = false; w.stamp.land++; landChanged(w); }
 export function refreshClimate(w) { w.job = null; computeClimate(w); derive(w); computeHydro(w); derive(w); w.need.climate = false; w.need.water = false; w.stamp.land++; landChanged(w); }
-export function movePlates(w) { replate(w); refreshClimate(w); }
+export function movePlates(w) { replate(w); w.plateStamp = (w.plateStamp || 0) + 1; refreshClimate(w); }
 
 export function tick(w) {
   w.tickN++; w.phase = (w.tickN % TPY) / TPY; w.year = Math.floor(w.tickN / TPY);
   if (w.aerosol > 0.001) w.aerosol *= 0.975; else w.aerosol = 0;
   seasonFields(w, w.tickN & 1); vegetation(w, w.tickN & 3); fireStep(w);
-  fauna(w); dragonsTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
+  fauna(w); dragonsTick(w); magicTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
   // the yearly work is spread over the year's ticks so no single tick is heavy
   const ph = w.tickN % TPY;
-  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); } else if (ph === 3) magicYear(w); else if (ph === 4) naturalYear(w); else if (ph === 5) roadsYear(w);
+  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); originsYear(w); } else if (ph === 3) { flowMemory(w); magicYear(w); } else if (ph === 7) flowMemory(w); else if (ph === 4) naturalYear(w); else if (ph === 5) roadsYear(w);
   if (ph === 0) {
     const y = w.year;
     for (let i = 0; i < N; i += 4) { const b = w.wetBias[i]; if (b !== 0) { w.wetBias[i] = b * 0.996; w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } else { w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } }

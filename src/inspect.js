@@ -1,3 +1,5 @@
+import { flora } from './origins.js';
+import { KINDS, kindAt, memAt } from './memory.js';
 import { ZONES, zoneOf } from './zones.js';
 import { SPECIES } from './fauna.js';
 // "Look": turn whatever is under the cursor into a few plain sentences.
@@ -29,7 +31,9 @@ export function describe(w, x, y) {
   L.push(m > 1.4 ? 'It rains hard here for much of the year.' : m > 0.8 ? 'Plenty of rain.' : m > 0.4 ? 'Enough rain for grass, not much more.' : m > 0.2 ? 'Dry. Rain is a brief season.' : 'Almost no rain reaches here.');
   L.push(hot - cold > 30 ? `Brutal seasons: about ${Math.round(cold)}° in winter, ${Math.round(hot)}° in summer.` : hot - cold > 14 ? `Real seasons: ${Math.round(cold)}° to ${Math.round(hot)}°.` : `Much the same all year, around ${Math.round(T)}°.`);
   const wa = wetAt(w, i % W, y), dr = dryYears(w, i % W, y); if (wa < 0.72) L.push(dr >= 3 ? `The rains have failed here ${dr} years running.` : 'A dry year: far less rain than usual.'); else if (wa > 1.35) L.push('A wet year: far more rain than usual.');
-  if (w.magic[i] > 0.55) L.push(w.t[i] > 0.5 ? 'The light falls wrong under these trees. They do not burn.' : 'The air hums here.');
+  const fl = flora(w, i); L.push(fl ? `${fl.wild[0].toUpperCase() + fl.wild.slice(1)} grows wild here. A people could learn to sow it.` : 'Nothing that grows wild here could be sown.');
+  const k = kindAt(w, i); if (k >= 0) { const m = memAt(w, i, k); L.push(m > 0.6 ? `This place remembers ${KINDS[k].name}, and it is strong here.${k === 0 ? ' Crops fail; animals keep away.' : k === 1 ? ' Beasts here are bigger, and do not fear hunters.' : k === 2 ? ' Frost never settles.' : k === 4 ? ' The harvests are good and the rain is steady.' : ''}` : m > 0.25 ? `This place remembers ${KINDS[k].name}.` : `A faint memory of ${KINDS[k].name} lingers.`); }
+  if (w.ley[i] > 0.15) L.push('A ley line runs through here.'); if (w.memLock[i]) L.push('You have made this place remember for good.');
   const s = w.soil[i]; L.push(s > 1.1 ? 'The soil is deep and dark.' : s > 0.7 ? 'Decent soil.' : s > 0.4 ? 'Thin soil.' : 'The soil is nearly gone.');
   const z = zoneOf(w, i); if (z) L.push(`Climate: ${ZONES[z].name.toLowerCase()}.`);
   if (w.graze) { const g = w.graze[i], p = w.hunt[i], sp = w.spAt[i] !== 255 ? SPECIES[w.spAt[i]].name : 'game';

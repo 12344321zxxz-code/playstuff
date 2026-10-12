@@ -2,6 +2,7 @@
 // glow, a dragon was killed. They travel with traders, sailors, refugees and conquerors, and
 // they change what peoples do: who they will fight, what land they will clear, what they
 // remember after a fall. Also here: the yearly maps of realms and faiths that the page draws.
+import { remember, FAITH } from './memory.js';
 import { W, H, N, CS, CW, CH, CN, wx, wrapDx, clamp } from './core.js';
 import { ev, discover, once } from './story.js';
 import { near } from './people.js';
@@ -44,6 +45,7 @@ export function holySite(w, x, y, kind, p) {
   const old = faithOf(w, s); if (old && old.origin === kind && w.year - old.born < 300) return null;
   if (w.faiths.some((f) => f.alive && w.year - f.born < 150 && wrapDx(f.x - s.x) ** 2 + (f.y - s.y) ** 2 < 625)) return null;
   const f = newFaith(w, s, kind), c = w.cults[s.cult]; convert(w, s, f); if (c.faith == null) c.faith = f.id;
+  remember(w, s.x, s.y, FAITH, 0.35, 3, 'holy', `the faith of ${f.name} was born`, { place: s.name || 'the camps of the ' + c.name });
   const first = discover(w, 'faith', s.x, s.y);
   ev(w, `${ORIGIN[kind].say || 'A new faith.'} They call it ${f.name}.`, s.x, s.y, f.color, first ? 2 : 0);
   return f;

@@ -5,11 +5,14 @@
 // wears down with size and ease; and what falls leaves ruins the next people build on.
 import { W, H, N, DISC, clamp, wx, wrapDx, Heap } from './core.js';
 import { ev, discover, once } from './story.js';
-import { SPECIES, takeGame } from './fauna.js';
+import { SPECIES, takeGame, habitat } from './fauna.js';
 import { wetAt } from './weather.js';
 import { catchFish } from './sea.js';
 import { send, arrive } from './movers.js';
 import { holySite, carry, convert, faithYear, sameFaith, tenetOf } from './faith.js';
+import { remember, DEATH, WILD, FIRE, DEEP, FAITH, memAt, stanceYear, RUIN_KIND } from './memory.js';
+import { breakPacts } from './spirits.js';
+import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock } from './origins.js';
 
 export const TECH = [3000, 120000, 1500000, 15000000, 40000000];
 export const TIER = ['band', 'village', 'town', 'city'];
@@ -22,7 +25,7 @@ export const ART = {
   writing: { say: 'writing', tier: 3 }, iron: { say: 'iron', tier: 3 }, sailing: { say: 'deep-sea sailing', tier: 4 }, engines: { say: 'smoke and engines', tier: 5 }, craft: { say: 'the craft', tier: 9 },
 };
 const ART_KEYS = Object.keys(ART);
-const MAXS = 520, MAXC = 20, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1 };
+const MAXS = 520, MAXC = 20, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
 const CONS = ['p', 't', 'k', 'b', 'd', 'g', 'm', 'n', 's', 'l', 'r', 'v', 'z', 'h', 'sh', 'ch', 'th', 'y', 'w', 'f', 'kh', 'q'], VOW = ['a', 'e', 'i', 'o', 'u', 'a', 'o', 'ai', 'ou', 'ia', 'e'], ENDS = ['n', 'r', 's', 'l', 'm', 'th', 'k', 'sh', 'd'];
 const pickN = (rnd, arr, n) => { const a = arr.slice(), o = []; while (o.length < n && a.length) o.push(a.splice((rnd() * a.length) | 0, 1)[0]); return o; };
 const makeLang = (w) => ({ c: pickN(w.rnd, CONS, 7), v: pickN(w.rnd, VOW, 4), e: pickN(w.rnd, ENDS, 3) });
@@ -42,7 +45,7 @@ export function newCult(w, parent) {
   const lang = parent ? { c: parent.lang.c.slice(0, 5).concat(pickN(w.rnd, CONS, 2)), v: parent.lang.v.slice(0, 3).concat(pickN(w.rnd, VOW, 1)), e: parent.lang.e.slice() } : makeLang(w);
   const c = { id: w.cults.length, slot, color: COLORS[slot], lang, name: cultName(w, lang), know: parent ? parent.know : 0, tech: parent ? parent.tech : 0, alive: true, count: 0, pop: 0, peak: 0, wit: 0.75 + 0.6 * w.rnd(),
     arts: parent ? Object.assign({}, parent.arts) : {}, tame: parent ? Object.assign({}, parent.tame) : {}, metals: 0, gold: false, coh: 0.85, born: w.year, way: parent ? parent.way : 'forage', kind: 'foragers', parent: parent ? parent.name : null, grazer: parent ? parent.grazer : null,
-    ruler: null, big: null, flags: parent ? { village: 1, town: parent.flags.town, city: parent.flags.city } : {}, wins: 0, wonderAt: -999, war: null, nb: {}, env: { crop: 0, coast: 0, dryRiver: 0, hill: 0, sed: 0, nomads: 0, towns: 0, cities: 0 }, seasoned: parent ? parent.seasoned : false, hungry: 0, lastDry: -99, faith: parent ? parent.faith : null, faithShare: 0,
+    ruler: null, big: null, flags: parent ? { village: 1, town: parent.flags.town, city: parent.flags.city } : {}, wins: 0, wonderAt: -999, war: null, nb: {}, env: { crop: 0, coast: 0, dryRiver: 0, hill: 0, sed: 0, nomads: 0, towns: 0, cities: 0 }, germ: parent ? parent.germ || 0 : 0, stance: parent ? parent.stance || 'revere' : 'revere', crops: parent ? Object.assign({}, parent.crops) : {}, cropL: parent ? (parent.cropL || []).slice() : [], dom: {}, surplus: 0, rivals: 0, lastMet: w.year, banned: parent ? Object.assign({}, parent.banned) : {}, hungry: 0, lastDry: -99, faith: parent ? parent.faith : null, faithShare: 0,
     _n: -1, _p: 0, _b: null, _metals: 0, _ways: { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }, _dry: 0, _full: 0 };   // _n < 0: born since the last census began
   crown(w, c, true); w.cults.push(c); return c;
 }
@@ -65,28 +68,39 @@ function learn(w, c, k, from) {
 }
 function canLearn(c, k, easy) {
   const e = c.env, a = c.arts; if (a[k] || c.tech + (easy ? 1 : 0) < ART[k].tier) return false;
+  if (c.banned && c.banned[k] && !easy) return false;
   switch (k) {
-    case 'farming': return e.crop > 0;
+    case 'farming': return c.cropL.length > 0;
     case 'boats': return (easy || c.know > 1200) && e.coast > 0;
     case 'riding': return !!(c.tame.horse || c.tame.camel);
     case 'roads': return e.sed >= 4;
     case 'irrigation': return a.farming && e.dryRiver > 0;
     case 'terraces': return a.farming && e.hill > 0;
-    case 'bronze': return (c.metals & 2) !== 0 && (c.metals & 4) !== 0;
+    case 'bronze': return e.sed >= 3 && (c.metals & 2) !== 0 && (c.metals & 4) !== 0;
     case 'masonry': return e.towns > 0;
-    case 'writing': return e.towns > 0;
-    case 'iron': return (c.metals & 8) !== 0;
+    case 'writing': return easy ? e.towns > 0 : e.cities > 0 && c.surplus > 0.45;   // scribes need a city that feeds them
+    case 'iron': return e.sed >= 3 && (c.metals & 8) !== 0;
     case 'sailing': return a.boats && e.coast >= 3;
     case 'engines': return a.iron && a.writing && (c.metals & 64) !== 0;
   }
   return false;
 }
 // when two peoples meet, in trade or in war, things rub off
+// Crops and beasts only take where the land suits them, so they cross a continent along its
+// latitudes and stall at deserts and at the change of climate going north or south.
+const homeCell = (c) => (c.big ? c.big.y * W + c.big.x : -1);
+const TAME_SP = {}; SPECIES.forEach((sp, k) => { if (sp.tame) TAME_SP[sp.tame] = k; });
+function suits(w, c, kind, k) {
+  const i = homeCell(c); if (i < 0) return false;
+  return kind === 'crop' ? w.pSuit[k * N + i] > 120 : TAME_SP[k] == null || habitat(w, TAME_SP[k], i) > 0.5;
+}
 function meet(w, c, o, p) {
   const rnd = w.rnd; if (c === o) return;
   if (o.know > c.know) c.know += (o.know - c.know) * 0.006; else o.know += (c.know - o.know) * 0.006;
+  c.lastMet = o.lastMet = w.year;
   for (const [a, b] of [[c, o], [o, c]]) {
-    for (const k in b.tame) if (!a.tame[k] && rnd() < 0.12) { a.tame[k] = w.year; if (TAME_GRAZE[k] && !a.grazer) { a.grazer = k; learn(w, a, 'herding'); } }
+    for (const k in b.tame) if (!a.tame[k] && rnd() < 0.12 && suits(w, a, 'beast', k)) { a.tame[k] = w.year; if (TAME_GRAZE[k] && !a.grazer) { a.grazer = k; learn(w, a, 'herding'); } }
+    for (const k of b.cropL) if (!hasCrop(a, k) && rnd() < 0.07 && suits(w, a, 'crop', k)) { giveCrop(w, a, k, b); if (!a.arts.farming && a.tech >= 1) learn(w, a, 'farming', b); break; }
     if (rnd() < p * 0.4) { const got = ART_KEYS.filter((k) => b.arts[k] && canLearn(a, k, true)); if (got.length) learn(w, a, got[(rnd() * got.length) | 0], b); }
   }
   c.nb[o.id] = (c.nb[o.id] || 0) + 1; o.nb[c.id] = (o.nb[c.id] || 0) + 1;
@@ -95,10 +109,10 @@ function meet(w, c, o, p) {
 /* ---------- finding things ---------- */
 const BK = 16, GW = W / BK, GH = H / BK;
 function buildGrid(w) { const g = (w.sgrid = w.sgrid || []); for (let k = 0; k < GW * GH; k++) (g[k] || (g[k] = [])).length = 0; for (const s of w.sets) if (!s.dead) g[((s.y / BK) | 0) * GW + ((s.x / BK) | 0)].push(s); }
-export function near(w, x, y, d, skip, sedOnly, each) {
+export function near(w, x, y, d, skip, sedOnly, each, notCult) {
   const g = w.sgrid, r = Math.ceil(d / BK), bx = (x / BK) | 0, by = (y / BK) | 0, d2 = d * d; let best = null, bd = d2;
   for (let gy = by - r; gy <= by + r; gy++) { if (gy < 0 || gy >= GH) continue; for (let gx = bx - r; gx <= bx + r; gx++) { const b = g[gy * GW + ((gx % GW) + GW) % GW];
-    for (let k = 0; k < b.length; k++) { const s = b[k]; if (s === skip || s.dead || (sedOnly && s.nomad)) continue; const dx = wrapDx(s.x - x), dy = s.y - y, q = dx * dx + dy * dy; if (q < d2) { if (each) each(s, q); if (q < bd) { bd = q; best = s; } } } } }
+    for (let k = 0; k < b.length; k++) { const s = b[k]; if (s === skip || s.dead || (sedOnly && s.nomad) || (notCult != null && s.cult === notCult)) continue; const dx = wrapDx(s.x - x), dy = s.y - y, q = dx * dx + dy * dy; if (q < d2) { if (each) each(s, q); if (q < bd) { bd = q; best = s; } } } } }
   return best;
 }
 export function whereAbouts(w, x, y) {
@@ -106,9 +120,9 @@ export function whereAbouts(w, x, y) {
   const ns = y < H / 3 ? 'north' : y > (2 * H) / 3 ? 'south' : '', ew = x < W / 3 ? 'west' : x > (2 * W) / 3 ? 'east' : '';
   return ns || ew ? 'in the ' + (ns && ew ? ns + '-' + ew : ns || ew) : 'in the middle lands';
 }
-function siteScore(w, x, y, farmer, herder) {
+function siteScore(w, x, y, farmer, herder, c) {
   let sc = 0; for (const o of DISC[2]) { const Y = y + o[1]; if (Y < 1 || Y >= H - 1) continue; const i = Y * W + wx(x + o[0]); if (w.water[i]) { sc += herder ? 0.1 : 0.5; continue; }
-    sc += herder ? 1.2 * w.g[i] - 0.3 * w.t[i] - (w.farm[i] ? 0.5 : 0) : 0.6 * w.g[i] + 0.9 * w.t[i] + (farmer ? w.crop[i] + (w.fresh[i] <= 1 ? 0.4 : 0) : 0) + (w.graze[i] > 0.35 ? 0.5 : 0); if (w.magic[i] > 0.75) sc -= 0.6; }
+    sc += herder ? 1.2 * w.g[i] - 0.3 * w.t[i] - (w.farm[i] ? 0.5 : 0) : 0.6 * w.g[i] + 0.9 * w.t[i] + (farmer ? cropYield(w, c, i) + (w.fresh[i] <= 1 ? 0.4 : 0) : 0) + (w.graze[i] > 0.35 ? 0.5 : 0); if (w.magic[i] > 0.75) sc -= 0.6; }
   return sc;
 }
 function crossesWater(w, x0, y0, x1, y1) { let c = 0; const dx = wrapDx(x1 - x0); for (let k = 1; k < 14; k++) { const x = wx(Math.round(x0 + (dx * k) / 14)), y = Math.round(y0 + ((y1 - y0) * k) / 14); if (w.water[y * W + x] === 1) c++; } return c; }
@@ -127,7 +141,7 @@ export function infect(w, s, from, harsh) {
 function plaguesYear(w) {
   for (const st of w.plagues) { if (st.over) continue;
     if (!st.name && st.bad && st.towns >= 40) { st.name = POX[(w.poxN = (w.poxN || 0) + 1) % POX.length]; ev(w, `The sickness that began at ${st.at} has reached ${st.towns} towns and is still walking the roads. People call it the ${st.name}.`, st.x, st.y, null, 2); discover(w, 'plague', st.x, st.y); }
-    if (st.now === 0) { st.over = true; if (st.name) { const part = st.pop0 > 0 ? st.killed / st.pop0 : 0; ev(w, `The ${st.name} burns out after ${w.year - st.born} years. ${part > 0.4 ? 'Half the world is dead' : part > 0.25 ? 'One in three is dead' : part > 0.14 ? 'One in five is dead' : 'One in ten is dead'}. Fields go back to forest; the living inherit more than they can use.`, st.x, st.y, null, part > 0.14 ? 2 : 0); holySite(w, st.x, st.y, 'plague', part > 0.14 ? 0.8 : 0.4); } }
+    if (st.now === 0) { st.over = true; if (st.name) { const part = st.pop0 > 0 ? st.killed / st.pop0 : 0; ev(w, `The ${st.name} burns out after ${w.year - st.born} years. ${part > 0.4 ? 'Half the world is dead' : part > 0.25 ? 'One in three is dead' : part > 0.14 ? 'One in five is dead' : 'One in ten is dead'}. Fields go back to forest; the living inherit more than they can use.`, st.x, st.y, null, part > 0.14 ? 2 : 0); holySite(w, st.x, st.y, 'plague', part > 0.14 ? 0.8 : 0.4); remember(w, st.x, st.y, DEATH, 0.35 + part, 4, 'plague', `the ${st.name}`, { place: st.at }); } }
     st.now = 0; }
   // old strains stay in the list; a settlement's pid is an index into it
 }
@@ -135,8 +149,10 @@ function plaguesYear(w) {
 /* ---------- ruins ---------- */
 const RUIN_TEXT = { abandoned: 'lies empty. Grass grows in its streets.', sacked: 'is burned to the ground.', drowned: 'is under the water.', buried: 'is buried under ash and stone.', burned: 'is lost to the fire.', plague: 'is a city of the dead.', frozen: 'is under the ice.', overgrown: 'is swallowed by the forest.', crater: 'is gone in a flash of light.', swallowed: 'falls into the earth.', dragon: 'is a dragon’s roost now.', starved: 'starves, and empties.' };
 const RUIN_PAGE = { drowned: 'drowned', buried: 'buried', overgrown: 'overgrown', frozen: 'frozen' };
-export function endSet(w, s, kind) {
+const DEPOSIT = { sacked: [DEATH, 0.55, 'sacked', (s) => `the sack of ${s.name}`], plague: [DEATH, 0.5, 'plague', (s) => `${s.name} died of plague`], starved: [DEATH, 0.45, 'famine', (s) => `${s.name} starved`], frozen: [DEATH, 0.4, 'famine', (s) => `the ice took ${s.name}`], drowned: [DEEP, 0.6, 'drowned', (s) => `${s.name} went under the water`], buried: [FIRE, 0.6, null], crater: [FIRE, 0.8, null], dragon: [FIRE, 0.4, null], overgrown: [WILD, 0.4, null], swallowed: [FIRE, 0.4, null] };
+export function endSet(w, s, kind, by) {
   if (s.dead) return; s.dead = true; w.anyDead = true; const c = w.cults[s.cult];
+  const dp = DEPOSIT[kind]; if (dp && s.name) remember(w, s.x, s.y, dp[0], dp[1] * (0.5 + 0.25 * s.maxTier), 3, dp[2], dp[3] && dp[3](s), { place: s.name.replace(/^New /, ''), by });
   if (s.maxTier >= 2 || (s.maxTier >= 1 && kind !== 'abandoned' && kind !== 'absorbed')) {
     // one ruin per site: a place built on and lost again is the same ruin with another layer in it
     const old = w.ruins.find((r) => Math.abs(wrapDx(r.x - s.x)) <= 1 && Math.abs(r.y - s.y) <= 1);
@@ -171,6 +187,8 @@ arrive.settlers = (w, m) => {
   if (m.split && aliveN(w) < MAXC) { const nc = newCult(w, c); cult = nc.id; ev(w, `Settlers from ${home ? home.name : 'the ' + c.name} cross ${m.wetN > 1 ? 'the water' : 'the hills'} and call themselves the ${nc.name}.`, x, y, nc.color, m.ocean ? 0 : 1); }
   const v = addSet(w, cult, x, y, m.n, false), ru = ruinAt(w, x, y); if (home) v.faith = home.faith;
   if (ru) { v.name = 'New ' + ru.name.replace(/^New /, ''); if (discover(w, 'reborn', x, y)) ev(w, `${v.name} rises on the stones of the old city.`, x, y, w.cults[cult].color); }
+  near(w, x, y, 12, v, true, (o) => { if (o.cult !== cult) contact(w, w.cults[cult], o, 'Settlers'); });
+  if (m.far && w.cults[cult].tame.cattle && !w.rinder[w.mass[i]]) { w.rinder[w.mass[i]] = 1; let n = 0; const ms = w.mass[i]; for (let j = 0; j < N; j++) if (w.mass[j] === ms && w.graze[j] > 0) { w.graze[j] *= 0.45; n++; } if (n > 200) ev(w, `The cattle the ${c.name} brought ashore carry a sickness the wild herds have never met. Carcasses line the rivers.`, x, y, c.color); }
   if (m.ocean && m.far && (w.massSize[w.mass[i]] || 0) > 150 && discover(w, 'oversea', x, y)) ev(w, `Ships of the ${c.name} cross the open sea and land ${whereAbouts(w, x, y)}.`, x, y, c.color, 2);
 };
 arrive.home = (w, m) => { if (m.to && !m.to.dead) m.to.pop += m.n; };
@@ -179,7 +197,7 @@ arrive.trade = (w, m) => {
   a.trade = Math.min(6, a.trade + 1); b.trade = Math.min(6, b.trade + 1); if (ca !== cb) meet(w, ca, cb, 0.3);
   carry(w, a, b, m.wet0 ? 'ship' : 'trade'); if (w.rnd() < 0.4) carry(w, b, a, m.wet0 ? 'ship' : 'trade');
   if (a.plague > 0) { if (w.rnd() < 0.3 + w.plagues[a.pid].catchy) infect(w, b, a.pid); }
-  else if (ca !== cb && ca.seasoned && !cb.seasoned && w.rnd() < 0.08) { if (infect(w, b, null, true)) { cb.seasoned = true; ev(w, `Traders of the ${ca.name} bring ${b.name} a sickness its people have never met.`, b.x, b.y, cb.color); } }
+  else if (ca !== cb) contact(w, ca, b, 'Traders');
   if (m.wet0 && discover(w, 'trade', b.x, b.y)) ev(w, `A ship from ${a.name} ties up at ${b.name} and sells everything aboard.`, b.x, b.y, ca.color);
 };
 export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (A.bronze ? 1.3 : 1) * (A.iron ? 1.45 : 1) * (A.riding ? 1.35 : 1) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1); }
@@ -187,14 +205,16 @@ arrive.army = (w, m) => {
   const o = m.to, c = w.cults[m.cult], home = m.from, rnd = w.rnd; const back = (frac) => { if (home && !home.dead && m.n * frac > 3) send(w, { kind: 'home', cult: m.cult, x: m.x, y: m.y, tx: home.x, ty: home.y, n: m.n * frac, to: home, land: m.land }); };
   if (!c.alive) return; if (!o || o.dead || o.cult === m.cult) { back(1); return; }
   const oc = w.cults[o.cult], war = c.war && c.war.foe === oc.id ? c.war : null;
+  contact(w, c, o, 'Warriors');
   w.fx.push({ k: 'clash', x: o.x, y: o.y, T: 1.1 });
   if (o.nomad) { if (rnd() < 0.7) { const a = rnd() * 6.283, x = wx(Math.round(o.x + Math.cos(a) * 7)), y = clamp(Math.round(o.y + Math.sin(a) * 7), 3, H - 4); if (!w.water[y * W + x]) { o.px = o.x; o.py = o.y; o.mt = w.tickN; o.x = x; o.y = y; } o.pop *= 0.92; back(0.95); } else if (o.pop < m.n * 2.5) { endSet(w, o, 'absorbed'); back(1.1); } else { o.pop *= 0.8; back(0.7); } return; }
+  remember(w, o.x, o.y, DEATH, 0.025 * Math.min(3, m.n / 25), 2);
   const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()), B = strength(oc, o.pop) * (o.walls ? 1.6 : 1.2) * (0.6 + 0.8 * rnd());
   if (A <= B) { oc.wins += 0.5; if (war) war.lost++; back(0.45); return; }
   o.pop *= 0.72; c.wins++; oc.coh = Math.max(0.05, oc.coh - 0.03); const hp = home && !home.dead ? home.pop : m.n * 6;
   const raider = m.nomad && !(war && war.horde);
   if (raider || (c.ruler.trait === 'mad' && rnd() < 0.5)) {
-    if (o.pop < hp * 0.6 && rnd() < 0.4) { endSet(w, o, 'sacked'); back(1.2); return; }
+    if (o.pop < hp * 0.6 && rnd() < 0.4) { endSet(w, o, 'sacked', c.name); back(1.2); return; }
     if (o.tier >= 2 && w.year - o.lastSack > 30) { o.lastSack = w.year; ev(w, `${m.nomad ? 'Riders' : 'Warriors'} of the ${c.name} sack ${o.name}.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1); }
     flee(w, o, o.pop * 0.12); o.pop *= 0.88; back(1.15); return;
   }
@@ -225,7 +245,7 @@ export function peopleYear(w) { for (const _ of peopleSteps(w)); }
 export function* peopleSteps(w) {
   buildGrid(w); territory(w);
   const sets = w.sets, n0 = sets.length, rnd = w.rnd, { water, river, farm, soil, g, t, fresh, owner, fireT, ore, mi, crop, h } = w, sea = w.params.sea;
-  for (const c of w.cults) { c._n = 0; c._p = 0; c._b = null; c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = 0; }
+  for (const c of w.cults) { c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = 0; }
   let total = 0, smoke = 0; const sun = 1 - Math.min(0.6, w.aerosol * 0.8);
   for (let k = 0; k < n0; k++) {
     if (k % 40 === 39) yield;
@@ -234,37 +254,40 @@ export function* peopleSteps(w) {
     if (w.lava[i0]) { endSet(w, s, 'buried'); continue; }
     if (w.ice[i0] && !s.nomad) { flee(w, s, s.pop * 0.5); endSet(w, s, 'frozen'); continue; }
     if (fireT[i0]) s.pop *= 0.9;
-    const herder = !!c.grazer, wa = wetAt(w, s.x, s.y), irrR = A.irrigation ? 3 : 1, grove = c.tenet === 'grove', maxH = A.terraces ? 0.5 : 0.32, farmR = A.engines ? 6.2 : s.tier >= 3 ? 5.2 : 4.2; s.wa = wa;
-    let wildF = 0, seaN = 0, freshF = 0, rain = 0, irrg = 0, farms = 0, blight = 0, bestI = -1, bestK = 0.34, huntLeft = Math.min(s.pop, 150) * 0.012, tameAt = -1, hunt = 0, past = 0, ores = 0, cropS = 0, landN = 0, soilS = 0;
+    const herder = !!c.grazer, wa = Math.max(wetAt(w, s.x, s.y), w.mem[i0 * 5 + 4] > 0.4 ? 0.95 : 0), irrR = A.irrigation ? 3 : 1, grove = c.tenet === 'grove', maxH = A.terraces ? 0.5 : 0.32, farmR = A.engines ? 6.2 : s.tier >= 3 ? 5.2 : 4.2; s.wa = wa;
+    let domS = null, wildF = 0, seaN = 0, freshF = 0, rain = 0, irrg = 0, farms = 0, blight = 0, bestI = -1, bestK = 0.34, huntLeft = Math.min(s.pop, 150) * 0.012, tameAt = -1, hunt = 0, past = 0, ores = 0, cropS = 0, landN = 0, soilS = 0;
     for (const o of DISC[s.R]) {
       const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]);
       if (!s.nomad && owner[i] !== k) continue;
       if (water[i] === 1) { seaN++; continue; } if (water[i] === 2) { freshF += 1.2; continue; }
-      landN++; cropS += crop[i];
+      landN++; const cy = A.farming ? cropYield(w, c, i) : 0; cropS += cy;
+      if (w.flora[i] !== 255 && !hasCrop(c, w.flora[i])) { (domS || (domS = new Float32Array(NP)))[w.flora[i]] += w.pSuit[w.flora[i] * N + i] / 255; }
       if (river[i]) freshF += 0.4 * river[i];
       if (ore[i]) ores |= 1 << ore[i];
       if (w.graze[i] > 0.05) { if (huntLeft > 0) { const take = takeGame(w, i, huntLeft); huntLeft -= take; hunt += take * 3.2; } if (w.graze[i] > 0.4 && w.spAt[i] !== 255) tameAt = i; }
       if (farm[i]) {
-        farms++; soilS += soil[i]; const ir = fresh[i] <= irrR, y0 = Math.min(1, crop[i] + (ir ? 0.5 : 0)) * Math.min(1, soil[i]);
+        farms++; soilS += soil[i]; const ir = fresh[i] <= irrR, mb = i * 5, y0 = Math.min(1, cy + (ir && cy > 0.05 ? 0.5 : 0)) * Math.min(1, soil[i]) * (1 - 0.7 * Math.min(1, w.mem[mb])) * (1 + 0.3 * Math.min(1, w.mem[mb + 4]));
         if (farm[i] === 2) { blight++; farm[i] = 1; } else if (ir) irrg += y0; else rain += y0;
         if (!(fresh[i] <= 1 && mi[i] > 0.3)) { const sh = t[i + 1] > 0.3 || t[i - 1] > 0.3 || t[i + W] > 0.3 || t[i - W] > 0.3; soil[i] -= (A.writing ? 0.002 : 0.004) * (sh ? 1 : 2) * (A.terraces ? 0.7 : 1) * (mi[i] > 1.6 ? 2.2 : 1) + (ir && mi[i] < 0.3 ? 0.002 : 0); if (soil[i] < 0.42) { farm[i] = 0; if (w.tCap[i] > 0.3) t[i] = 0.05; } }
         else if (wa > 1.45) soil[i] = Math.min(1.3, soil[i] + 0.02);
       } else {
-        wildF += 0.6 * g[i] + 0.9 * t[i]; if (herder) { past += g[i]; if (s.pop > 60) g[i] *= 0.985; }
-        if (A.farming && o[2] <= farmR) { const ir = fresh[i] <= irrR, kk = Math.min(1, crop[i] + (ir ? 0.5 : 0)) * Math.min(1, soil[i]) - 0.55 * t[i];
+        wildF += 0.6 * g[i] + 0.9 * t[i]; if (herder) { past += g[i]; if (s.pop > 60) g[i] *= 0.985; w.graze[i] *= 0.992; }
+        if (A.farming && o[2] <= farmR) { const ir = fresh[i] <= irrR, kk = (cy > 0.12 ? Math.min(1, cy + (ir ? 0.5 : 0)) : 0) * Math.min(1, soil[i]) - 0.55 * t[i];
           if (kk > bestK && soil[i] > 0.75 && !(grove && t[i] > 0.3) && h[i] - sea < maxH && !fireT[i] && i !== i0 && w.magic[i] < 0.7) { bestK = kk; bestI = i; } }
       }
     }
+    // gathering the same wild seeds year after year turns them, slowly, into a crop
+    if (domS && c.know > 250) for (let p = 0; p < NP; p++) { if (!domS[p]) continue; c.dom[p] = (c.dom[p] || 0) + domS[p] * PLANTS[p].ease * 0.00035 * (s.nomad ? 0.6 : 1.3); if (c.dom[p] >= 1) { giveCrop(w, c, p); learn(w, c, 'farming'); } }
     if (tameAt >= 0 && c.know > 600 && rnd() < 0.08) { const sp = SPECIES[w.spAt[tameAt]];
       if (sp && sp.tame && !c.tame[sp.tame]) { c.tame[sp.tame] = w.year; if (TAME_GRAZE[sp.tame] && !c.grazer) { c.grazer = sp.tame; learn(w, c, 'herding'); } if (once(w, 'tame' + sp.tame)) ev(w, `The ${c.name} tame the ${sp.tame === 'cattle' ? 'aurochs' : sp.tame === 'pig' ? 'boar' : sp.tame}. Others will learn it from them.`, s.x, s.y, c.color); } }
     s.ores = ores; c._metals |= ores; s.port = seaN >= 3 && !s.nomad;
-    const yieldF = 15 * (c.tame.cattle ? 1.15 : 1) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * (A.engines ? 1.5 : 1);
+    const L = c._L || (c._L = livestock(c)), yieldF = 15 * (1 + 0.2 * L.plough) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * (A.engines ? 1.5 : 1);
     const fW = wildF * (s.nomad ? 3.2 : 1.1) * (0.55 + 0.45 * Math.min(wa, 1.3)) * sun, fH = hunt * 6;
     const fFr = Math.min(freshF * (A.boats ? 2.2 : 1.5), s.pop * 0.9 + 10), want = seaN ? Math.max(0, Math.min(s.pop * 0.95 + 12 - fFr, seaN * (A.sailing ? 4.5 : A.boats ? 3 : 1.1) * (c.tenet === 'sea' ? 1.3 : 1))) : 0;
     const fSea = want > 0 ? catchFish(w, s.x, s.y, s.R + (A.sailing ? 10 : A.boats ? 4 : 1), want) : 0, fF = fFr + fSea, fishGap = want > 8 ? fSea / want : 1;
     const fA = (rain * clamp(wa, 0.2, 1.3) + irrg * (A.irrigation ? 1.15 : 1) * (0.72 + 0.28 * Math.min(wa, 1.2)) * (wa > 1.5 ? 0.8 : 1)) * yieldF * sun;
     const fP = herder ? past * (s.nomad ? 3.4 : 2) * (c.tame.horse ? 1.15 : 1) * (0.5 + 0.5 * Math.min(wa, 1.3)) * sun : 0;
-    const food = (fW + fH + fF + fA + fP) * (1 + 0.06 * Math.min(4, s.trade)) * (c.tame.pig ? 1.05 : 1) * (s.plague > 0 ? 0.8 : 1); s.src = [fW, fH, fF, fA, fP];
+    const food = (fW + fH + fF + fA + fP) * (s.blessed && w.year - s.blessed < 3 ? 1.15 : 1) * (1 + 0.06 * Math.min(4, s.trade)) * (c.tame.pig ? 1.05 : 1) * (s.plague > 0 ? 0.8 : 1); s.src = [fW, fH, fF, fA, fP]; c._sur += s.pop * Math.min(1, (fA + fP) / Math.max(1, food));
     const mx = Math.max(fW, fH, fF, fA, fP); s.way = mx === fA ? 'farm' : mx === fP ? 'herd' : mx === fF ? 'fish' : mx === fH ? 'hunt' : 'forage'; c._ways[s.way] += s.pop;
     if (!s.nomad && A.farming && bestI >= 0 && farms < Math.ceil((s.pop * 1.3) / (yieldF * 0.6))) { farm[bestI] = 1; t[bestI] = 0; g[bestI] = 0.25; }
     // tallies that decide what this people can learn
@@ -278,15 +301,15 @@ export function* peopleSteps(w) {
       s.note = why;
       if (loss > s.pop * 0.06) { c.hungry++;
         if (why === 'drought') c._dry++;
-        else if (why !== 'plague' && why !== 'crowded' && why !== 'ash' && !s.nomad && w.year - s.lastFam > 45) { s.lastFam = w.year; ev(w, FAMINE[why].replace('%', s.name), s.x, s.y, c.color, s.tier >= 2 ? 0 : 1); if (why === 'fish') discover(w, 'nets', s.x, s.y); else if (why === 'soil') discover(w, 'dust', s.x, s.y); }
+        else if (why !== 'plague' && why !== 'crowded' && why !== 'ash' && !s.nomad && w.year - s.lastFam > 45) { s.lastFam = w.year; ev(w, FAMINE[why].replace('%', s.name), s.x, s.y, c.color, s.tier >= 2 ? 0 : 1); remember(w, s.x, s.y, DEATH, 0.12, 2, 'famine', `the hunger at ${s.name}`, { place: s.name }); if (why === 'fish') discover(w, 'nets', s.x, s.y); else if (why === 'soil') discover(w, 'dust', s.x, s.y); }
         if (s.pop > 80 && !s.nomad) flee(w, s, loss * 0.6); }
       s.pop -= loss;
     }
-    if (s.plague > 0) { const st = w.plagues[s.pid], dead = s.pop * st.v; s.pop -= dead; st.killed += dead; st.now++; s.plague--; if (s.plague === 0) s.immune = 70; c.seasoned = true;
-      near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
+    if (s.plague > 0) { const st = w.plagues[s.pid], dead = s.pop * st.v * (st.virgin != null && st.virgin !== c.id && c.germ > 0.3 ? 0.15 : 1 - 0.7 * c.germ); s.pop -= dead; st.killed += dead; st.now++; s.plague--; if (s.plague === 0) s.immune = 70; c.germ = Math.min(1, c.germ + 0.03);
+      near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (1 - 0.8 * w.cults[o.cult].germ)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
-    c.know += s.pop * c.wit * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    c.know += s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -314,12 +337,12 @@ export function roadsYear(w) { if (w.year % 5 === 0) roads(w); caravans(w); }
 function ruinsYear(w) {
   const rnd = w.rnd;
   for (const r of w.ruins) {
-    const i = r.y * W + r.x; if (w.magic[i] < 1) w.magic[i] = Math.min(1, w.magic[i] + 0.0022 * (r.tier >= 3 ? 1.6 : 1));
+    const i = r.y * W + r.x;
     if (r.kind !== 'drowned' && w.water[i] === 1) { r.kind = 'drowned'; discover(w, 'drowned', r.x, r.y); }
     if (!r.looted && r.kind !== 'drowned' && rnd() < 0.03) { const s = near(w, r.x, r.y, 8, null, true); if (s) { const c = w.cults[s.cult];
         if (r.haunt) { r.looted = true; infect(w, s, null, true); ev(w, `Diggers from ${s.name} open the ruins of ${r.name}. What they bring home kills half the town.`, r.x, r.y, c.color); discover(w, 'curse', r.x, r.y); }
         else if (c.know < r.know * 0.9) { c.know += (r.know - c.know) * 0.35; r.looted = true; ev(w, `Diggers from ${s.name} find old writings in the ruins of ${r.name}.`, r.x, r.y, c.color, (w.relics = (w.relics || 0) + 1) <= 2 ? 0 : 1); discover(w, 'relic', r.x, r.y); } } }
-    if (w.magic[i] > 0.8 && w.year - r.year > 250 && !r.haunt) { r.haunt = true; holySite(w, r.x, r.y, 'haunt', 0.5); if (discover(w, 'haunt', r.x, r.y)) ev(w, `No one goes near the ruins of ${r.name} any more.`, r.x, r.y, null); }
+    if (memAt(w, i, DEATH) > 0.6 && w.year - r.year > 120 && !r.haunt) { r.haunt = true; holySite(w, r.x, r.y, 'haunt', 0.5); if (discover(w, 'haunt', r.x, r.y)) ev(w, `No one goes near the ruins of ${r.name} any more.`, r.x, r.y, null); }
   }
 }
 
@@ -344,6 +367,8 @@ function cultYear(w, c) {
   c.tenet = tenetOf(w, c); c.zeal = c.tenet === 'war';
   c.kind = kindOf(c); c.metals = c._metals; c.gold = !!(c.metals & 16); c.tech = techOf(c.know);
   for (const k of ART_KEYS) if (!A[k] && canLearn(c, k, false) && rnd() < 0.06) { learn(w, c, k); break; }
+  originsYear(w, c, b);
+  const was = stanceYear(w, c); if (was === 'revere') breakPacts(w, c);
   for (const k in c.nb) { c.nb[k] *= 0.9; if (c.nb[k] < 0.05) delete c.nb[k]; }
   if (w.year >= c.ruler.until) crown(w, c);
   // cohesion: young, small and pressed peoples hold together; big, old, easy ones come apart
@@ -378,7 +403,8 @@ function endWar(w, c, quiet) {
   const a = wr.mine ? c : f, d = wr.mine ? f : c, aw = wr.mine ? wr : fw, dw = wr.mine ? fw : wr, got = aw ? aw.taken : 0, lost = dw ? dw.taken : 0, yrs = w.year - wr.since, at = a.big || d.big;
   const big = got + lost >= 8;
   const txt = wr.horde || (fw && fw.horde) ? (got >= 4 ? `The riders of the ${a.name} now rule ${got} towns of the ${d.name}. In a generation they will be townsfolk themselves.` : `The riders of the ${a.name} go home with what they could carry.`) : got > lost + 1 ? `After ${yrs} years the ${d.name} sue for peace. ${got} of their towns now answer to the ${a.name}.` : lost > got + 1 ? `The war the ${a.name} started ends badly for them: ${lost} towns lost to the ${d.name}.` : `The war between the ${a.name} and the ${d.name} ends after ${yrs} years with little to show for it.`;
-  ev(w, txt, at ? at.x : null, at ? at.y : null, a.color, big ? 2 : got + lost >= 3 ? 0 : 1); if (big) discover(w, 'war', at ? at.x : null, at ? at.y : null);
+  ev(w, txt, at ? at.x : null, at ? at.y : null, a.color, big ? 2 : got + lost >= 3 ? 0 : 1);
+  if (got + lost >= 3 && at) { const fr = d.big || at; remember(w, (at.x + fr.x) / 2, (at.y + fr.y) / 2, DEATH, 0.35 + 0.06 * Math.min(8, got + lost), 4, 'battle', `the ${a.name} and the ${d.name} fought for ${yrs} years`); } if (big) discover(w, 'war', at ? at.x : null, at ? at.y : null);
 }
 function schism(w, c, quiet) {
   if (!c.big) return null; let far = null, fd = 0;
@@ -410,7 +436,7 @@ function nomadStep(w, s, c, seaN, fishGap) {
   const rnd = w.rnd, herder = !!c.grazer, A = c.arts, src = s.src;
   const herding = herder && src[4] >= src[2] && src[4] > src[0] * 0.8;
   if (s.age > 3 && (A.farming || (!herding && c.know > 1200 && src[2] > src[0] + src[1]))) {
-    let sk = 0, cnt = 0; for (const o of DISC[2]) { const y = s.y + o[1]; if (y < 1 || y >= H - 1) continue; const i = y * W + wx(s.x + o[0]); if (w.water[i]) continue; sk += w.crop[i] + (w.fresh[i] <= 1 ? 0.3 : 0); cnt++; }
+    let sk = 0, cnt = 0; for (const o of DISC[2]) { const y = s.y + o[1]; if (y < 1 || y >= H - 1) continue; const i = y * W + wx(s.x + o[0]); if (w.water[i]) continue; sk += (A.farming ? cropYield(w, c, i) : 0) + (w.fresh[i] <= 1 ? 0.3 : 0); cnt++; }
     if (cnt >= 6 && ((A.farming && sk / cnt > (herder ? 0.8 : 0.4)) || (!herder && seaN >= 4 && fishGap > 0.8)) && !near(w, s.x, s.y, 6, s, true) && w.magic[s.y * W + s.x] < 0.7) {
       s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y;
       const ru = ruinAt(w, s.x, s.y);
@@ -420,9 +446,9 @@ function nomadStep(w, s, c, seaN, fishGap) {
     }
   }
   s.px = s.x; s.py = s.y; s.mt = w.tickN;
-  if (rnd() < 0.7) { let best = siteScore(w, s.x, s.y, A.farming, herding) * 1.08, bx = s.x, by = s.y; const D = DISC[herder ? 6 : 3];
+  if (rnd() < 0.7) { let best = siteScore(w, s.x, s.y, A.farming, herding, c) * 1.08, bx = s.x, by = s.y; const D = DISC[herder ? 6 : 3];
     for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2) continue; const i = y * W + x; if (w.water[i] || w.h[i] - w.params.sea > 0.42 || w.ice[i]) continue;
-      let sc = siteScore(w, x, y, A.farming, herding) * (0.9 + 0.2 * rnd()); if (near(w, x, y, 4, s)) sc *= 0.4; if (sc > best) { best = sc; bx = x; by = y; } }
+      let sc = siteScore(w, x, y, A.farming, herding, c) * (0.9 + 0.2 * rnd()); if (near(w, x, y, 4, s)) sc *= 0.4; if (sc > best) { best = sc; bx = x; by = y; } }
     s.x = bx; s.y = by; }
   if ((s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : 26) : 10) && w.sets.length < MAXS) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
   if (A.farming && !herding && s.age > 20 && rnd() < 0.08) { const b = near(w, s.x, s.y, 14, s, true); if (b) { b.pop += s.pop * 0.8; s.dead = true; w.anyDead = true; return; } if (s.age > 60) { s.dead = true; w.anyDead = true; return; } }
@@ -437,7 +463,7 @@ function townStep(w, s, c) {
       else if (nt === 3) { const first = once(w, 'city'); ev(w, first ? `${s.name} becomes the first city in the world.` : c.flags.city ? `${s.name} is now a city of the ${c.name}.` : `${s.name} becomes the first city of the ${c.name}.`, s.x, s.y, c.color, first ? 2 : 1); c.flags.city = 1; discover(w, 'city', s.x, s.y); if (s.way === 'farm' && w.fresh[s.y * W + s.x] <= 1 && A.irrigation) discover(w, 'river', s.x, s.y); } } }
   else if (nt < s.tier && s.pop < (s.tier === 3 ? 500 : 100)) s.tier = nt;
   if (A.masonry && s.tier >= 2) s.walls = true;
-  if (!s.tower && c.tech >= 3 && s.tier >= 2 && w.magic[s.y * W + s.x] > 0.55 && rnd() < 0.02) { s.tower = true; if (!A.craft) c.arts.craft = w.year; ev(w, `A tower goes up at ${s.name}, where the air hums. Nobody admits to building it.`, s.x, s.y, c.color); discover(w, 'tower', s.x, s.y); }
+  if (!s.tower && c.tech >= 2 && s.tier >= 2 && c.stance !== 'forget' && c.stance !== 'fear' && w.magic[s.y * W + s.x] > (c.stance === 'use' ? 0.35 : 0.55) && rnd() < (c.stance === 'use' ? 0.05 : 0.02)) { s.tower = true; if (!A.craft) c.arts.craft = w.year; ev(w, `A tower goes up at ${s.name}, where the air hums. Nobody admits to building it.`, s.x, s.y, c.color); discover(w, 'tower', s.x, s.y); }
   if (s.tower && s.wa < 0.7 && rnd() < 0.2) { for (const o of DISC[7]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); w.wetBias[i] = Math.min(2.5, w.wetBias[i] + 0.25 * (1 - o[2] / 8)); } w.need.climate = true; if (discover(w, 'rainmaker', s.x, s.y)) ev(w, `In the third dry year, the tower at ${s.name} calls the rain. It comes.`, s.x, s.y, c.color); }
   if (s.pop > 95 && s.age > 14 && w.sets.length < MAXS && rnd() < 0.036) colonize(w, s, c);
   else if (c.grazer && s.pop > 130 && rnd() < 0.008) pasture(w, s, c);
@@ -452,12 +478,12 @@ function townStep(w, s, c) {
 }
 
 function colonize(w, s, c) {
-  const rnd = w.rnd, A = c.arts, maxD = A.sailing ? 70 : A.boats || A.roads ? 22 : 12, sea = w.params.sea; let best = null, bs = 9.5;
+  const rnd = w.rnd, A = c.arts, maxD = A.sailing ? 70 : A.boats || A.roads ? 22 : 12 + 4 * livestock(c).cart, sea = w.params.sea; let best = null, bs = 9.5;
   for (let q = 0; q < 12; q++) {
     const far = A.sailing && q < 3, a = rnd() * 6.2832, d = far ? 26 + rnd() * (maxD - 26) : 6 + rnd() * (Math.min(maxD, 22) - 6), x = wx(Math.round(s.x + Math.cos(a) * d)), y = Math.round(s.y + Math.sin(a) * d * 0.8); if (y < 3 || y >= H - 3) continue; const i = y * W + x;
     if (w.water[i] || w.h[i] - sea > (A.terraces ? 0.5 : 0.36) || w.gCap[i] < 0.24 || w.ice[i] || w.magic[i] > 0.75 || near(w, x, y, 8.5, null, true)) continue;
     const wet = crossesWater(w, s.x, s.y, x, y); if (wet > 1 && !A.boats) continue; if (wet > 5 && !A.sailing) continue;
-    let sc = 0; for (const o of DISC[2]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(x + o[0]); if (w.water[j]) sc += A.boats ? 0.6 : 0.15; else sc += 0.12 * w.gCap[j] + (A.farming ? Math.min(1, w.crop[j] + (w.fresh[j] <= (A.irrigation ? 3 : 1) ? 0.5 : 0)) : 0) + (c.grazer ? 0.25 * w.g[j] : 0); }
+    let sc = 0; for (const o of DISC[2]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(x + o[0]); if (w.water[j]) sc += A.boats ? 0.6 : 0.15; else sc += 0.12 * w.gCap[j] + (A.farming ? Math.min(1, cropYield(w, c, j) + (w.fresh[j] <= (A.irrigation ? 3 : 1) ? 0.5 : 0)) : 0) + (c.grazer ? 0.25 * w.g[j] : 0); }
     if (ruinAt(w, x, y) && !w.ruins.some((r) => r.haunt && Math.abs(wrapDx(r.x - x)) <= 2 && Math.abs(r.y - y) <= 2)) sc += 2;
     sc *= 0.85 + 0.3 * rnd(); if (sc > bs) { bs = sc; best = { x, y, wet, far: w.mass[i] !== w.mass[s.y * W + s.x] }; }
   }
@@ -470,7 +496,7 @@ function colonize(w, s, c) {
 function pasture(w, s, c) {
   const rnd = w.rnd, sea = w.params.sea; let bi = -1, bg = 0.35;
   for (let q = 0; q < 14; q++) { const a = rnd() * 6.2832, d = 6 + rnd() * 13, x = wx(Math.round(s.x + Math.cos(a) * d)), y = Math.round(s.y + Math.sin(a) * d * 0.8); if (y < 3 || y >= H - 3) continue; const i = y * W + x;
-    if (w.water[i] || w.crop[i] > 0.3 || w.ice[i] || w.h[i] - sea > 0.4 || w.owner[i] >= 0 || w.g[i] <= bg || near(w, x, y, 5, null, false)) continue; bg = w.g[i]; bi = i; }
+    if (w.water[i] || cropYield(w, c, i) > 0.3 || w.ice[i] || w.h[i] - sea > 0.4 || w.owner[i] >= 0 || w.g[i] <= bg || near(w, x, y, 5, null, false)) continue; bg = w.g[i]; bi = i; }
   if (bi < 0 || w.sets.length >= MAXS || Math.max(c.env.nomads, c.nomadsWas || 0) >= 12) return; let cult = s.cult; s.pop -= 30;
   if (c.env.nomads === 0 && aliveN(w) < MAXC + 3 && rnd() < 0.7) { const nc = newCult(w, c); cult = nc.id; nc.way = 'herd'; ev(w, `Herders of the ${c.name} take their animals out onto the open grass and do not come back. They call themselves the ${nc.name}.`, bi % W, (bi / W) | 0, nc.color, once(w, 'pastoral') ? 0 : 1); }
   else { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; }
@@ -522,17 +548,17 @@ function caravans(w) {
 // The first bands are put down in different kinds of country on purpose: a river valley, open
 // grass, a cold shore, deep woods. Where each one starts decides most of what it becomes.
 const START = [
-  (w, i) => w.crop[i] * 2 + (w.fresh[i] < 3 ? 2 : 0),                                                    // good farmland by water
-  (w, i) => (w.crop[i] < 0.3 && w.g[i] > 0.5 && w.t[i] < 0.3 ? 3 : 0) + (w.graze[i] > 0.35 ? 1 : 0),            // open grass
+  (w, i) => w.wildCrop[i] * 2.5 + (w.fresh[i] < 3 ? 2 : 0),                                                    // good farmland by water
+  (w, i) => (w.wildCrop[i] < 0.3 && w.g[i] > 0.5 && w.t[i] < 0.3 ? 3 : 0) + (w.graze[i] > 0.35 ? 1 : 0),            // open grass
   (w, i) => (w.dSea[i] <= 2 ? 2.5 : 0) + (w.tMean[i] < 9 ? 1.5 : 0),                                     // cold shore
   (w, i) => (w.t[i] > 0.7 ? 3 : 0),                                                                      // deep woods
-  (w, i) => w.crop[i] * 2 + (w.fresh[i] < 3 ? 2 : 0),
+  (w, i) => w.wildCrop[i] * 2.5 + (w.fresh[i] < 3 ? 2 : 0),
   (w, i) => (w.dSea[i] <= 2 ? 3 : 0) + (w.tMean[i] > 14 ? 1 : 0),                                        // warm shore
   (w, i) => (w.mi[i] < 0.45 && w.mi[i] > 0.15 && w.tMean[i] > 12 ? 3 : 0) + (w.fresh[i] < 3 ? 1.5 : 0),  // dry country
   (w, i) => (w.tMean[i] < 3 && w.g[i] > 0.3 ? 3.5 : 0),                                                  // the cold north or south
-  (w, i) => (w.crop[i] < 0.3 && w.g[i] > 0.5 && w.t[i] < 0.3 ? 3 : 0),
+  (w, i) => (w.wildCrop[i] < 0.3 && w.g[i] > 0.5 && w.t[i] < 0.3 ? 3 : 0),
   (w, i) => (w.h[i] - w.params.sea > 0.2 ? 3 : 0),                                                       // hills
-  (w, i) => w.crop[i] * 2 + (w.fresh[i] < 3 ? 2 : 0),
+  (w, i) => w.wildCrop[i] * 2.5 + (w.fresh[i] < 3 ? 2 : 0),
   (w, i) => (w.t[i] > 0.7 ? 3 : 0),
 ];
 export function initPeople(w, n) {
@@ -556,4 +582,39 @@ export function addBand(w, x, y) {
 export function gift(w, c) {
   c.know += Math.max(3000, c.know * 0.3); c.tech = techOf(c.know); c.coh = Math.min(1, c.coh + 0.15);
   const got = ART_KEYS.filter((k) => canLearn(c, k, true)); if (got.length) { learn(w, c, got[0]); return ART[got[0]].say; } return null;
+}
+
+/* ---------- guns, germs and steel ---------- */
+// Meeting a people whose herds have given them sicknesses you have never met is the most
+// dangerous thing that can happen to you. The gap, not the meeting, does the killing.
+function contact(w, a, s, who) {
+  const b = w.cults[s.cult], gap = (a.germ || 0) - (b.germ || 0);
+  if (gap < 0.25 || s.plague > 0 || s.immune > 0 || w.year - (b.virginAt || -999) < 60 || w.rnd() > 0.12 + gap * 0.3) return false;
+  if (!infect(w, s, null, true)) return false;
+  const st = w.plagues[s.pid]; st.v = Math.min(0.45, 0.12 + 0.4 * gap); st.catchy = 0.75; st.virgin = b.id; b.virginAt = w.year;
+  ev(w, `${who} of the ${a.name} bring ${s.name || 'the camps of the ' + b.name} a sickness the ${b.name} have never met. The ${a.name} barely notice it.`, s.x, s.y, b.color, b.count >= 6 ? 0 : 1);
+  if (b.count >= 6) discover(w, 'virgin', s.x, s.y);
+  return true;
+}
+// Once a year for each people: how much food spares hands for other work, how hard their bodies
+// have become, whether anyone near is close enough in strength to keep them inventing, and what
+// a people cut off from everyone slowly loses.
+function originsYear(w, c, b) {
+  const rnd = w.rnd, A = c.arts; c._L = livestock(c);
+  c.surplus = c._p > 0 ? c._sur / c._p : 0;
+  const dense = Math.min(1, c.env.towns / 6 + c.env.cities / 3);
+  const gT = Math.min(1, c._L.germs * (0.2 + 0.35 * dense) + dense * 0.15);   // how hard their herds and crowds have made them
+  c.germ += (gT - c.germ) * (gT > c.germ ? 0.012 : 0.004);
+  let rivals = 0; for (const k in c.nb) { const o = w.cults[k]; if (o.alive && o.pop > c.pop * 0.3 && c.nb[k] > 0.3) rivals++; } c.rivals = rivals;
+  // one realm alone in its world can afford to stop: a court decides the ships are a waste
+  if (b && b.name && c.count >= 36 && rivals === 0 && c.coh > 0.45 && rnd() < 0.006) {
+    const k = ['sailing', 'engines', 'roads'].find((q) => A[q]);
+    if (k) { delete A[k]; c.banned[k] = w.year; ev(w, k === 'sailing' ? `The court at ${b.name} burns the great ships. No one of the ${c.name} may sail past sight of land.` : k === 'engines' ? `The court at ${b.name} forbids the smoking engines. Nobody nearby is strong enough to make them regret it.` : `The ${c.name} let their roads go. There is no one to trade with that they need.`, b.x, b.y, c.color, 0); discover(w, 'ban', b.x, b.y); }
+  }
+  for (const k in c.banned) if (w.year - c.banned[k] > 160) delete c.banned[k];
+  // a small people cut off from all others forgets things it has no one to relearn from
+  if (b && w.year > 250 && w.year - c.lastMet > 220 && c.pop < 1500 && c.count > 0 && c.count <= 8 && rnd() < 0.005 && !near(w, b.x, b.y, 45, null, false, null, c.id)) {
+    const k = ['sailing', 'iron', 'bronze', 'writing', 'irrigation', 'boats'].find((q) => A[q]);
+    if (k) { delete A[k]; c.lastMet = w.year - 60; ev(w, `Cut off from everyone for ${w.year - c.born > 300 ? 'centuries' : 'generations'}, the ${c.name} forget ${ART[k].say}.`, b.x, b.y, c.color); discover(w, 'isolated', b.x, b.y); }
+  }
 }

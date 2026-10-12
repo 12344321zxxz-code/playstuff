@@ -1,7 +1,7 @@
 // Little pixel-art pictures for the things that stand on the map. Each is a grid of letters;
 // 'c' and 'd' take the owner's colour (and a darker shade of it). Drawn once per colour into a
 // tiny canvas, then scaled up by whole numbers with smoothing off, so they stay crisp.
-const PAL = { k: '#1b1714', w: '#ece0c4', W: '#c9b892', r: '#8f4a2c', g: '#aaa49a', G: '#6c665e', y: '#f2c230', o: '#ff7a1a', R: '#c4352a', b: '#7a5232', B: '#4f3520', s: '#f4efe2', p: '#9a62e0', P: '#4b2a6e', u: '#5aa7d6', U: '#2f6a9a', f: '#ffd24a', n: '#3a8a3a', e: '#e8e8ea', x: '#5a5a62' };
+const PAL = { a: '#c8d0e8', A: '#7a84a8', v: '#6aff9a', V: '#1f8a4a', j: '#ffe680', J: '#c9a030', i: '#9ae6ff', I: '#3a7aa8', h: '#e8f0ff', k: '#1b1714', w: '#ece0c4', W: '#c9b892', r: '#8f4a2c', g: '#aaa49a', G: '#6c665e', y: '#f2c230', o: '#ff7a1a', R: '#c4352a', b: '#7a5232', B: '#4f3520', s: '#f4efe2', p: '#9a62e0', P: '#4b2a6e', u: '#5aa7d6', U: '#2f6a9a', f: '#ffd24a', n: '#3a8a3a', e: '#e8e8ea', x: '#5a5a62' };
 export const SPR = {
   hut: ['..kkk..', '.kccck.', 'kccccck', '.kwwwk.', '.kwkwk.', '.kkkkk.'],
   village: ['...kkk.....', '..kccck.kk.', '.kccccckcck', '..kwwwkkcck', '..kwkwk.kwk', '..kkkkk.kkk'],
@@ -25,6 +25,14 @@ export const SPR = {
   dragon: ['R.......R', 'RR.....RR', 'RRR.R.RRR', '.RRRRRRR.', '...RkR...', '....R....', '....R....'],
   dragonSleep: ['...........', '..RRRRR....', '.RRRRRRRRk.', 'RRRRRRRRRRk', 'yyyyyyyyyyy'],
   kraken: ['p.p.p.p.p', 'pPpPpPpPp', '.PpppppP.', '..PPPPP..'],
+  well: ['..kkkkk..', '.kGgggGk.', 'kGgcccgGk', 'kgcdddcgk', 'kGgcccgGk', '.kGgggGk.', '..kkkkk..'],
+  host: ['.a...a...', 'aAa.aAa.a', '.a...a.aAa', 'aAa.aAa..a', '.A...A....', '.A.a.A.a..', '...A...A..'],
+  shamblers: ['.k...k.', 'kxk.kxk', '.x...x.', 'xxx.xxx', '.x...x.', 'x.x.x.x'],
+  lich: ['..y.y.y..', '..yyyyy..', '...kxk...', '..kaaak..', '.kAkAkAk.', '.kAAAAAk.', 'kAAkkkAAk', 'kAAkkkAAk', 'kkkkkkkkk'],
+  hunger: ['k.....k', '.k.k.k.', '..kxk..', '..xhx..', '.kxxxk.', '.x...x.', 'x.....x'],
+  drowned: ['...k...', '..kGk..', '.kGGGk.', '.kGGGk.', 'kGGGGGk', 'kkkGkkk', 'iIiIiIi'],
+  fey: ['.v...v.', 'vVv.vVv', '.v.j.v.', '..jjj..', '.v.j.v.', 'vVv.vVv', '.v...v.'],
+  saint: ['...j...', '..jjj..', '...j...', '.kwwwk.', '.kwjwk.', '.kwwwk.', 'kkkkkkk'],
   lair: ['..kkkk..', '.kGGGGk.', 'kGkkkkGk', 'kGk..kGk', 'kkk..kkk'],
 };
 const cache = new Map();

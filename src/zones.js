@@ -17,9 +17,15 @@ export const ZONES = [
   { key: 'Dw', name: 'Continental, dry winters', col: '#8f9ed8' },
   { key: 'ET', name: 'Tundra', col: '#a8bcbc' },
   { key: 'EF', name: 'Ice cap', col: '#eaf2f8' },
+  { key: 'X0', name: 'Strange: haunted', col: '#6e6a8c' },
+  { key: 'X1', name: 'Strange: wildwood', col: '#1fd07a' },
+  { key: 'X2', name: 'Strange: ever-summer', col: '#ff6a3a' },
+  { key: 'X3', name: 'Strange: fog coast', col: '#7ad8f0' },
+  { key: 'X4', name: 'Strange: blessed', col: '#ffe680' },
 ];
 export function zoneOf(w, i) {
   if (w.water[i] === 1) return 0;
+  if (w.magic[i] > 0.6 && w.mem) { const b = i * 5; let k = 0; for (let q = 1; q < 5; q++) if (w.mem[b + q] > w.mem[b + k]) k = q; if (w.mem[b + k] > 0.5) return 14 + k; }
   const a = w.tJan[i], b = w.tJul[i], hot = Math.max(a, b), cold = Math.min(a, b), Tm = (a + b) / 2;
   const rW = a > b ? w.rJan[i] : w.rJul[i], rC = a > b ? w.rJul[i] : w.rJan[i], m = w.mi[i];
   if (hot < 0) return 13; if (hot < 10) return 12;

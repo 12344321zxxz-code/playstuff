@@ -1,5 +1,7 @@
 // The rest of the god's hands: animals, peoples, catastrophes and the unnatural.
-import { W, H, DISC, clamp, wx, wrapDx } from './core.js';
+import { W, H, N, DISC, clamp, wx, wrapDx } from './core.js';
+import { route, forgetAt, sumMagic, NK } from './memory.js';
+import { PLANTS, floraMap } from './origins.js';
 import { registerTools, addLens, say } from './main.js';
 import { SPECIES, addHerd, addPack, cull } from './fauna.js';
 import { addBand, ORES } from './people.js';
@@ -9,7 +11,7 @@ import { addKraken } from './sea.js';
 import { ev } from './story.js';
 
 const cell = (p) => clamp(Math.round(p.y - 0.5), 1, H - 2) * W + wx(Math.round(p.x - 0.5));
-const SP_OPTS = ['Whatever fits', 'Deer', 'Horses', 'Aurochs', 'Mammoths', 'Antelope', 'Camels', 'Goats', 'Reindeer', 'Boar'];
+const SP_OPTS = ['Whatever fits'].concat(SPECIES.map((s) => s.name[0].toUpperCase() + s.name.slice(1)));
 
 registerTools([
   { id: 'spring', label: 'Spring', group: 'Land', hint: 'Tap high ground to open a spring. A river starts there and finds its own way down.', miss: 'A spring needs dry land.',
@@ -48,9 +50,15 @@ registerTools([
     apply(w, p) { const d = addDragon(w, p.x - 0.5, p.y - 0.5); if (d) { ev(w, `${d.name} wakes in the high rock.`, d.x, d.y, null); say(`${d.name} wakes.`); } return !!d; } },
   { id: 'kraken', label: 'Deep one', group: 'Other world', radius: 5, hint: 'Tap deep sea to put something down there. Ships that pass over it do not all come home.', miss: 'It needs open sea, and there is room for only a few.',
     apply(w, p) { const k = addKraken(w, p.x - 0.5, p.y - 0.5); if (k) { ev(w, `Something settles into the deep water and sailors give it a name: ${k.name}.`, k.x, k.y, null); say(`${k.name[0].toUpperCase() + k.name.slice(1)} wakes in the deep.`); } return !!k; } },
-  { id: 'well', label: 'Wellspring', group: 'Other world', kind: 'brush', lens: 7, hint: 'Hold to pour magic into a place. Woods there stop burning; people keep their distance, or build towers.',
-    apply(w, p, f, r) { const x = Math.round(p.x - 0.5), y = Math.round(p.y - 0.5); for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(x + o[0]), k = 1 - o[2] / (r + 0.5); w.magic[i] = Math.min(1, w.magic[i] + 0.07 * k); w.ley[i] = Math.min(1.5, w.ley[i] + 0.012 * k); } return true; } },
-  { id: 'hush', label: 'Hush', group: 'Other world', kind: 'brush', lens: 7, hint: 'Hold to drain the magic out of a place for good.',
-    apply(w, p, f, r) { const x = Math.round(p.x - 0.5), y = Math.round(p.y - 0.5); for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(x + o[0]); w.magic[i] *= 0.8; w.ley[i] *= 0.8; } return true; } },
+  { id: 'well', label: 'Wellspring', group: 'Other world', radius: 2, lens: 7, hint: 'Tap to open a wellspring. Memory runs to it along the ley lines, and when it is full it spills a storm back up them.', miss: 'There is already a well close by.',
+    apply(w, p) { const x = wx(Math.round(p.x - 0.5)), y = clamp(Math.round(p.y - 0.5), 4, H - 5); if (w.wells.some((q) => wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 < 400)) return false; w.wells.push({ x, y, name: null, spilt: 0 }); for (const o of DISC[3]) { const yy = y + o[1]; w.ley[yy * W + wx(x + o[0])] = Math.max(w.ley[yy * W + wx(x + o[0])], 0.6); } route(w); say('The ground opens on something old.'); return true; } },
+  { id: 'remember', label: 'Remember', group: 'Other world', kind: 'brush', lens: 7, hint: 'Hold to make a place remember for good. Nothing people do will wear its memory away, and it will not drain to the wells.',
+    apply(w, p, f, r) { const x = Math.round(p.x - 0.5), y = Math.round(p.y - 0.5); for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; w.memLock[yy * W + wx(x + o[0])] = 1; } return true; } },
+  { id: 'hush', label: 'Hush', group: 'Other world', kind: 'brush', lens: 7, hint: 'Hold to quiet a place a little at a time. What rose there weakens as its memory fades.',
+    apply(w, p, f, r) { const x = Math.round(p.x - 0.5), y = Math.round(p.y - 0.5); for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(x + o[0]); for (let k = 0; k < NK; k++) w.mem[i * NK + k] *= 0.85; w.memLock[i] = 0; } sumMagic(w); return true; } },
+  { id: 'forget', label: 'Forget', group: 'Other world', radius: 8, lens: 7, hint: 'Tap to make a country forget everything that happened in it. Whatever rose from those memories goes with them.', miss: 'There is nothing here to forget.',
+    apply(w, p, f, r) { const x = wx(Math.round(p.x - 0.5)), y = Math.round(p.y - 0.5); const n = w.spirits.length; w.spirits = w.spirits.filter((q) => wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 > 64); const ok = forgetAt(w, x, y, 8); if (n !== w.spirits.length) say('What walked there is gone, and nobody remembers why it walked.'); return ok || n !== w.spirits.length; } },
+  { id: 'sow', label: 'Wild seed', group: 'Life', opts: PLANTS.map((q) => q.wild[0].toUpperCase() + q.wild.slice(1)), lens: 12, hint: 'Tap land to seed a wild plant across that whole landmass. Whoever lives there may learn to farm it, if the climate suits.', miss: 'It needs land.',
+    apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i]) return false; const m = w.mass[i], k = w.floraKinds[m] || (w.floraKinds[m] = []); if (!k.includes(opt)) k.push(opt); floraMap(w); say(`${PLANTS[opt].wild[0].toUpperCase() + PLANTS[opt].wild.slice(1)} takes root ${w.pSuit[opt * N + i] > 100 ? 'here' : 'here, though it will only thrive where the climate suits it'}.`); return true; } },
 ]);
-addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Magic');
+addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins');

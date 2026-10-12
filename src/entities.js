@@ -1,5 +1,8 @@
 // Everything on the map that is not terrain: animals, peoples, roads, ruins, dragons, storms and
 // the brief flashes when something big happens. Drawn on the 2D overlay, on top of the shader.
+import { KINDS, STANCES, memAt, kindAt } from './memory.js';
+import { SPIRIT_KINDS } from './spirits.js';
+import { PLANTS, luckOf } from './origins.js';
 import { W, H, TAU, TPY, CS, CW, CH, clamp, wrapDx, hash2 } from './core.js';
 import { toScreen } from './render.js';
 import { SPECIES } from './fauna.js';
@@ -97,6 +100,15 @@ function drawSea(ctx, w, cam, z, now) {
     else { ctx.fillStyle = 'rgba(180,200,220,0.5)'; ctx.fillRect(Math.round(p[0] - 4 * k), Math.round(p[1]), 8 * k, k); }
     if (z >= 7) label(ctx, kr.name, p[0], p[1] + 2 * cam.dpr, Math.round(11 * cam.dpr), '#d9c2ee', true, 50); }
 }
+// the other world: wellsprings, the things that rose from memory, and ley storms on the move
+const SPR_OF = { host: 'host', shamblers: 'shamblers', lich: 'lich', hunger: 'hunger', drowned: 'drowned', fey: 'fey', saint: 'saint' };
+function drawOther(ctx, w, cam, z, now, frac) {
+  const k = pixScale(z, cam.dpr);
+  if (z >= 1.6) for (const q of w.wells) { if (!seen(q.x, q.y, 2)) continue; const p = at(cam, q.x + 0.5, q.y + 1); blit(ctx, 'well', p[0], p[1], k, KINDS[q.kind || 0].col); if (z >= 5 && q.name) label(ctx, cap(q.name), p[0], p[1] + 2 * cam.dpr, Math.round(10 * cam.dpr), '#e6dcff', true, 30); }
+  if (z >= 2.2) for (const sp of w.spirits) { if (!seen(sp.x, sp.y, 2)) continue; const x = sp.px + wrapDx(sp.x - sp.px) * frac + 0.5, y = sp.py + (sp.y - sp.py) * frac + 1; const p = at(cam, x, y); const bob = still || sp.kind === 'lich' || sp.kind === 'saint' || sp.kind === 'drowned' ? 0 : Math.round(Math.sin(now * 0.003 + sp.id) * k); blit(ctx, SPR_OF[sp.kind], p[0], p[1] + bob, k); if (z >= 6) label(ctx, cap(sp.name), p[0], p[1] + 2 * cam.dpr, Math.round(10 * cam.dpr), KINDS[SPIRIT_KINDS[sp.kind].mem].col, true, 40); }
+  for (const st of w.storms2) { const x = st.px + wrapDx(st.x - st.px) * frac + 0.5, y = st.py + (st.y - st.py) * frac + 0.5; if (!seen(x, y, 4)) continue; const p = at(cam, x, y), col = KINDS[st.kind].col, q = Math.max(2, Math.round(z * cam.dpr * 0.35));
+    for (let n = 0; n < 14; n++) { const a = n * 2.4 + (still ? 0 : now * 0.004), r = (0.4 + (n % 5) * 0.35) * z * cam.dpr; ctx.fillStyle = col; ctx.globalAlpha = 0.9 - (n % 5) * 0.15; ctx.fillRect(Math.round((p[0] + Math.cos(a) * r) / q) * q, Math.round((p[1] + Math.sin(a) * r) / q) * q, q, q); } ctx.globalAlpha = 1; }
+}
 function drawDragons(ctx, w, cam, z, now, frac) {
   for (const d of w.dragons) {
     const k = pixScale(z, cam.dpr, 1.3);
@@ -145,7 +157,7 @@ hook('overlay', (ctx, w, cam, S, now) => {
   const s = cam.z * cam.dpr, z = cam.z, frac = clamp(S.acc, 0, 1);
   view = { x: cam.x, y: cam.y, hw: cam.w / (2 * s), hh: cam.h / (2 * s) };
   const bare = S.lens === 4 || S.lens === 5;
-  if (!bare) { drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
+  if (!bare) { drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
   flushLabels(ctx); drawFx(ctx, w, cam, s, now); drawSel(ctx, cam, S, now);
 });
 
@@ -162,6 +174,9 @@ export function cultLines(w, c) {
   const arts = Object.keys(c.arts).sort((a, b) => c.arts[a] - c.arts[b]).map((k) => ART[k].say); L.push(arts.length ? `They know ${list(arts)}.` : 'They know fire, stone and each other.');
   const tame = Object.keys(c.tame), met = []; if (c.arts.bronze) met.push('bronze'); if (c.arts.iron) met.push('iron'); if (c.gold) met.push('gold');
   if (tame.length || met.length) L.push((tame.length ? `They keep ${list(tame.map((k) => (k === 'cattle' ? 'cattle' : k === 'pig' ? 'pigs' : k + 's')))}. ` : '') + (met.length ? `They have ${list(met)}.` : ''));
+  const lk = luckOf(w, c); L.push(lk.crops.length ? `They sow ${list(lk.crops)}.` : c.arts.farming ? 'Their crops do not grow here.' : 'Nothing that grows wild near them could be sown.');
+  if (lk.germs > 0.6 && c.germ > 0.4) L.push('Living close to their herds has given them every sickness, and made them hard to kill with any of them.'); else if (c.germ < 0.12 && w.year > 150) L.push('They have never lived with herds and their sicknesses. A stranger\'s cough could empty their towns.');
+  const st = STANCES[c.stance || 'revere']; L.push(`${st.name}: they ${st.say}.${c.pacts ? ' They have made bargains with the old powers.' : ''}`);
   L.push(`${c.ruler.name} leads them. ${c.coh > 0.7 ? 'They hold together well.' : c.coh > 0.45 ? 'There are quarrels, but they hold.' : c.coh > 0.25 ? 'They are pulling apart.' : 'They are one people in name only.'}`);
   if (c.faith != null) { const f = w.faiths[c.faith]; L.push(`They pray to ${f.name}, whose teaching ${TENET[f.tenet]}.${c.faithShare < 0.6 ? ' Not all of them.' : ''}`); }
   if (c.war) { const f = w.cults[c.war.foe]; L.push(`At war with the ${f.name} since year ${c.war.since}.`); }
@@ -183,10 +198,14 @@ const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fis
 export const describeSet = setInfo;
 const MOVE = { settlers: (w, m, c) => [`Settlers of the ${c.name}`, `${Math.round(m.n)} people with everything they own, looking for a place to stop.`], army: (w, m, c) => [`A war band of the ${c.name}`, `About ${Math.round(m.n)} spears${m.to && !m.to.dead && m.to.name ? ', marching on ' + m.to.name : ''}.`], home: (w, m, c) => [`A war band of the ${c.name}`, 'On the way home.'], trade: (w, m, c) => [m.wet0 ? `A trading ship of the ${c.name}` : `A caravan of the ${c.name}`, `${m.from && m.from.name ? 'From ' + m.from.name : 'On its way'}${m.to && m.to.name ? ' to ' + m.to.name : ''}. It carries goods, news, and whatever else is going around.`], refugees: (w, m, c) => [`People of the ${c.name}, fleeing`, `${Math.round(m.n)} people walking away from hunger or worse.`] };
 const RUIN_SAY = { abandoned: 'Its people left, or died out.', sacked: 'It was sacked and burned.', drowned: 'The sea took it.', buried: 'Ash and lava buried it.', burned: 'Fire took it.', plague: 'Plague emptied it.', frozen: 'The ice closed over it.', overgrown: 'The forest swallowed it.', crater: 'A falling star erased it.', swallowed: 'The earth opened under it.', dragon: 'A dragon made it a roost.' };
+const SP_SAY = { host: 'A dead army that fights its war again every night. Nobody settles near it; those who live close sicken and leave.', shamblers: 'The dead of a plague, walking. Wherever they reach, the sickness comes back.', lich: 'A dead king in a ruined hall. It sends the dead against the living, and against its enemies first.', hunger: 'Something in the cold woods that is never full. It takes travellers, herders and game.', drowned: 'Bells under the water. Ships founder nearby; the drowned come ashore in storms.', fey: 'A court under old trees. It steals children, unless a people bargains with it; then their fields never fail.', saint: 'A holy place. Plagues turn back here, and the faithful hold together.' };
 function looker(w, x, y, i, r) {
   let hit = null, bd = r * r;
   for (const d of w.dragons) { for (const p of [[d.x, d.y], [d.lx, d.ly]]) { const q = wrapDx(p[0] - x) ** 2 + (p[1] - y) ** 2; if (q <= bd * 2.5) hit = d; } }
   if (hit) { const d = hit; return { title: d.name, color: '#b3201c', lines: [`A dragon, ${d.age} years on this mountain.`, d.st === 'sleep' ? 'It is asleep on its hoard.' : d.st === 'fly' ? 'It is hunting.' : d.st === 'home' ? 'It is flying home, fed.' : 'It is awake, and looking around.', d.hoard > 20 ? 'Its hoard is the richest thing in the world.' : d.hoard > 6 ? 'It has a respectable hoard.' : 'It has not gathered much yet.'], follow: { pos: () => (d.dead ? null : [d.x, d.y, 2]) } }; }
+  for (const sp of w.spirits) if (wrapDx(sp.x - x) ** 2 + (sp.y - y) ** 2 <= Math.max(4, bd * 1.5)) { const pc = sp.pact != null ? w.cults[sp.pact] : null;
+    return { title: cap(sp.name), color: KINDS[SPIRIT_KINDS[sp.kind].mem].col, lines: [SP_SAY[sp.kind], `It rose in year ${sp.born}, because ${sp.why}.`, pc ? `The ${pc.name} have a bargain with it.` : '', 'It will fade if this place forgets. Peoples who know iron and letters wear memory away; Hush and Forget do it faster.'].filter(Boolean) }; }
+  for (const q of w.wells) if (wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 <= Math.max(4, bd)) return { title: q.name ? cap(q.name) : 'A wellspring', color: KINDS[q.kind || 0].col, lines: ['The ley lines run here, carrying what the world remembers.', `It is ${q.fill > 10 ? 'nearly full' : q.fill > 4 ? 'filling' : 'low'}, mostly with ${KINDS[q.kind || 0].name}.`, q.spilt ? `It has spilled over ${q.spilt === 1 ? 'once' : q.spilt + ' times'}.` : 'When it is full it will spill a storm back up the lines.'] };
   for (const k of w.krakens) if (wrapDx(k.x - x) ** 2 + (k.y - y) ** 2 <= Math.max(9, bd)) return { title: cap(k.name), color: '#6a3f86', lines: [`Something very large, in this water since year ${k.born}.`, k.sunk ? `It has taken ${k.sunk} ${k.sunk === 1 ? 'ship' : 'ships'}.` : 'No ship has come close enough yet.'] };
   for (const m of w.movers) if (!m.done && wrapDx(m.x - x) ** 2 + (m.y - y) ** 2 <= bd * 1.5) { const c = w.cults[m.cult], t = MOVE[m.kind](w, m, c); return { title: t[0], color: c.color, lines: [t[1]], follow: { pos: () => (m.done ? null : [m.x, m.y, 1.4]) } }; }
   for (const sw of w.swarms) if (wrapDx(sw.x - x) ** 2 + (sw.y - y) ** 2 <= 12) return { title: 'Locusts', lines: ['A swarm on the wind. It eats grass and grain down to the dirt and moves on.'] };
