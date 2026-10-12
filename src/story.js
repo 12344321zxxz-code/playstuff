@@ -45,6 +45,8 @@ export const PAGES = [
     ['kraken', 'Deep one', 'Ships that cross this water do not all come back.'],
     ['locusts', 'Swarm', 'After the rains came back, so did something else.'],
     ['nets', 'Empty nets', 'A sea fished until there was nothing left to catch.'],
+    ['megafauna', 'The vanished giants', 'Great beasts who had never seen people, and did not live to learn.'],
+    ['feral', 'Run wild', 'Animals off a ship became a wild herd in a new land.'],
     ['boom', 'Boom and crash', 'Too many grazers, then bare ground, then bones.'],
   ]],
   ['Peoples', [
@@ -77,6 +79,9 @@ export const PAGES = [
     ['fall', 'The Fall', 'The world held far fewer people than it once had.'],
     ['gone', 'Vanished people', 'A people with a name and a history, and now neither.'],
     ['virgin', 'Virgin soil', 'A people met the sicknesses of someone else\'s herds, and most of them died of it.'],
+    ['blight', 'Blight', 'A people who grew only one crop lost it.'],
+    ['slash', 'Slash and burn', 'Farmers who could open the forest with fire.'],
+    ['backwash', 'The fever comes home', 'Sailors brought a new world\'s sickness back with them.'],
     ['ban', 'The burned fleet', 'A realm with no rivals decided it did not need something, and nobody could prove it wrong.'],
     ['isolated', 'The forgetting', 'A people alone for too long lost something they once knew.'],
   ]],

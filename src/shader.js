@@ -10,7 +10,8 @@ precision highp float; precision highp int;
 uniform sampler2D uElev, uA, uB, uC, uD, uF;
 uniform vec3 uFaith[16];
 uniform vec3 uPal[32];
-uniform vec3 uSpec[16];
+uniform vec3 uSpec[20];
+uniform float uTame[20];
 uniform vec3 uZone[19];
 uniform vec3 uKind[5];
 uniform vec3 uFlora[8];
@@ -135,7 +136,7 @@ void main(){
         if (gz < .12) break;
         float ph = uTime * (.15 + .1 * hash(vec2(c) + fk)) + hash(vec2(c) * 1.7 + fk) * 6.28;
         vec2 pos = floor((vec2(.5) + vec2(sin(ph), cos(ph * .8)) * .32 + (vec2(hash(vec2(c) + fk * 3.), hash(vec2(c) * 2. + fk)) - .5) * .3) * 8.);
-        if (sub == pos || (cellPx >= 12. && sub == pos + vec2(1., 0.))) col = sp < 16 ? uSpec[sp] : vec3(.5, .4, .3);
+        if (sub == pos || (cellPx >= 12. && sub == pos + vec2(1., 0.))) col = sp < 20 ? uSpec[sp] : vec3(.5, .4, .3);
       }
       if (hu > .12) { float ph = uTime * .4 + rnd * 6.28; vec2 pos = floor((vec2(.5) + vec2(cos(ph), sin(ph * 1.3)) * .35) * 8.); if (sub == pos) col = vec3(.18, .17, .2); }
     }
@@ -152,6 +153,10 @@ void main(){
     if (onLey) col = mix(col, vec3(.85, .80, 1.), cellPx >= 6. ? (abs(f.x - .5) < .2 || abs(f.y - .5) < .2 ? .45 : .12) : .3);
     if (kept && (cellPx < 6. || mod(floor(f.x * 6.) + floor(f.y * 6.), 2.) < 1.)) col = mix(col, vec3(1.), .25);
   }
+  else if (uLens == 13) {  // beasts: which wild animal lives where, bright if a people could tame it
+    int sp = int(ff.b * 255. + .5); col = sea ? vec3(.10, .12, .18) : vec3(.24, .23, .22) * (.85 + .3 * lit);
+    if (!sea && sp < 20) { float tm = uTame[sp]; col = mix(col, uSpec[sp], tm > .5 ? .9 : .55); if (tm < .5 && cellPx >= 5. && mod(floor(f.x * 4.) + floor(f.y * 4.), 2.) < 1.) col *= .7; }
+  }
   else if (uLens == 12) {  // origins: the wild plants each land was given
     col = sea ? vec3(.10, .12, .18) : vec3(.24, .23, .22) * (.85 + .3 * lit);
     if (!sea && flo < 7) col = mix(col, uFlora[flo], .35 + .65 * cc.a);
@@ -160,7 +165,7 @@ void main(){
   else if (uLens == 11) { float gz = ff.r * 2., hu = ff.g; col = sea ? vec3(.10, .13, .20) : mix(vec3(.30, .27, .22), vec3(.52, .86, .32), sqrt(clamp(gz, 0., 1.))); if (!sea) col = mix(col, vec3(.80, .26, .18), clamp(hu * 1.4 - .1, 0., .6)); }
   // peoples: their land outlined in their colour (filled, in the Peoples lens)
   int own = int(cc.r * 255. + .5);
-  if (!sea && uLens != 4 && uLens != 5 && uLens != 10 && uLens != 11 && uLens != 1 && uLens != 2) {
+  if (!sea && uLens != 4 && uLens != 5 && uLens != 10 && uLens != 11 && uLens != 13 && uLens != 1 && uLens != 2) {
     vec3 pc0 = own > 0 ? (uLens == 7 ? uStance[(own - 1) % 32] : uPal[(own - 1) % 32]) : vec3(0.);
     if (uLens == 9) { ivec2 q = ivec2(c.x / 4, c.y / 4); int fid = int(texelFetch(uD, ivec2(q.x % 128, clamp(q.y, 0, 63)), 0).g * 255. + .5); if (fid > 0) col = mix(col, uFaith[(fid - 1) % 16], .6); }
     else if (own > 0) {

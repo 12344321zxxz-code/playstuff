@@ -61,4 +61,4 @@ registerTools([
   { id: 'sow', label: 'Wild seed', group: 'Life', opts: PLANTS.map((q) => q.wild[0].toUpperCase() + q.wild.slice(1)), lens: 12, hint: 'Tap land to seed a wild plant across that whole landmass. Whoever lives there may learn to farm it, if the climate suits.', miss: 'It needs land.',
     apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i]) return false; const m = w.mass[i], k = w.floraKinds[m] || (w.floraKinds[m] = []); if (!k.includes(opt)) k.push(opt); floraMap(w); say(`${PLANTS[opt].wild[0].toUpperCase() + PLANTS[opt].wild.slice(1)} takes root ${w.pSuit[opt * N + i] > 100 ? 'here' : 'here, though it will only thrive where the climate suits it'}.`); return true; } },
 ]);
-addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins');
+addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins'); addLens(13, 'Beasts');

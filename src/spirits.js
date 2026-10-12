@@ -29,9 +29,10 @@ export function spiritNear(w, x, y, r, kind) { for (const p of w.spirits) if ((!
 const placeName = (w, x, y) => { const s = near(w, x, y, 20, null, true); if (s && s.name) return s.name; const r = w.ruins.find((q) => wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 < 25); return r ? r.name : ['the Grey Hills', 'the Old Wood', 'the Long Shore', 'the High Moor', 'the Still Water'][(x * 7 + y) % 5]; };
 
 function rise(w, kind, x, y, why, extra) {
-  if (w.spirits.length >= 16 || w.spirits.filter((p) => p.kind === kind).length >= 4 || spiritNear(w, x, y, 14)) return null;
+  const dead = (k) => KIND[k].mem === DEATH;
+  if (w.spirits.length >= 16 || w.spirits.filter((p) => p.kind === kind).length >= (dead(kind) ? 2 : 4) || (dead(kind) && w.spirits.filter((p) => dead(p.kind)).length >= 4) || spiritNear(w, x, y, 14)) return null;
   const place = extra && extra.place || placeName(w, x, y), s = { why: why || 'something happened', place };
-  const p = Object.assign({ id: (w.spiritN = (w.spiritN || 0) + 1), kind, x, y, px: x, py: y, str: 1, born: w.year, place, why: s.why, name: KIND[kind].name(s), last: -99, pact: null }, extra || {});
+  const p = Object.assign({ id: (w.spiritN = (w.spiritN || 0) + 1), kind, x, y, px: x, py: y, str: 1, born: w.year, span: (KIND[kind].mem === DEATH ? 90 : 220) + ((w.rnd() * 160) | 0), place, why: s.why, name: KIND[kind].name(s), last: -99, pact: null }, extra || {});
   w.spirits.push(p); ev(w, KIND[kind].rise(s), x, y, null, 0); discover(w, 'sp-' + kind, x, y); return p;
 }
 
@@ -50,7 +51,7 @@ export function spiritsYear(w) {
   if (rnd() < 0.15) for (let q = 0; q < 40; q++) { const i = (rnd() * N) | 0; if (w.water[i] || w.t[i] < 0.8 || memAt(w, i, WILD) < 0.75) continue; rise(w, 'fey', i % W, (i / W) | 0, 'the oldest trees'); break; }
   for (const p of w.spirits) {
     const i = p.y * W + p.x, m = memAt(w, i, KIND[p.kind].mem);
-    if (m < FADE || p.str < 0.2) { p.dead = true; ev(w, KIND[p.kind].gone(p), p.x, p.y, null, 1); continue; }
+    if (m < FADE || p.str < 0.2 || w.year - p.born > p.span) { p.dead = true; ev(w, KIND[p.kind].gone(p), p.x, p.y, null, 1); continue; }
     p.px = p.x; p.py = p.y; ACT[p.kind](w, p, m);
   }
   if (w.spirits.some((p) => p.dead)) w.spirits = w.spirits.filter((p) => !p.dead);
@@ -67,10 +68,10 @@ const ACT = {
     const c = w.cults[s.cult];
     if (s.tower && w.rnd() < 0.5) { p.str *= 0.5; if (w.rnd() < 0.3) ev(w, `The dead come to the walls of ${s.name}. The tower is lit all night, and in the morning they are ash.`, s.x, s.y, c.color, 1); return; }
     if (infect(w, s, null, true)) { if (w.year - p.last > 20) { p.last = w.year; ev(w, `${cap(p.name)} reach ${s.name || 'the camps of the ' + c.name}. The sickness they carry is the one that killed them.`, s.x, s.y, c.color, 0); } }
-    hurt(w, s, 0.05 * warded(w, s)); remember(w, s.x, s.y, DEATH, 0.08, 2); p.str = Math.min(1.5, p.str + 0.05);
+    hurt(w, s, 0.05 * warded(w, s)); p.str = Math.min(1.2, p.str * 0.9);
   },
   lich(w, p) {
-    p.str = Math.min(2, p.str * 0.99 + memAt(w, p.y * W + p.x, DEATH) * 0.02);
+    p.str = Math.min(1.6, p.str * 0.985 + memAt(w, p.y * W + p.x, DEATH) * 0.01);
     if (w.rnd() > 0.3) return; let tg = null, bs = 0;
     near(w, p.x, p.y, 36, null, true, (s, q) => { const sc = (s.pop + 50) / (q + 30) * (p.grudge != null && w.cults[s.cult].name === p.grudge ? 4 : 1); if (sc > bs) { bs = sc; tg = s; } });
     if (!tg) return; const s = tg, c = w.cults[s.cult], A = c.arts;
@@ -80,7 +81,7 @@ const ACT = {
     }
     hurt(w, s, 0.14 * p.str * warded(w, s)); flee(w, s, s.pop * 0.05);
     if (w.year - p.last > 25) { p.last = w.year; ev(w, `${cap(p.name)} sends its dead against ${s.name}${p.grudge && c.name === p.grudge ? '. It has not forgotten who burned its city' : ''}.`, s.x, s.y, c.color, s.tier >= 2 ? 0 : 1); }
-    if (s.pop < 60) { endSet(w, s, 'sacked', p.name); p.str = Math.min(2, p.str + 0.3); }
+    if (s.pop < 60) { endSet(w, s, 'sacked', p.name); p.str = Math.min(1.6, p.str + 0.15); }
   },
   hunger(w, p) {
     if (w.tMean[p.y * W + p.x] > 10) { p.str *= 0.8; return; }
@@ -124,7 +125,7 @@ export function stormPass(w, st) {
   else if (st.kind === FIRE) { if (rnd() < 0.4 && !w.water[i]) ignite(w, i); }
   else if (st.kind === FAITH) { for (const o of DISC[3]) { const yy = st.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(st.x + o[0]); w.soil[j] = Math.min(1.3, w.soil[j] + 0.05); w.wetBias[j] = Math.min(2, w.wetBias[j] + 0.1); } }
   const s = near(w, st.x, st.y, 4, null, false); if (!s || st.hit === s.id) return; st.hit = s.id; const c = w.cults[s.cult];
-  if (st.kind === DEATH) { hurt(w, s, 0.1); if (rnd() < 0.15) rise(w, 'shamblers', s.x, s.y, s.name || 'the camps', { place: s.name || 'the ' + c.name }); }
+  if (st.kind === DEATH) { hurt(w, s, 0.1); if (rnd() < 0.04) rise(w, 'shamblers', s.x, s.y, s.name || 'the camps', { place: s.name || 'the ' + c.name }); }
   else if (st.kind === DEEP) hurt(w, s, 0.04);
   else if (st.kind === FAITH) c.coh = Math.min(1, c.coh + 0.1);
   if (s.tier >= 2 && rnd() < 0.5) ev(w, st.kind === DEATH ? `The ley storm passes over ${s.name}. Every dog in the town howls, and in the morning the old are dead.` : st.kind === WILD ? `The ley storm passes over ${s.name}. By spring the fields are forest and the deer walk the streets.` : st.kind === FIRE ? `The ley storm passes over ${s.name}. The sky burns red for three nights.` : st.kind === DEEP ? `The ley storm passes over ${s.name}. A fog comes in from nowhere and stays a month.` : `The ley storm passes over ${s.name}. The sick get up from their beds.`, s.x, s.y, c.color, 1);

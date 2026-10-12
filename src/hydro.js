@@ -76,7 +76,7 @@ export function* hydroSteps(w) {
   }
   yield; if (my !== epoch) return;
   // all at once
-  w.down.set(dn2); w.filled.set(fl2); w.water.set(wat2); w.flow.set(flow2); w.river.set(riv2); w.fresh.set(fresh2); w.dSea.set(dSea2); for (const key of ['massKinds', 'floraKinds']) { const M = w[key]; if (!M) continue; const nk = {}; for (let i = 0; i < N; i += 3) { const a = mass2[i], b = w.mass[i]; if (!a || !b) continue; const o = M[b]; if (!o) continue; const t = nk[a] || (nk[a] = []); for (const s of o) if (!t.includes(s)) t.push(s); } w[key] = nk; }
+  w.down.set(dn2); w.filled.set(fl2); w.water.set(wat2); w.flow.set(flow2); w.river.set(riv2); w.fresh.set(fresh2); w.dSea.set(dSea2); for (const key of ['massKinds', 'floraKinds', 'arrived']) { const M = w[key]; if (!M) continue; const nk = {}; for (let i = 0; i < N; i += 3) { const a = mass2[i], b = w.mass[i]; if (!a || !b) continue; const o = M[b]; if (!o) continue; const t = nk[a] || (nk[a] = []); for (const s of o) if (!t.includes(s)) t.push(s); } w[key] = nk; }
   w.mass.set(mass2);
   w.massSize = sizes; w.bigLake = big;
   const list = new Int32Array(rn); rn = 0; for (let i = 0; i < N; i++) if (riv2[i]) list[rn++] = i;

@@ -10,7 +10,7 @@ export const SPECIES = [
   { key: 'deer', name: 'deer', col: '#b8875a', tame: null, hab: (T, m, tr, hh) => (tr > 0.25 && T > 1 && T < 25 ? 1 : 0.15) },
   { key: 'horse', name: 'wild horses', col: '#8a5a3a', tame: 'horse', hab: (T, m, tr) => (tr < 0.35 && m > 0.2 && m < 1.1 && T > -4 && T < 21 ? 1 : 0.1) },
   { key: 'aurochs', name: 'aurochs', col: '#4a3a30', tame: 'cattle', hab: (T, m) => (m > 0.5 && T > 5 && T < 27 ? 1 : 0.1) },
-  { key: 'mammoth', name: 'mammoths', col: '#6f4a30', tame: null, hab: (T) => (T < 3 ? 1 : T < 8 ? 0.3 : 0) },
+  { key: 'mammoth', name: 'mammoths', col: '#6f4a30', tame: null, mega: true, hab: (T) => (T < 3 ? 1 : T < 8 ? 0.3 : 0) },
   { key: 'antelope', name: 'antelope', col: '#d8b070', tame: null, hab: (T, m, tr) => (T > 17 && m > 0.18 && m < 1.2 && tr < 0.5 ? 1 : 0.1) },
   { key: 'camel', name: 'wild camels', col: '#c9a468', tame: 'camel', hab: (T, m) => (m < 0.4 && T > 6 ? 1 : 0.05) },
   { key: 'goat', name: 'mountain goats', col: '#e8e2d2', tame: 'goat', hab: (T, m, tr, hh) => (hh > 0.17 && T > -8 ? 1 : 0.1) },
@@ -21,6 +21,8 @@ export const SPECIES = [
   { key: 'llama', name: 'guanacos', col: '#c8a080', tame: 'llama', hab: (T, m, tr, hh) => (hh > 0.2 && T > -6 && T < 18 ? 1 : 0.05) },
   { key: 'buffalo', name: 'wild buffalo', col: '#3e3a3a', tame: 'buffalo', hab: (T, m) => (T > 19 && m > 1.0 ? 1 : 0.06) },
   { key: 'leaper', name: 'leapers', col: '#b07a52', tame: null, hab: (T, m, tr) => (T > 12 && m > 0.15 && m < 1.0 && tr < 0.4 ? 1 : 0.08) },
+  { key: 'sloth', name: 'giant sloths', col: '#7a6040', tame: null, mega: true, hab: (T, m, tr) => (T > 14 && tr > 0.3 ? 1 : 0.08) },
+  { key: 'moa', name: 'great walking birds', col: '#9a8a70', tame: null, mega: true, hab: (T, m) => (T > 2 && T < 22 && m > 0.3 ? 1 : 0.1) },
 ];
 export const habitat = (w, sp, i) => SPECIES[sp].hab(w.tMean[i], w.mi[i], w.t[i], w.h[i] - w.params.sea);
 // What a cell of plants can feed: grass fully, woods partly (browse), fields a little (raided).
@@ -72,6 +74,7 @@ export function fauna(w) {
 
 // Once a year: head counts, extinctions, booms and crashes.
 export function faunaYear(w) {
+  megafauna(w);
   const { graze: G, hunt: P, spAt } = w, per = SPECIES.map(() => 0), perMass = {};
   let gs = 0, ps = 0, lx = 0, ly = 0, best = 0;
   if (w.year % 10 === 0) speciesMap(w);
@@ -91,6 +94,26 @@ export function faunaYear(w) {
   if (w.year > 120 && total > w.grazAvg * 1.3 && w.year - (w.herdsTold || -99) > 80) { w.herdsTold = w.year; discover(w, 'herds', lx, ly); ev(w, w.stats.hunters < 40 ? 'With nothing left to hunt them, the herds have grown past counting. The grass is going.' : 'The herds have grown past counting. The grass is going.', lx, ly, null); }
   w.grazPeak = Math.max(total, (w.grazPeak || 0) * 0.99); if (w.year > 60 && total < w.grazPeak * 0.6) { w.grazPeak = total; if (discover(w, 'boom', lx, ly)) ev(w, 'The herds ate the grass to the roots. Now there are bones on every plain.', lx, ly, null); }
   if (ps < 1 && w.year > 20 && !w.found.nopred && gs > 10) discover(w, 'nopred', lx, ly);
+}
+// Where people have always been, the great beasts learned to fear them. Where people arrive
+// late, the giants stand and watch the spears come, and within a few lifetimes they are gone.
+function megafauna(w) {
+  if (!w.arrived) return;
+  for (const m in w.massKinds) {
+    const a = w.arrived[m]; if (!a) continue; const since = w.year - Math.min(...a); if (since < 0 || since > 250) continue;
+    const k = w.massKinds[m]; for (const s of k.slice()) { if (!SPECIES[s].mega || w.rnd() > 0.02) continue; w.massKinds[m] = w.massKinds[m].filter((q) => q !== s); let x = null, y = null; for (let i = 0; i < N; i += 97) if (w.mass[i] === +m && w.spAt[i] === s) { x = i % W; y = (i / W) | 0; break; } ev(w, `The last ${SPECIES[s].name} ${const_where(w, x, y)}are hunted out. They never learned to fear people.`, x, y, null, 0); discover(w, 'megafauna', x, y); speciesMap(w); }
+  }
+}
+const const_where = (w, x, y) => (x == null ? '' : y < H / 3 ? 'of the north ' : y > (2 * H) / 3 ? 'of the south ' : 'of the middle lands ');
+// Animals that come off a ship. Some get loose and run wild; some of those crowd out what lived there.
+export function introduce(w, x, y, sp, who) {
+  const i = y * W + x, m = w.mass[i], k = w.massKinds[m] || (w.massKinds[m] = []); if (k.includes(sp) || habitat(w, sp, i) < 0.5) return false;
+  k.push(sp); w.species[sp].alive = true; w.species[sp].ever = true;
+  for (const o of DISC[6]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const j = yy * W + wx(x + o[0]); if (!w.water[j]) w.graze[j] = Math.min(2, w.graze[j] + 0.5 * (1 - o[2] / 7)); }
+  let lost = null; const rivals = k.filter((s) => s !== sp && !SPECIES[s].tame && w.rnd() < 0.3); if (rivals.length) { lost = rivals[0]; w.massKinds[m] = k.filter((s) => s !== lost); }
+  speciesMap(w);
+  ev(w, `${{ horse: 'Horses', cattle: 'Cattle', goat: 'Goats', pig: 'Pigs', camel: 'Camels', llama: 'Llamas', buffalo: 'Buffalo', reindeer: 'Reindeer' }[SPECIES[sp].tame] || 'Animals'} that got loose from the ${who} run wild across a land that never had them.${lost != null ? ` The ${SPECIES[lost].name} that lived there cannot compete.` : ''}`, x, y, null, 0); discover(w, 'feral', x, y);
+  return true;
 }
 // hunting by people: take up to `want` from the grazers around a cell; returns what was taken
 // animals in wild-haunted country do not fear people, and are not caught by them

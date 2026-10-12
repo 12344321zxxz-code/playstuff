@@ -59,7 +59,7 @@ export function route(w) {
 }
 export function sumMagic(w) { const { mem, magic } = w; for (let i = 0; i < N; i++) { const b = i * NK, s = mem[b] + mem[b + 1] + mem[b + 2] + mem[b + 3] + mem[b + 4]; magic[i] = s > 1 ? 1 : s; } }
 export const memAt = (w, i, k) => w.mem[i * NK + k];
-export function kindAt(w, i) { const b = i * NK, m = w.mem; let bk = -1, bv = 0.08; for (let k = 0; k < NK; k++) if (m[b + k] > bv) { bv = m[b + k]; bk = k; } return bk; }
+export function kindAt(w, i) { const b = i * NK, m = w.mem; let bk = -1, bv = 0.15; for (let k = 0; k < NK; k++) if (m[b + k] > bv) { bv = m[b + k]; bk = k; } return bk; }
 
 // Something happened here. `sub` says what kind of thing (a battle, a plague...), `why` how the
 // chronicle will name it later if anything rises from it.
@@ -98,10 +98,11 @@ export function memoryYear(w) {
     const b = i * NK;
     if (water[i] === 1) { if (h[i] - sea < -0.4 && mem[b + DEEP] < 0.35) mem[b + DEEP] += 0.003; }
     else if (t[i] > 0.85 && mi[i] > 0.8 && owner[i] < 0 && mem[b + WILD] < 0.9) mem[b + WILD] += 0.004;
-    if (!memLock[i]) { for (let k = 0; k < NK; k++) mem[b + k] *= 0.996; if (road[i]) for (let k = 0; k < NK; k++) mem[b + k] *= 0.97; }
+    if (!memLock[i]) { for (let k = 0; k < NK; k++) mem[b + k] *= 0.996; if (road[i]) for (let k = 0; k < NK; k++) mem[b + k] *= 0.97; if (w.farm[i] || owner[i] >= 0) mem[b] *= 0.988; }   // ploughed and lived-in land forgets its dead
   }
   // ruins remember what happened to them; shrines remember their faith
-  for (const r of w.ruins) { const k = RUIN_KIND[r.kind]; if (k == null) continue; remember(w, r.x, r.y, k, (r.tier >= 3 ? 0.012 : 0.006), 2); }
+  // ruins remember for a few lifetimes, then they are just stones
+  for (const r of w.ruins) { const k = RUIN_KIND[r.kind]; if (k == null || r.tier < 2) continue; const age = w.year - r.year; if (age > 400 && !r.haunt) continue; remember(w, r.x, r.y, k, (r.tier >= 3 ? 0.014 : 0.007) * (r.haunt ? 1 : Math.exp(-age / 200)), 2); }
   for (const f of w.faiths || []) if (f.alive && f.x != null) remember(w, f.x, f.y, FAITH, 0.006, 2);
   for (const s of w.sets) if (s.wonder) remember(w, s.x, s.y, FAITH, 0.005, 2);
   for (const v of w.volcanoes) if (w.h[v.y * W + v.x] > sea) remember(w, v.x, v.y, FIRE, 0.012, 3);   // the mountains that burn remember it
