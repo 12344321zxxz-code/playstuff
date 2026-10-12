@@ -302,13 +302,14 @@ function frame(now) {
   // a slow graphics card gets a coarser terrain rather than a slideshow
   if (raw < 400) P.frame += (raw - P.frame) * 0.06;
   if (S.adapt && now > S.qT) { S.qT = now + 2500; if (P.frame > 36 && P.sim < P.frame * 0.5 && S.q > 0.5) { S.q = Math.max(0.5, S.q * 0.8); P.frame = 20; fit(); } }
-  if (S.speed && !(S.press && !S.press.pan)) { S.acc += dt * TPS[S.speed]; while (S.acc >= 1 && ran < 10 && performance.now() - t0 < 12) { tick(w); for (const fn of hooks.tick) fn(w); S.acc -= 1; ran++; } if (ran) S.dirty = true; if (S.acc > 3) S.acc = 0; }
+  if (S.speed && !(S.press && !S.press.pan)) { S.acc += dt * TPS[S.speed]; while (S.acc >= 1 && ran < 10 && performance.now() - t0 < 12) { tick(w); for (const fn of hooks.tick) fn(w); S.acc -= 1; ran++; } if (ran) S.simDirty = true; if (S.acc > 3) S.acc = 0; }
   if (S.climT && now > S.climT && !S.press) { S.climT = 0; queueClimate(w); }
   if (!ran && w.job && !(S.press && !S.press.pan)) { const st = w.stamp.land; background(w, 8); if (w.stamp.land !== st) S.dirty = true; }
   const t1 = performance.now(); P.sim += (t1 - t0 - P.sim) * 0.05; P.ticks += (ran - P.ticks) * 0.05;
   if (S.press && !S.press.pan && w.need.water && now > S.waterT) { S.waterT = now + 320; refreshWater(w); }
   climateWatch(now);
-  if (R) { if (S.dirty) { R.upload(w, S.lens); S.dirty = false; } R.draw(w, cam, S.lens === 8 ? 0 : S.lens, now / 1000, pal, S.q); }
+  // the map texture is rebuilt at most a few times a second while time runs; at once after an edit
+  if (R) { if (S.dirty || (S.simDirty && now - (S.upT || 0) > 160)) { R.upload(w, S.lens); S.dirty = false; S.simDirty = false; S.upT = now; } R.draw(w, cam, S.lens === 8 ? 0 : S.lens, now / 1000, pal, S.q); }
   const t2 = performance.now(); overlay(now); const t3 = performance.now(); P.gl += (t2 - t1 - P.gl) * 0.05; P.ov += (t3 - t2 - P.ov) * 0.05;
   if (now - S.hudT > 500) { S.hudT = now; vitals(); if ((S.lens === 6 || S.lens === 9) && now - (S.legT || 0) > 3000) legend(); if (S.sel && S.sel.info) { const inf = S.sel.info(); if (inf) showInfo(inf); else { S.sel = null; } } }
   requestAnimationFrame(frame);
@@ -327,6 +328,7 @@ function buildUI() {
   for (const [id, label] of LENSES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.lens = id; b.id = 'lens-' + id; b.textContent = label; b.addEventListener('click', () => setLens(id)); lr.appendChild(b); }
   for (let k = 0; k < 4; k++) $('sp' + k).addEventListener('click', () => setSpeed(k));
   $('newworld').addEventListener('click', () => startSoon({ seed: (Math.random() * 1e9) | 0 }));
+  $('emptyworld').addEventListener('click', () => { startSoon({ seed: (Math.random() * 1e9) | 0, bands: 0 }); setTimeout(() => { setTool(TOOLS.find((t) => t.id === 'people') || TOOLS[0]); say('An empty world. Use the People tool to wake the first of them wherever you like.'); }, 80); });
   bindInput();
   if (window.ResizeObserver) new ResizeObserver(fit).observe(jar); window.addEventListener('resize', fit);
 }
@@ -334,7 +336,7 @@ export const addLens = (id, label) => LENSES.push([id, label]);
 let built = false;
 export function start(data) {
   const seed = data && data.seed != null ? data.seed : (Math.random() * 1e9) | 0;
-  S.w = makeWorld(seed); S.sel = null; S.acc = 0; S.dirty = true;
+  S.w = makeWorld(seed, data && data.bands != null ? { bands: data.bands } : null); S.sel = null; S.acc = 0; S.dirty = true;
   for (const fn of hooks.newWorld) fn(S.w);
   if (!built) { built = true; buildUI(); fit(); setTool(TOOLS[0]); setLens(0); setBrush(5); if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) S.speed = 1; setSpeed(S.speed); S.last = performance.now(); requestAnimationFrame(frame); }
   cam.x = W / 2; cam.y = H / 2; cam.z = cam.fitZ || cam.minZ; clampCam(); dials(); showInfo(null); vitals();

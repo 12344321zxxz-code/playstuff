@@ -78,16 +78,16 @@ export function tick(w) {
   w.tickN++; w.phase = (w.tickN % TPY) / TPY; w.year = Math.floor(w.tickN / TPY);
   if (w.aerosol > 0.001) w.aerosol *= 0.975; else w.aerosol = 0;
   seasonFields(w, w.tickN & 1); vegetation(w, w.tickN & 3); fireStep(w);
-  fauna(w); dragonsTick(w); magicTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
+  if (!(w.tickN & 1)) fauna(w); dragonsTick(w); magicTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
   // the yearly work is spread over the year's ticks so no single tick is heavy
   const ph = w.tickN % TPY;
-  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); originsYear(w); } else if (ph === 3) { flowMemory(w); magicYear(w); } else if (ph === 7) flowMemory(w); else if (ph === 4) naturalYear(w); else if (ph === 5) { roadsYear(w); tradeYear(w); } else if (ph === 6) worksYear(w);
+  if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); originsYear(w); } else if (ph === 3) magicYear(w); else if (ph === 7) flowMemory(w); else if (ph === 4) naturalYear(w); else if (ph === 5) { roadsYear(w); tradeYear(w); } else if (ph === 6) worksYear(w);
   if (ph === 0) {
     const y = w.year;
     for (let i = 0; i < N; i += 4) { const b = w.wetBias[i]; if (b !== 0) { w.wetBias[i] = b * 0.996; w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } else { w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } }
     if (w.census) for (const _ of w.census); w.census = peopleSteps(w);
-    if (y % 12 === 6) { erode(w, 0.0006); w.need.water = true; }
-    if (!w.job && (w.need.climate || y % 30 === 3)) w.job = { k: 'climate', g: climateSteps(w) }; else if (!w.job && w.need.water) w.job = { k: 'water', g: hydroSteps(w) };
+    if (y % 20 === 6) { erode(w, 0.001); w.need.water = true; }
+    if (!w.job && (w.need.climate || y % 40 === 3)) w.job = { k: 'climate', g: climateSteps(w) }; else if (!w.job && w.need.water) w.job = { k: 'water', g: hydroSteps(w) };
   }
   if (w.census) { const t0 = performance.now(); for (;;) { if (w.census.next().done) { w.census = null; break; } if (!w.sync && performance.now() - t0 > 3) break; } }
   if (w.job) runJob(w, w.sync ? 1e9 : w.census ? 3 : 5);

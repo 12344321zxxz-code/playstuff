@@ -5,7 +5,7 @@ import { W, H, N, CW, TAU, clamp, smooth, wx, NB8 } from './core.js';
 // Fields that follow the calendar: today's temperature and rain, snow on the ground, how green.
 // `half` 0 or 1 does only the northern or southern half, so a running game can alternate.
 export function seasonFields(w, half) {
-  const { tJan, tJul, rJan, rJul, temp, rain, snow, green, water, ice, mi, wetA } = w;
+  const { tJan, tJul, rJan, rJul, temp, rain, snow, green, water, ice, mi, wetA, mem } = w;
   const f = 0.5 - 0.5 * Math.cos(w.phase * TAU), y0 = half === 1 ? H / 2 : 0, y1 = half === 0 ? H / 2 : H;
   for (let y = y0; y < y1; y++) {
     const row = y * W, crow = (y >> 2) * CW;
@@ -13,7 +13,7 @@ export function seasonFields(w, half) {
       const i = row + x, T = tJan[i] + (tJul[i] - tJan[i]) * f; temp[i] = T;
       if (water[i] === 1) { snow[i] = ice[i] ? 1 : T < -1.5 ? 0.85 : 0; continue; }
       const R = (rJan[i] + (rJul[i] - rJan[i]) * f) * (wetA ? wetA[crow + (x >> 2)] : 1); rain[i] = R;
-      let target = ice[i] ? 1 : T > 1.5 ? 0 : T < -3.5 ? 1 : (1.5 - T) * 0.2; if (R < 0.04) target *= 0.3; if (w.mem && w.mem[i * 5 + 2] > 0.5) target = 0;
+      let target = ice[i] ? 1 : T > 1.5 ? 0 : T < -3.5 ? 1 : (1.5 - T) * 0.2; if (R < 0.04) target *= 0.3; if (mem && mem[i * 5 + 2] > 0.5) target = 0;
       snow[i] += (target - snow[i]) * 0.45;
       const m = mi[i], wet = (0.65 * R + 0.21 * (m > 2 ? 2 : m)) / (0.22 + 0.03 * (T > 0 ? T : 0));
       const a = T < 2 ? 0 : T > 9 ? 1 : (T - 2) / 7, b = wet < 0.1 ? 0 : wet > 0.5 ? 1 : (wet - 0.1) * 2.5;

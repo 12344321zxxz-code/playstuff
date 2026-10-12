@@ -5,7 +5,7 @@
 // wears down with size and ease; and what falls leaves ruins the next people build on.
 import { W, H, N, DISC, clamp, wx, wrapDx, Heap } from './core.js';
 import { ev, discover, once } from './story.js';
-import { SPECIES, takeGame, habitat, introduce } from './fauna.js';
+import { SPECIES, takeGame, habRaw as habitat, introduce } from './fauna.js';
 import { wetAt } from './weather.js';
 import { catchFish } from './sea.js';
 import { send, arrive } from './movers.js';
@@ -576,6 +576,7 @@ export function initPeople(w, n) {
 }
 export function addBand(w, x, y) {
   x = wx(Math.round(x)); y = clamp(Math.round(y), 2, H - 3); if (w.water[y * W + x] || w.sets.length >= MAXS) return null;
+  if (!w.cults.some((q) => q.alive) && w.arrived) w.arrived[w.mass[y * W + x]] = [-1000];   // the first people anywhere: their land is the cradle
   const c = newCult(w, null); addSet(w, c.id, x, y, 28, true); buildGrid(w);
   ev(w, `A new people, the ${c.name}, wake ${whereAbouts(w, x, y)}.`, x, y, c.color); return c;
 }

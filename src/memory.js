@@ -85,7 +85,7 @@ const _tmp = new Float32Array(N * NK);
 export function flowMemory(w) {
   const { mem, leyTo, ley, memLock, water } = w; _tmp.set(mem);
   for (let i = 0; i < N; i++) {
-    const to = leyTo[i]; if (to < 0 || memLock[i]) continue; const f = ley[i] > LEY ? (water[i] === 1 ? 0.08 : 0.3) : water[i] !== 1 && ley[to] > LEY ? 0.04 : 0, b = i * NK, tb = to * NK; if (!f) continue;   // off the lines, memory only seeps into a line it touches
+    const to = leyTo[i]; if (to < 0 || memLock[i]) continue; const f = ley[i] > LEY ? (water[i] === 1 ? 0.14 : 0.5) : water[i] !== 1 && ley[to] > LEY ? 0.07 : 0, b = i * NK, tb = to * NK; if (!f) continue;   // off the lines, memory only seeps into a line it touches
     for (let k = 0; k < NK; k++) { const v = mem[b + k]; if (v < 0.004) continue; const m = v * f; _tmp[b + k] -= m; _tmp[tb + k] += m; }
   }
   mem.set(_tmp);
@@ -95,11 +95,16 @@ export function memoryYear(w) {
   if ((w.plateStamp || 0) !== w.leyStamp) { layLey(w); route(w); }
   else if (w.leyDirty || w.year - w.routeStamp > 80) { w.leyDirty = false; route(w); }
   // sources that need no event: old forest nobody touches, the deep sea
-  for (let i = 0; i < N; i++) {
+  // a quarter of the world each year, four years' worth at a time
+  const farm = w.farm;
+  for (let i = w.year & 3; i < N; i += 4) {
     const b = i * NK;
-    if (water[i] === 1) { if (h[i] - sea < -0.4 && mem[b + DEEP] < 0.35) mem[b + DEEP] += 0.003; }
-    else if (t[i] > 0.85 && mi[i] > 0.8 && owner[i] < 0 && mem[b + WILD] < 0.9) mem[b + WILD] += 0.004;
-    if (!memLock[i]) { for (let k = 0; k < NK; k++) mem[b + k] *= 0.996; if (road[i]) for (let k = 0; k < NK; k++) mem[b + k] *= 0.97; if (w.farm[i] || owner[i] >= 0) mem[b] *= 0.988; }   // ploughed and lived-in land forgets its dead
+    if (water[i] === 1) { if (h[i] - sea < -0.4 && mem[b + DEEP] < 0.35) mem[b + DEEP] += 0.012; }
+    else if (t[i] > 0.85 && mi[i] > 0.8 && owner[i] < 0 && mem[b + WILD] < 0.9) mem[b + WILD] += 0.016;
+    if (memLock[i]) continue;
+    if (mem[b] + mem[b + 1] + mem[b + 2] + mem[b + 3] + mem[b + 4] < 0.002) continue;
+    const k = road[i] ? 0.984 * 0.885 : 0.984; for (let q = 0; q < NK; q++) mem[b + q] *= k;
+    if (farm[i] || owner[i] >= 0) mem[b] *= 0.953;   // ploughed and lived-in land forgets its dead
   }
   // ruins remember what happened to them; shrines remember their faith
   // ruins remember for a few lifetimes, then they are just stones

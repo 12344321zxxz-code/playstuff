@@ -14,7 +14,7 @@ export function initMagic(w) { initMemory(w); initSpirits(w); w.dragons = []; w.
 export function magicYear(w) {
   memoryYear(w);
   const { t, water } = w; let ench = 0, ex = 0, ey = 0;
-  for (let i = 0; i < N; i += 2) { if (water[i] || t[i] < 0.5) continue; const wd = w.mem[i * NK + WILD]; if (wd > 0.45) { ench++; ex = i % W; ey = (i / W) | 0; if (t[i] < 1) t[i] = Math.min(1, t[i] + 0.02); } }
+  for (let i = w.year & 3; i < N; i += 4) { if (water[i] || t[i] < 0.5) continue; const wd = w.mem[i * NK + WILD]; if (wd > 0.45) { ench += 2; ex = i % W; ey = (i / W) | 0; if (t[i] < 1) t[i] = Math.min(1, t[i] + 0.02); } }
   w.stats.enchanted = ench * 2;
   if (ench > 40 && w.rnd() < 0.02) holySite(w, ex, ey, 'grove', 0.6);
   if (ench > 40 && discover(w, 'enchanted', ex, ey)) ev(w, 'There is a wood where the light falls wrong and the trees do not burn.', ex, ey, null);
