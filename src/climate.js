@@ -16,6 +16,9 @@ const C = {
 };
 for (let y = 0; y < CH; y++) C.lat[y] = (0.5 - (y + 0.5) / CH) * LATS;
 export const coarse = C;
+// A new world starts the climate from nothing: the solver warm-starts from its last state, so
+// without this a second world made in the same page would differ from the same seed made fresh.
+export function resetClimate() { for (const k in C) { const v = C[k]; if (k === 'lat') continue; if (ArrayBuffer.isView(v)) v.fill(0); } for (const o of C.out) for (const k in o) o[k].fill(0); }
 
 function advect(src, dst, u, v) {
   for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {

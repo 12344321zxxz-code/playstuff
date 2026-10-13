@@ -5,7 +5,7 @@
 // start: some lands have horses and some never will, and that matters to people later.
 import { W, H, N, clamp, wx, DISC } from './core.js';
 import { ev, discover } from './story.js';
-import { byContinent } from './origins.js';
+import { dealCradles, patch, spread } from './cradles.js';
 
 export const SPECIES = [
   { key: 'deer', name: 'deer', col: '#b8875a', tame: null, hab: (T, m, tr, hh) => (tr > 0.25 && T > 1 && T < 25 ? 1 : 0.15) },
@@ -31,7 +31,7 @@ export const habRaw = (w, sp, i) => SPECIES[sp].hab(w.tMean[i], w.mi[i], w.t[i],
 export function habMap(w, part) {
   const NS = SPECIES.length, hm = w.hab || (w.hab = new Uint8Array(NS * N)), y0 = part == null ? 0 : part, st = part == null ? 1 : 16;
   // only for the kinds that live on this cell's land; anything else asks habRaw directly
-  for (let y = y0; y < H; y += st) for (let i = y * W, e = i + W; i < e; i++) { const k = w.water[i] ? null : w.massKinds && w.massKinds[w.mass[i]]; if (!k || !k.length) continue; for (let q = 0; q < k.length; q++) hm[k[q] * N + i] = Math.round(habRaw(w, k[q], i) * 100); }
+  for (let y = y0; y < H; y += st) for (let i = y * W, e = i + W; i < e; i++) { const k = w.water[i] ? null : w.massKinds && w.massKinds[w.mass[i]]; if (!k || !k.length) continue; const bm = w.beastMask ? w.beastMask[i] : 0xffff; for (let q = 0; q < k.length; q++) hm[k[q] * N + i] = bm & (1 << k[q]) ? Math.round(habRaw(w, k[q], i) * 100) : 0; }
   if (part == null) { w.habStamp = w.climateStamp; w.habYear = w.year; }
 }
 export const habitat = (w, sp, i) => (w.hab ? w.hab[sp * N + i] / 100 : habRaw(w, sp, i));
@@ -41,7 +41,7 @@ function forage(w, i) { if (w.water[i] || w.ice[i] || w.urban[i]) return 0; cons
 
 export function initFauna(w) {
   const rnd = w.rnd; w.graze = new Float32Array(N); w.hunt = new Float32Array(N); w.spAt = new Uint8Array(N).fill(255); w.species = SPECIES.map(() => ({ alive: false, ever: false, n: 0 })); w.massKinds = {};
-  w.massKinds = byContinent(w, SPECIES.length, (s, i) => habRaw(w, s, i) > 0.9, { min: 6, atLeast: 3, island: 0.45 });
+  const cr = dealCradles(w, SPECIES.length, (s, i) => habRaw(w, s, i) > 0.9, { atLeast: 3, r: 20, fill: (s, i) => habRaw(w, s, i) > 0.5 }); w.beastMask = cr.mask; w.massKinds = cr.kinds;
   for (const m in w.massKinds) for (const s of w.massKinds[m]) { w.species[s].alive = true; w.species[s].ever = true; }
   // the land starts full of life, with hunters wherever there is game
   for (let i = 0; i < N; i++) { const m = w.mass[i]; if (!(w.massKinds[m] && w.massKinds[m].length)) continue; const f = forage(w, i); w.graze[i] = f * 0.7 * (0.6 + 0.8 * rnd()); w.hunt[i] = w.graze[i] * 0.15 * rnd(); }
@@ -50,7 +50,7 @@ export function initFauna(w) {
 // Which kind of animal a cell's grazers are: the best fit for the place among those this land has.
 export function speciesMap(w, part) {
   const { spAt, water, mass } = w, y0 = part == null ? 0 : part, st = part == null ? 1 : 16;
-  for (let y = y0; y < H; y += st) for (let i = y * W, e = i + W; i < e; i++) { if (water[i]) { spAt[i] = 255; continue; } const k = w.massKinds[mass[i]]; if (!k || !k.length) { spAt[i] = 255; continue; } let b = 255, bv = 0.3; for (const s of k) { const v = habitat(w, s, i); if (v > bv) { bv = v; b = s; } } spAt[i] = b; }
+  for (let y = y0; y < H; y += st) for (let i = y * W, e = i + W; i < e; i++) { if (water[i]) { spAt[i] = 255; continue; } const k = w.massKinds[mass[i]]; if (!k || !k.length) { spAt[i] = 255; continue; } const bm = w.beastMask ? w.beastMask[i] : 0xffff; let b = 255, bv = 0.3; for (const s of k) { if (!(bm & (1 << s))) continue; const v = habitat(w, s, i); if (v > bv) { bv = v; b = s; } } spAt[i] = b; }
 }
 
 // One quarter of the rows each tick, so each cell is updated twice a year.
@@ -80,6 +80,8 @@ export function fauna(w) {
 // Once a year: head counts, extinctions, booms and crashes.
 export function faunaYear(w) {
   megafauna(w);
+  // wild ranges spread a step at a time through country that suits them
+  if (w.beastMask) spread(w, w.beastMask, SPECIES.length, (s, j) => habRaw(w, s, j) > 0.55, 0.5, 16);
   const { graze: G, hunt: P, spAt, mass } = w, per = new Float64Array(SPECIES.length);
   let gs = 0, ps = 0, lx = 0, ly = 0, best = 0;
   habMap(w, w.year & 15); speciesMap(w, w.year & 15);   // a sixteenth of the map each year, so it follows the climate without a stall
@@ -113,7 +115,7 @@ const const_where = (w, x, y) => (x == null ? '' : y < H / 3 ? 'of the north ' :
 // Animals that come off a ship. Some get loose and run wild; some of those crowd out what lived there.
 export function introduce(w, x, y, sp, who) {
   const i = y * W + x, m = w.mass[i], k = w.massKinds[m] || (w.massKinds[m] = []); if (k.includes(sp) || habRaw(w, sp, i) < 0.5) return false;
-  k.push(sp); w.species[sp].alive = true; w.species[sp].ever = true;
+  k.push(sp); w.species[sp].alive = true; w.species[sp].ever = true; if (w.beastMask) patch(w, w.beastMask, sp, x, y, 6, (s, j) => habRaw(w, s, j) > 0.4);
   for (const o of DISC[6]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const j = yy * W + wx(x + o[0]); if (!w.water[j]) w.graze[j] = Math.min(2, w.graze[j] + 0.5 * (1 - o[2] / 7)); }
   let lost = null; const rivals = k.filter((s) => s !== sp && !SPECIES[s].tame && w.rnd() < 0.3); if (rivals.length) { lost = rivals[0]; w.massKinds[m] = k.filter((s) => s !== lost); }
   habMap(w); speciesMap(w);
@@ -129,7 +131,7 @@ export function dominantAt(w, i) { const s = w.spAt[i]; return s === 255 ? null 
 export function addHerd(w, x, y, sp) {
   x = wx(Math.round(x)); y = clamp(Math.round(y), 2, H - 3); const i = y * W + x; if (w.water[i]) return false;
   if (sp == null) { let bs = -1; for (let s = 0; s < SPECIES.length; s++) { const v = habRaw(w, s, i) + w.rnd() * 0.3; if (v > bs) { bs = v; sp = s; } } }
-  const m = w.mass[i], k = w.massKinds[m] || (w.massKinds[m] = []); if (!k.includes(sp)) k.push(sp);
+  const m = w.mass[i], k = w.massKinds[m] || (w.massKinds[m] = []); if (!k.includes(sp)) k.push(sp); if (w.beastMask) patch(w, w.beastMask, sp, x, y, 6, (s, j) => habRaw(w, s, j) > 0.3);
   w.species[sp].alive = true; w.species[sp].ever = true;
   for (const o of DISC[5]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const j = yy * W + wx(x + o[0]); if (w.water[j]) continue; w.graze[j] = Math.min(2, w.graze[j] + 0.9 * (1 - o[2] / 6)); }
   habMap(w); speciesMap(w); return SPECIES[sp];

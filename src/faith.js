@@ -97,11 +97,11 @@ export const tenetOf = (w, c) => (c.faith != null ? w.faiths[c.faith].tenet : nu
 
 // Realms and faiths as regions, on the coarse grid: who holds sway over each patch of land.
 // Settlements push influence out around them; the strongest claim wins.
-const RS = 24, FS = 16; let rScore = null, fScore = null, landStamp = -1; const land = new Float32Array(CN);
+const RS = 24, FS = 16; let rScore = null, fScore = null, landStamp = -1, landW = null; const land = new Float32Array(CN);
 function maps(w) {
   if (!rScore) { rScore = new Float32Array(CN * RS); fScore = new Float32Array(CN * FS); }
   rScore.fill(0); fScore.fill(0);
-  if (w.stamp.land !== landStamp) { landStamp = w.stamp.land; land.fill(0); for (let y = 0; y < H; y++) { const cy = ((y / CS) | 0) * CW; for (let x = 0, i = y * W; x < W; x++, i++) if (w.water[i] !== 1) land[cy + ((x / CS) | 0)] += 1 / (CS * CS); } }
+  if (w.stamp.land !== landStamp || w !== landW) { landStamp = w.stamp.land; landW = w; land.fill(0); for (let y = 0; y < H; y++) { const cy = ((y / CS) | 0) * CW; for (let x = 0, i = y * W; x < W; x++, i++) if (w.water[i] !== 1) land[cy + ((x / CS) | 0)] += 1 / (CS * CS); } }
   for (const s of w.sets) {
     if (s.dead || s.nomad) continue;   // the wanderers hold no borders
     const c = w.cults[s.cult], sl = c.slot % RS, f = s.faith != null ? w.faiths[s.faith] : null, fs = f && f.alive ? f.slot % FS : -1;

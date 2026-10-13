@@ -5,6 +5,7 @@
 // into the world, the busiest get names, and the towns where they cross grow rich. Whoever
 // depends on a route is hostage to it: when a war, a plague, a dragon or pirates cut it, the
 // tin stops coming and the bronze age ends.
+import { plantWild } from './origins.js';
 import { W, H, N, DISC, wx, wrapDx, clamp } from './core.js';
 import { ev, discover, once } from './story.js';
 import { zoneOf } from './zones.js';
@@ -175,8 +176,8 @@ function carryLife(w, a, b, ca, cb, m, g) {
   if (rnd() < pc) for (const p of ca.cropL || []) { if (hasCrop(cb, p) || w.pSuit[p * N + ib] < 110) continue; giveCrop(w, cb, p, ca); if (!cb.arts.farming && cb.tech >= 1) cb.arts.farming = w.year; break; }
   if (rnd() < (g === G.horses ? 0.3 : 0.05)) for (const k in ca.tame) { if (cb.tame[k] || TAME_SP[k] == null || habRaw(w, TAME_SP[k], ib) < 0.5) continue; cb.tame[k] = w.year; if (!cb.grazer && ['horse', 'cattle', 'goat', 'reindeer', 'camel', 'llama', 'buffalo'].includes(k)) cb.grazer = k; if (once(w, 'stock-' + cb.id + k)) ev(w, `Traders from ${a.name} bring ${k === 'cattle' ? 'cattle' : k + 's'} to ${b.name}. The ${cb.name} keep them.`, b.x, b.y, cb.color, 1); break; }
   // across the sea, life goes ashore
-  if (m.wet0 && w.mass[ib] !== w.mass[a.y * W + a.x] && rnd() < 0.08) {
-    const fk = w.floraKinds[w.mass[ib]] || (w.floraKinds[w.mass[ib]] = []); for (const p of ca.cropL || []) if (!fk.includes(p) && w.pSuit[p * N + ib] > 110) { fk.push(p); break; }
+  if (m.wet0 && ca.arts.sailing && w.mass[ib] !== w.mass[a.y * W + a.x] && rnd() < 0.08) {   // only deep-sea ships carry life between continents
+    for (const p of ca.cropL || []) if (w.pSuit[p * N + ib] > 110 && plantWild(w, p, b.x, b.y, 3)) break;
     for (const k in ca.tame) if (TAME_SP[k] != null && rnd() < 0.5) { introduce(w, b.x, b.y, TAME_SP[k], `ships from ${a.name}`); break; }
   }
 }

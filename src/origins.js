@@ -4,7 +4,8 @@
 // thrives in the climate it came from, so it travels easily east and west along a latitude and
 // badly north or south. Herd animals give their keepers milk, ploughs and carts, and also the
 // crowd diseases those keepers slowly become hardened to. Most of who gets ahead is settled here.
-import { W, H, N, smooth } from './core.js';
+import { dealCradles, kindsByMass, patch, spread } from './cradles.js';
+import { W, H, N, smooth, wx } from './core.js';
 import { ev, once } from './story.js';
 
 // q: how much food a field of it gives; ease: how quickly wild plants become a crop
@@ -56,7 +57,8 @@ export function byContinent(w, count, good, opt) {
 export function initOrigins(w) {
   w.pSuit = new Uint8Array(N * NP); w.flora = new Uint8Array(N).fill(255); w.wildCrop = new Float32Array(N); w.floraKinds = {}; w.rinder = {};
   suitMap(w);
-  w.floraKinds = byContinent(w, NP, (p, i) => w.pSuit[p * N + i] > 150, { min: 8, island: 0.3, skip: (p) => 0.15 });
+  const cr = dealCradles(w, NP, (p, i) => w.pSuit[p * N + i] > 150, { skip: () => 0.12, r: 22, fill: (p, i) => w.pSuit[p * N + i] > 100 });
+  w.wildMask = cr.mask; w.floraKinds = cr.kinds;
   floraMap(w);
 }
 // how well each plant would grow in each place, from the climate as it is now
@@ -73,7 +75,7 @@ export function suitMap(w) {
 export function floraMap(w) {
   const { flora, wildCrop, pSuit, mass, water } = w;
   for (let i = 0; i < N; i++) {
-    flora[i] = 255; wildCrop[i] = 0; if (water[i]) continue; const k = w.floraKinds[mass[i]]; if (!k || !k.length) continue;
+    flora[i] = 255; wildCrop[i] = 0; if (water[i]) continue; const bits = w.wildMask ? w.wildMask[i] : 0; if (!bits) continue; const k = []; for (let p = 0; p < NP; p++) if (bits & (1 << p)) k.push(p);
     let b = 255, bv = 0.2 * 255, pulse = 0;
     for (const p of k) { const v = pSuit[p * N + i] * PLANTS[p].q; if (PLANTS[p].pulse) { pulse = Math.max(pulse, pSuit[p * N + i]); continue; } if (v > bv) { bv = v; b = p; } }
     if (b === 255 && pulse > 0.3 * 255) { b = k.find((p) => PLANTS[p].pulse); bv = pulse * PLANTS[b].q; }
@@ -81,7 +83,14 @@ export function floraMap(w) {
   }
 }
 // keep everything in step with the climate: crops follow the weather when the world warms or cools
-export function originsYear(w) { if (w.suitStamp !== w.climateStamp) { suitMap(w); floraMap(w); } }
+export function originsYear(w) {
+  if (w.suitStamp !== w.climateStamp) { suitMap(w); floraMap(w); return; }
+  if (w.floraDirty) { w.floraDirty = false; floraMap(w); }
+  // wild ranges creep slowly through country that suits them
+  if (w.wildMask && spread(w, w.wildMask, NP, (p, j) => w.pSuit[p * N + j] > 110, 0.6, 16) && w.year % 16 === 15) { floraMap(w); w.floraKinds = kindsByMass(w, w.wildMask, NP); }
+}
+// people plant a crop around a new home: it starts growing wild in a small patch there
+export function plantWild(w, p, x, y, r) { if (!w.wildMask) return 0; const n = patch(w, w.wildMask, p, x, y, r || 4, (k, j) => w.pSuit[k * N + j] > 110); if (n) { const m = w.mass[Math.round(y) * W + wx(Math.round(x))], fk = w.floraKinds[m] || (w.floraKinds[m] = []); if (!fk.includes(p)) fk.push(p); w.floraDirty = true; } return n; }
 
 // What one field gives a people that knows these crops: their best crop for the spot, a little
 // more if they also grow pulses (beans keep a grain-eating people strong).

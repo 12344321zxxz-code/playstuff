@@ -2,7 +2,7 @@
 import { W, H, N, DISC, clamp, wx, wrapDx } from './core.js';
 import { route, forgetAt, sumMagic, NK } from './memory.js';
 import { nuke, disarm } from './doom.js';
-import { PLANTS, floraMap } from './origins.js';
+import { PLANTS, floraMap, plantWild } from './origins.js';
 import { registerTools, addLens, say } from './main.js';
 import { SPECIES, addHerd, addPack, cull } from './fauna.js';
 import { addBand, ORES } from './people.js';
@@ -64,7 +64,7 @@ registerTools([
   { id: 'forget', label: 'Forget', group: 'Other world', radius: 8, lens: 7, hint: 'Tap to make a country forget everything that happened in it. Whatever rose from those memories goes with them.', miss: 'There is nothing here to forget.',
     apply(w, p, f, r) { const x = wx(Math.round(p.x - 0.5)), y = Math.round(p.y - 0.5); const n = w.spirits.length; w.spirits = w.spirits.filter((q) => wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 > 64); const ok = forgetAt(w, x, y, 8); if (n !== w.spirits.length) say('What walked there is gone, and nobody remembers why it walked.'); return ok || n !== w.spirits.length; } },
   { id: 'sow', label: 'Wild seed', group: 'Life', opts: PLANTS.map((q) => q.wild[0].toUpperCase() + q.wild.slice(1)), lens: 12, hint: 'Tap land to seed a wild plant across that whole landmass. Whoever lives there may learn to farm it, if the climate suits.', miss: 'It needs land.',
-    apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i]) return false; const m = w.mass[i], k = w.floraKinds[m] || (w.floraKinds[m] = []); if (!k.includes(opt)) k.push(opt); floraMap(w); say(`${PLANTS[opt].wild[0].toUpperCase() + PLANTS[opt].wild.slice(1)} takes root ${w.pSuit[opt * N + i] > 100 ? 'here' : 'here, though it will only thrive where the climate suits it'}.`); return true; } },
+    apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i]) return false; plantWild(w, opt, p.x, p.y, Math.max(2, r)); floraMap(w); say(`${PLANTS[opt].wild[0].toUpperCase() + PLANTS[opt].wild.slice(1)} takes root ${w.pSuit[opt * N + i] > 100 ? 'here' : 'here, though it will only thrive where the climate suits it'}.`); return true; } },
 ]);
 addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins'); addLens(13, 'Beasts'); addLens(14, 'Trade'); addLens(15, 'Knowledge'); addLens(16, 'Fallout');
 

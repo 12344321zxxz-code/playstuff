@@ -320,7 +320,7 @@ function frame(now) {
   if (S.speed && !(S.press && !S.press.pan)) { const rate = S.speed === 1 ? (S.rate || TPS[1]) : TPS[S.speed]; S.acc += dt * rate; const big = []; while (S.acc >= 1 && ran < 10 && performance.now() - t0 < 12) { tick(w); for (const e of w.events) if (e.big) big.push(e); for (const fn of hooks.tick) fn(w); S.acc -= 1; ran++; } if (ran) S.simDirty = true; if (S.acc > 3) S.acc = 0;
     if (S.speed === 1) { S.rate = watchRate(w, WATCH, now, big); banner(now); } }
   if (S.climT && now > S.climT && !S.press) { S.climT = 0; queueClimate(w); }
-  if (!ran && w.job && !(S.press && !S.press.pan)) { const st = w.stamp.land; background(w, 1); if (w.stamp.land !== st) S.dirty = true; }
+  if (!S.speed && w.job && !(S.press && !S.press.pan)) { /* only while paused: a running world does its own background work, step for step */ const st = w.stamp.land; background(w, 1); if (w.stamp.land !== st) S.dirty = true; }
   const t1 = performance.now(); P.sim += (t1 - t0 - P.sim) * 0.05; P.ticks += (ran - P.ticks) * 0.05;
   if (S.press && !S.press.pan && w.need.water && now > S.waterT) { S.waterT = now + 320; refreshWater(w); }
   climateWatch(now);

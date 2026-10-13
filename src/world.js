@@ -1,7 +1,7 @@
 // The world: every field lives here as a flat typed array. Other modules read and write them.
 import { W, H, N, TPY, rng, cyl } from './core.js';
 import { makePlates, buildLand, replate } from './plates.js';
-import { computeClimate, climateSteps, derive } from './climate.js';
+import { computeClimate, climateSteps, derive, resetClimate } from './climate.js';
 import { computeHydro, hydroSteps, erode } from './hydro.js';
 import { seasonFields, initLife, vegetation, fireStep } from './life.js';
 import { initFauna, fauna, faunaYear } from './fauna.js';
@@ -23,6 +23,7 @@ import { initOrigins, originsYear } from './origins.js';
 const F = () => new Float32Array(N), U = () => new Uint8Array(N);
 
 export function makeWorld(seed, opts) {
+  resetClimate();
   const rnd = rng(seed ^ 0x9e3779b9);
   const w = {
     sync: !!(opts && opts.sync),      // kept for old callers; background work is now sliced by step count everywhere, so every run repeats exactly

@@ -13,7 +13,7 @@ page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
 await page.goto('file://' + process.cwd() + '/.cache/page.html'); await page.waitForFunction(() => window.__f && window.formi);
 const sig = 'w => [w.tickN, w.year, w.stats.people, w.sets.length, w.cults.filter((c) => c.alive).length, w.rnd.s, (w.hist || []).length].join(",")';
 // let the page run on its own clock for a while, then read the world in one go
-await page.evaluate(() => { window.__f.start({ seed: 11 }); });
+await page.evaluate(() => { window.__f.start({ seed: 11 }); window.__f.setSpeed(1); });
 await page.waitForTimeout(25000);
 const [bSig, ticks] = await page.evaluate((s) => { const w = window.formi.world(); return [eval(s)(w), w.tickN]; }, sig);
 const h = makeWorld(11); while (h.tickN < ticks) tick(h); const hSig = eval(sig)(h);

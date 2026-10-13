@@ -28,7 +28,7 @@ export function encodeWorld(w) {
     const o = {}; for (const k of Object.keys(v)) { const e = enc(v[k]); if (e !== null || v[k] === null) o[k] = e; }
     return { $i: id, $o: o };
   };
-  const head = JSON.stringify({ v: SAVE_VERSION, world: enc(w), clim: enc(coarse.out), sizes: bufs.map((b) => b.byteLength) });   // the last climate's winds live outside the world
+  const head = JSON.stringify({ v: SAVE_VERSION, world: enc(w), clim: enc(coarse), sizes: bufs.map((b) => b.byteLength) });   // the last climate's winds live outside the world
   const hb = new TextEncoder().encode(head), pad = (n) => (n + 7) & ~7;
   let total = 8 + pad(hb.length); for (const b of bufs) total += pad(b.byteLength);
   const out = new Uint8Array(total), dv = new DataView(out.buffer);
@@ -57,7 +57,7 @@ export function decodeWorld(bytes) {
     const o = {}; made.set(e.$i, o); for (const k in e.$o) o[k] = dec(e.$o[k]); return o;
   };
   const w = dec(head.world);
-  if (head.clim) { const c = dec(head.clim); for (let s = 0; s < 2; s++) for (const k in c[s]) coarse.out[s][k].set(c[s][k]); }
+  if (head.clim) { const c = dec(head.clim); if (Array.isArray(c)) { for (let s = 0; s < 2; s++) for (const k in c[s]) coarse.out[s][k].set(c[s][k]); } else for (const k in c) { if (k === 'out') { for (let s = 0; s < 2; s++) for (const q in c.out[s]) coarse.out[s][q].set(c.out[s][q]); } else if (ArrayBuffer.isView(c[k]) && coarse[k]) coarse[k].set(c[k]); } }   // the climate solver warm-starts from these
   w.census = null; w.job = null;
   return w;
 }

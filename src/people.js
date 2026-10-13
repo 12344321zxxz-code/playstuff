@@ -21,7 +21,7 @@ import { ignite } from './life.js';
 import { remember, DEATH, WILD, FIRE, DEEP, FAITH, FROST, memAt, stanceYear, RUIN_KIND } from './memory.js';
 import { breakPacts } from './spirits.js';
 import { deadConquest } from './dead.js';
-import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock } from './origins.js';
+import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock, plantWild } from './origins.js';
 
 export const TIER = ['band', 'village', 'town', 'city'];
 export const COLORS = ['#d7263d', '#8e44d6', '#f46d1b', '#f2efe4', '#22201e', '#e040a8', '#ffd400', '#00c2a8', '#7a3b1d', '#ff8fa3', '#3d5afe', '#9bd636', '#00a1e4', '#b56576', '#6d597a', '#e9c46a', '#577590', '#f94144', '#43aa8b', '#bc6c25', '#a2d2ff', '#cdb4db', '#606c38', '#fb8500'];
@@ -164,6 +164,8 @@ arrive.refugees = (w, m) => {
   const c = w.cults[m.cult];
   if (m.to && !m.to.dead) { m.to.pop += m.n * 0.9; if (m.sick != null) infect(w, m.to, m.sick); carry(w, m, m.to, 'refugees'); return; }
   const x = wx(Math.round(m.x)), y = clamp(Math.round(m.y), 2, H - 3); if (w.water[y * W + x] || w.sets.length >= MAXS * 0.85 || !c.alive || c.env.nomads >= 6) return;
+  // refugees of a settled, knowing people settle down again or join their kin; only tribes take to wandering
+  if (c.tech >= 3) { const kin = near(w, x, y, 40, null, true, null); if (kin && kin.cult === m.cult) { kin.pop += m.n * 0.8; return; } if (m.n >= 25 && !near(w, x, y, 5, null, true)) { const v = addSet(w, m.cult, x, y, m.n * 0.9, false); v.faith = m.faith; } return; }
   const b = addSet(w, m.cult, x, y, m.n * 0.9, true); b.faith = m.faith; c.env.nomads++;
 };
 arrive.settlers = (w, m) => {
@@ -174,7 +176,7 @@ arrive.settlers = (w, m) => {
   const v = addSet(w, cult, x, y, m.n, false), ru = ruinAt(w, x, y); if (home) v.faith = home.faith;
   if (ru) { v.name = 'New ' + ru.name.replace(/^New /, ''); if (discover(w, 'reborn', x, y)) ev(w, `${v.name} rises on the stones of the old city.`, x, y, w.cults[cult].color); }
   near(w, x, y, 12, v, true, (o) => { if (o.cult !== cult) contact(w, w.cults[cult], o, 'Settlers'); });
-  if (m.far) { const nc = w.cults[cult]; for (const k in nc.tame) if (TAME_SP[k] != null && w.rnd() < 0.4) introduce(w, x, y, TAME_SP[k], `settlers of the ${nc.name}`); const fk = w.floraKinds[w.mass[i]] || (w.floraKinds[w.mass[i]] = []); for (const p of nc.cropL) if (!fk.includes(p)) fk.push(p); }
+  if (m.far) { const nc = w.cults[cult]; for (const k in nc.tame) if (TAME_SP[k] != null && w.rnd() < 0.4) introduce(w, x, y, TAME_SP[k], `settlers of the ${nc.name}`); for (const p of nc.cropL) plantWild(w, p, x, y, 3); }
   if (m.far && w.cults[cult].tame.cattle && !w.rinder[w.mass[i]]) { w.rinder[w.mass[i]] = 1; let n = 0; const ms = w.mass[i]; for (let j = 0; j < N; j++) if (w.mass[j] === ms && w.graze[j] > 0) { w.graze[j] *= 0.45; n++; } if (n > 200) ev(w, `The cattle the ${c.name} brought ashore carry a sickness the wild herds have never met. Carcasses line the rivers.`, x, y, c.color); }
   if (m.ocean && m.far && (w.massSize[w.mass[i]] || 0) > 150 && discover(w, 'oversea', x, y)) ev(w, `Ships of the ${c.name} cross the open sea and land ${whereAbouts(w, x, y)}.`, x, y, c.color, 2);
 };
@@ -209,7 +211,7 @@ arrive.army = (w, m) => {
     flee(w, o, o.pop * 0.12); o.pop *= 0.88; back(1.15); return;
   }
   if ((o.pop < hp * 0.5 || ((war || c.power || oc.power) && rnd() < 0.55)) && w.year - o.lastSack > (c.power ? 8 : 25)) {
-    o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); const fromDead = oc.power; o.cult = m.cult; o.trade = 0; if (c.power || fromDead) deadConquest(w, o, c, oc); if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
+    o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); const fromDead = oc.power; if (!c.power && !oc.power && oc.know > c.know) c.know += (oc.know - c.know) * (m.nomad ? 0.2 : 0.08);   /* conquerors learn from the conquered */ o.cult = m.cult; o.trade = 0; if (c.power || fromDead) deadConquest(w, o, c, oc); if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
     ev(w, wasCap ? `${o.name}, seat of the ${oc.name}, falls to the ${c.name}.` : `${o.name} falls to the ${c.name}.`, o.x, o.y, c.color, wasCap && oc.count > 24 ? 2 : wasCap || o.tier === 3 ? 0 : 1);
     if (wasCap) { oc.coh = Math.max(0.05, oc.coh - (oc.power ? 0.1 : 0.25)); oc.big = null; if (war) war.until = Math.min(war.until, w.year + 2); }
     flee(w, o, o.pop * 0.08); o.pop *= 0.92; back(0.6); return;
@@ -362,7 +364,9 @@ function cultYear(w, c) {
   c.nomadsWas = c.env.nomads;
   if (b) { c.homeT = w.tMean[b.y * W + b.x]; c.homeM = w.mi[b.y * W + b.x]; }
   c.tenet = tenetOf(w, c); c.zeal = c.tenet === 'war';
-  c.kind = kindOf(c); c._ownMetals = c._metals; c.metals = c._metals | importedMetals(w, c); c.gold = !!(c.metals & 16); c.tech = techOf(c.know);
+  c.kind = kindOf(c); c._ownMetals = c._metals; c.metals = c._metals | importedMetals(w, c); c.gold = !!(c.metals & 16);
+  if (c.env.nomads > c.count * 0.5 && c.know > TECH[3] * 0.95) c.know = TECH[3] * 0.95;   // wanderers stop at about the iron age until they settle
+  c.tech = techOf(c.know);
   { const nx = nextInvention(c, rnd); if (nx && rnd() < 0.05 * (1 + 0.25 * nx.push) * (A.schools ? 1.3 : 1) * (A.printing ? 1.3 : 1)) learn(w, c, nx.k); }
   c.plagued = (c.plagued || 0) * 0.8; c.crowded = c.hungry > c.count * 0.3 ? 1 : 0;
   originsYear(w, c, b); cropRisks(w, c, b);
@@ -512,6 +516,7 @@ function pasture(w, s, c) {
   const rnd = w.rnd, sea = w.params.sea; let bi = -1, bg = 0.35;
   for (let q = 0; q < 14; q++) { const a = rnd() * 6.2832, d = 6 + rnd() * 13, x = wx(Math.round(s.x + Math.cos(a) * d)), y = Math.round(s.y + Math.sin(a) * d * 0.8); if (y < 3 || y >= H - 3) continue; const i = y * W + x;
     if (w.water[i] || cropYield(w, c, i) > 0.3 || w.ice[i] || w.h[i] - sea > 0.4 || w.owner[i] >= 0 || w.g[i] <= bg || near(w, x, y, 5, null, false)) continue; bg = w.g[i]; bi = i; }
+  if (c.tech >= 3) return;   // past the iron age, herders become ranchers; nobody walks off to live in the saddle
   if (bi < 0 || w.sets.length >= MAXS || Math.max(c.env.nomads, c.nomadsWas || 0) >= 12) return; let cult = s.cult; s.pop -= 30;
   if (c.env.nomads === 0 && aliveN(w) < MAXC + 3 && rnd() < 0.7) { const nc = newCult(w, c); cult = nc.id; nc.way = 'herd'; ev(w, `Herders of the ${c.name} take their animals out onto the open grass and do not come back. They call themselves the ${nc.name}.`, bi % W, (bi / W) | 0, nc.color, once(w, 'pastoral') ? 0 : 1); }
   else { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; }
