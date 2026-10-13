@@ -72,7 +72,7 @@ export class Heap {
 
 // Offsets inside a disc of radius r, precomputed.
 export const DISC = [];
-for (let r = 0; r <= 20; r++) { const a = []; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r + r) a.push([dx, dy, Math.sqrt(dx * dx + dy * dy)]); DISC.push(a); }
+for (let r = 0; r <= 32; r++) { const a = []; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r + r) a.push([dx, dy, Math.sqrt(dx * dx + dy * dy)]); DISC.push(a); }
 export const NB8 = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
 
 // Box blur with east-west wrap, in place via a scratch buffer.

@@ -91,7 +91,7 @@ export function quake(w, x, y) {
 export function plagueAt(w, x, y) { const s = near(w, Math.round(x), Math.round(y), 8, null, false); if (!s) return false; s.immune = 0; s.plague = 0; infect(w, s, null, true); ev(w, `A sickness comes to ${s.name || 'a band of the ' + w.cults[s.cult].name}.`, s.x, s.y, colorOf(w.cults[s.cult])); return true; }
 export function overgrow(w, x, y, r) {
   x = Math.round(x); y = Math.round(y); let any = false;
-  for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(x + o[0]); if (w.water[i]) continue; const k = fall(o[2], r); if (k < 0.15) continue; w.farm[i] = 0; w.road[i] = 0; w.t[i] = Math.max(w.t[i], 0.9 * k); w.wetBias[i] = Math.min(2.5, w.wetBias[i] + 0.05 * k); w.mem[i * 5 + 1] = Math.min(1.5, w.mem[i * 5 + 1] + 0.04 * k); any = true; }
+  for (const o of DISC[Math.min(20, r)]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(x + o[0]); if (w.water[i]) continue; const k = fall(o[2], r); if (k < 0.15) continue; w.farm[i] = 0; w.road[i] = 0; w.t[i] = Math.max(w.t[i], 0.9 * k); w.wetBias[i] = Math.min(2.5, w.wetBias[i] + 0.05 * k); w.mem[i * 6 + 1] = Math.min(1.5, w.mem[i * 6 + 1] + 0.04 * k); any = true; }
   hitTowns(w, x, y, r, (s) => { s.pop *= 0.82; if (s.pop < 45) endSet(w, s, 'overgrown'); });
   w.need.derive = true; return any;
 }

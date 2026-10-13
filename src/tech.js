@@ -66,8 +66,21 @@ export const ART = {
   bomb: { say: 'the bomb', tier: 8, req: ['atomic', 'steel'], can: (c, e) => e.cities >= 2, push: (c) => (c.threat ? 6 : 0) + (c.war ? 3 : 0) },
   missiles: { say: 'missiles', tier: 8, req: ['bomb', 'rockets'], push: (c) => (c.threat ? 3 : 0) },
   germlabs: { say: 'bred plagues', tier: 8, req: ['sanitation', 'electricity'], push: (c) => (c.war ? 2 : 0) },
+  computers: { say: 'thinking machines', tier: 8, req: ['electricity', 'radio'] },
+  // the information age
+  networks: { say: 'the network', tier: 9, req: ['computers', 'telegraph'] },
+  satellites: { say: 'satellites', tier: 9, req: ['rockets', 'computers'] },
+  genetics: { say: 'reading the blood', tier: 9, req: ['medicine', 'computers'], push: (c) => (c.hungry ? 2 : 0) },
+  automation: { say: 'machines that build machines', tier: 9, req: ['computers', 'engines'] },
+  ai: { say: 'minds of their own making', tier: 9, req: ['networks', 'automation'] },
+  // the space age
+  orbital: { say: 'living in orbit', tier: 10, req: ['satellites', 'automation'] },
+  fusion: { say: 'the captured sun', tier: 10, req: ['reactors', 'computers'] },
+  weatherwork2: { say: 'command of the weather', tier: 10, req: ['satellites', 'fusion'] },
+  terraform: { say: 'the remaking of land', tier: 10, req: ['weatherwork2', 'automation'] },
+  starships: { say: 'ships between the stars', tier: 10, req: ['orbital', 'fusion', 'ai'] },
   // the other road: what sorcerers learn instead
-  craft: { say: 'the craft', tier: 9, req: [] },
+  craft: { say: 'the craft', tier: 99, req: [] },
   wards: { say: 'warding', tier: 2, req: ['craft'], can: (c) => c.stance === 'use', push: (c) => (c.hurt > 1 ? 3 : 0) },
   weatherwork: { say: 'rain-calling', tier: 2, req: ['craft'], can: (c) => c.stance === 'use', push: (c) => (c._dry ? 3 : 0) },
   alchemy: { say: 'alchemy', tier: 3, req: ['craft', 'writing'], can: (c) => c.stance === 'use' },
@@ -75,13 +88,13 @@ export const ART = {
 };
 export const ART_KEYS = Object.keys(ART);
 // How much knowledge in general each era needs (the old thresholds, kept as the pace of history).
-export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 70000000, 120000000, 200000000];
+export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 70000000, 120000000, 200000000, 330000000, 520000000];
 export const techOf = (k) => { let t = 0; while (t < TECH.length && k >= TECH[t]) t++; return t; };
 
 export function canLearn(c, k, easy) {
   const a = c.arts, T = ART[k]; if (!T || a[k]) return false;
   if (k === 'craft') return false;   // the craft comes from towers, not from study
-  if (c.tech + (easy ? 1 : 0) < Math.min(T.tier, 8)) return false;
+  if (c.tech + (easy ? 1 : 0) < T.tier) return false;
   if (c.banned && c.banned[k] && !easy) return false;
   for (const r of T.req) if (!a[r]) return false;
   return T.can ? !!T.can(c, c.env, easy) : true;
@@ -104,15 +117,15 @@ export function blockedReasons(c) {
   return out;
 }
 // The age a people lives in, in words.
-export const ERA = ['the old stone', 'the first fields', 'bronze and kings', 'iron and empire', 'the long middle', 'powder and print', 'smoke and steam', 'wires and wings', 'the bomb'];
+export const ERA = ['the old stone', 'the first fields', 'bronze and kings', 'iron and empire', 'the long middle', 'powder and print', 'smoke and steam', 'wires and wings', 'the bomb', 'information', 'the stars'];
 // What their knowledge does to an army.
 export function warMult(c) {
   const A = c.arts; let m = 1;
   if (A.bronze && !c.bronzeCut) m *= 1.3; if (A.iron) m *= 1.35; if (A.chariots) m *= 1.15; if (A.riding) m *= A.stirrups ? 1.55 : 1.3; if (A.steel) m *= 1.2;
-  if (A.gunpowder) m *= 1.45; if (A.cannon) m *= 1.3; if (A.railways) m *= 1.2; if (A.flight) m *= 1.35; if (A.radio) m *= 1.1; if (A.rockets) m *= 1.15; if (A.wards) m *= 1.1; if (A.bureaucracy) m *= 1.15;
+  if (A.gunpowder) m *= 1.45; if (A.cannon) m *= 1.3; if (A.railways) m *= 1.2; if (A.flight) m *= 1.35; if (A.radio) m *= 1.1; if (A.rockets) m *= 1.15; if (A.satellites) m *= 1.15; if (A.automation) m *= 1.3; if (A.ai) m *= 1.3; if (A.orbital) m *= 1.2; if (A.wards) m *= 1.1; if (A.bureaucracy) m *= 1.15;
   return m;
 }
 // How much walls still matter against them.
 export const wallsAgainst = (att) => (att.arts.cannon || att.arts.flight ? 1.0 : att.arts.siege ? 1.2 : 1.6);
 // How much harder they are on the memory of the world, for magic.
-export function drainOf(A) { let d = 0; for (const k in A) { const T = ART[k]; if (!T || k === 'craft' || T.req.includes('craft')) continue; d += T.tier >= 7 ? 0.03 : T.tier >= 5 ? 0.012 : T.tier >= 4 ? 0.005 : T.tier >= 3 ? 0.003 : 0.001; } return d + (A.engines ? 0.03 : 0); }
+export function drainOf(A) { let d = 0; for (const k in A) { const T = ART[k]; if (!T || k === 'craft' || T.req.includes('craft') || T.tier > 50) continue; d += T.tier >= 7 ? 0.03 : T.tier >= 5 ? 0.012 : T.tier >= 4 ? 0.005 : T.tier >= 3 ? 0.003 : 0.001; } return d + (A.engines ? 0.03 : 0); }

@@ -237,14 +237,18 @@ function dials() {
     $('o-tilt').textContent = P.tilt < 4 ? 'none' : P.tilt < 16 ? 'gentle' : P.tilt < 30 ? 'mild' : P.tilt < 38 ? 'harsh' : 'savage';
     $('o-sea').textContent = Math.abs(P.seaDial) < 0.003 ? 'as it is' : P.seaDial > 0 ? 'risen' : 'fallen';
     $('d-spin').textContent = P.spin > 0 ? 'Eastward' : 'Westward';
-    $('o-mood').textContent = P.mood < 0.15 ? 'steady' : P.mood < 0.7 ? 'mild' : P.mood < 1.3 ? 'fickle' : 'wild';
+    $('o-mood').textContent = P.mood < 0.15 ? 'steady' : P.mood < 0.7 ? 'mild' : P.mood < 1.3 ? 'fickle' : P.mood < 2.5 ? 'wild' : 'insane';
+    $('o-wet').textContent = Math.abs((P.wet || 1) - 1) < 0.03 ? 'as it is' : (P.wet || 1) < 0.5 ? 'parched' : (P.wet || 1) < 1 ? 'drier' : (P.wet || 1) < 1.8 ? 'wetter' : 'deluge';
+    $('o-green').textContent = !P.green ? 'none' : P.green > 0 ? '+' + P.green + '°' : P.green + '°';
   };
   $('d-mood').oninput = (e) => { P.mood = +e.target.value; labels(); };
   $('d-sun').oninput = (e) => { P.sun = +e.target.value; touch(); };
   $('d-tilt').oninput = (e) => { P.tilt = +e.target.value; touch(); };
   $('d-sea').oninput = (e) => { P.seaDial = +e.target.value; P.sea = P.seaDial + w.seaAuto; w.stamp.land++; refreshWater(w); touch(); };
   $('d-spin').onclick = () => { P.spin = -P.spin; touch(); };
-  $('d-sun').value = P.sun; $('d-tilt').value = P.tilt; $('d-sea').value = P.seaDial; $('d-mood').value = P.mood; labels();
+  $('d-wet').oninput = (e) => { P.wet = +e.target.value; touch(); };
+  $('d-green').oninput = (e) => { P.green = +e.target.value; touch(); };
+  $('d-sun').value = P.sun; $('d-tilt').value = P.tilt; $('d-sea').value = P.seaDial; $('d-mood').value = P.mood; $('d-wet').value = P.wet || 1; $('d-green').value = P.green || 0; labels();
 }
 
 /* ---------- overlay ---------- */

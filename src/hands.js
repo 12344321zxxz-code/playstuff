@@ -19,6 +19,8 @@ registerTools([
     apply(w, p) { const i = cell(p); if (w.water[i]) return false; w.springs.push({ x: i % W, y: (i / W) | 0, q: 420 }); if (w.springs.length > 40) w.springs.shift(); w.need.water = true; w.edited = true; say('Water comes up out of the rock.'); return true; } },
   { id: 'ore', label: 'Ore', group: 'Land', opts: ['Copper', 'Tin', 'Iron', 'Gold', 'Salt', 'Coal', 'Uranium'], hint: 'Tap to bury a seam. Copper and tin together make bronze; iron makes harder wars; coal, much later, makes smoke. Zoom in to see seams.', miss: 'Ore needs dry land.',
     apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i] === 1) return false; w.ore[i] = opt + 1; w.oreStamp = (w.oreStamp || 0) + 1; say(`${ORES[opt + 1][0].toUpperCase() + ORES[opt + 1].slice(1)} lies under the ground here now.`); return true; } },
+  { id: 'heat', label: 'Heat', group: 'Sky', kind: 'brush', hint: 'Hold to warm a whole region, up to a desert sun. It stays until you cool it again.', apply(w, p, f, r) { return paintHeat(w, p, r, 1); } },
+  { id: 'cold', label: 'Cold', group: 'Sky', kind: 'brush', hint: 'Hold to chill a whole region, down to an ice age. It stays until you warm it again.', apply(w, p, f, r) { return paintHeat(w, p, r, -1); } },
   { id: 'storm', label: 'Storm', group: 'Sky', radius: 4, hint: 'Tap warm sea to start a storm. The wind decides where it lands.', miss: 'The sky is already full of storms.',
     apply(w, p) { return stormAt(w, p.x, p.y); } },
   { id: 'herd', label: 'Herd', group: 'Life', opts: SP_OPTS, hint: 'Tap land to set animals down. Put horses where there were none and see who learns to ride.', miss: 'They need dry land.',
@@ -65,3 +67,10 @@ registerTools([
     apply(w, p, f, r, st, opt) { const i = cell(p); if (w.water[i]) return false; const m = w.mass[i], k = w.floraKinds[m] || (w.floraKinds[m] = []); if (!k.includes(opt)) k.push(opt); floraMap(w); say(`${PLANTS[opt].wild[0].toUpperCase() + PLANTS[opt].wild.slice(1)} takes root ${w.pSuit[opt * N + i] > 100 ? 'here' : 'here, though it will only thrive where the climate suits it'}.`); return true; } },
 ]);
 addLens(6, 'Peoples'); addLens(9, 'Faiths'); addLens(7, 'Lore'); addLens(12, 'Origins'); addLens(13, 'Beasts'); addLens(14, 'Trade'); addLens(15, 'Knowledge'); addLens(16, 'Fallout');
+
+// warmth and cold you paint stay in the world's climate, spread wide around the brush
+function paintHeat(w, p, r, sign) {
+  const x = Math.round(p.x - 0.5), y = Math.round(p.y - 0.5), R = Math.min(30, r * 2 + 6), tu = w.tUser || (w.tUser = new Float32Array(N)), tb = w.tBias || (w.tBias = new Float32Array(N)), ap = w.tApplied || (w.tApplied = new Float32Array(N));
+  for (const o of DISC[Math.min(30, R)] || DISC[20]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(x + o[0]), d = sign * 0.6 * (1 - o[2] / (R + 1)); const nv = Math.max(-35, Math.min(35, tu[i] + d)), dd = nv - tu[i]; tu[i] = nv; tb[i] += dd; ap[i] += dd; w.tJan[i] += dd; w.tJul[i] += dd; }
+  w.need.climate = true; w.climateStamp = (w.climateStamp || 0) + 1; return true;
+}

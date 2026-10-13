@@ -113,7 +113,7 @@ function blast(w, c) {
 // Furnaces eat the forests around the towns that feed them.
 function furnaces(w, c) {
   const k = c.arts.engines ? 0.92 : 0.985; let cut = 0;
-  for (const s of setsOf(w, c)) { if (s.tier < 2) continue; for (const o of DISC[Math.min(10, s.R + 3)]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(s.x + o[0]); if (w.t[i] > 0.2 && !(w.mem && w.mem[i * 5 + 1] > 0.6)) { w.t[i] *= k; cut++; } } }
+  for (const s of setsOf(w, c)) { if (s.tier < 2) continue; for (const o of DISC[Math.min(10, s.R + 3)]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(s.x + o[0]); if (w.t[i] > 0.2 && !(w.mem && w.mem[i * 6 + 1] > 0.6)) { w.t[i] *= k; cut++; } } }
   if (c.arts.engines && cut > 400 && once(w, 'stumps-' + c.id) && c.big) { ev(w, `The forests around the cities of the ${c.name} are gone into the furnaces. The hills are bare to the horizon.`, c.big.x, c.big.y, c.color, 1); discover(w, 'stumps', c.big.x, c.big.y); }
 }
 // Sorcerers raise land out of the sea beside their towers.
@@ -124,7 +124,7 @@ function raiseLand(w, c) {
     for (const o of DISC[8]) { const yy = s.y + o[1]; if (yy < 3 || yy >= H - 3) continue; const i = yy * W + wx(s.x + o[0]); if (w.water[i] === 1 && sea - w.h[i] < 0.12 && o[2] > 4) { bi = i; break; } }
     if (bi < 0) continue; const x = bi % W, y = (bi / W) | 0;
     for (const o of DISC[3]) { const j = clamp(y + o[1], 0, H - 1) * W + wx(x + o[0]); w.h[j] = Math.max(w.h[j], sea + 0.03 + 0.05 * (1 - o[2] / 4)); w.soil[j] = 1.1; }
-    if (w.mem) for (const o of DISC[3]) { const j = clamp(y + o[1], 0, H - 1) * W + wx(x + o[0]); w.mem[j * 5 + 3] *= 0.3; }
+    if (w.mem) for (const o of DISC[3]) { const j = clamp(y + o[1], 0, H - 1) * W + wx(x + o[0]); w.mem[j * 6 + 3] *= 0.3; }
     w.need.water = true; done(w, 'raised', x, y, c.id);
     ev(w, `The sorcerers of ${s.name} spend a winter in their tower, and in spring there is an island off the harbour that was never there before.`, x, y, c.color, 0); discover(w, 'raised', x, y);
     return;

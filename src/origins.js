@@ -31,16 +31,32 @@ export const LIVESTOCK = {
   goat: { germs: 0.4 }, camel: { cart: 1, germs: 0.2 }, reindeer: { cart: 0.4, germs: 0.1 }, llama: { cart: 0.6, germs: 0.1 },
 };
 
+// Life is dealt by continent, not by patch of ground: each kind of plant or beast has one or two
+// home continents, and reaches others only on a ship or in your hand. Islands get a little, from
+// whatever continent lies nearest, or nothing at all.
+export function byContinent(w, count, good, opt) {
+  const rnd = w.rnd, sample = {}, cen = {};
+  for (let i = 0; i < N; i += 3) { if (w.water[i] || w.ice[i]) continue; const m = w.mass[i]; if ((w.massSize[m] || 0) < 30) continue; (sample[m] || (sample[m] = [])).push(i); }
+  const masses = Object.keys(sample).map(Number), conts = masses.filter((m) => w.massSize[m] >= 350), out = {};
+  for (const m of masses) { out[m] = []; let sx = 0, sy = 0, cx0 = sample[m][0] % W; for (const i of sample[m]) { let dx = (i % W) - cx0; if (dx > W / 2) dx -= W; if (dx < -W / 2) dx += W; sx += dx; sy += (i / W) | 0; } cen[m] = [cx0 + sx / sample[m].length, sy / sample[m].length]; }
+  const goodOn = (s, m) => { let g = 0; for (const i of sample[m]) if (good(s, i)) g++; return g; };
+  for (let s = 0; s < count; s++) {
+    const cand = conts.map((m) => [m, goodOn(s, m)]).filter(([, g]) => g >= opt.min).map(([m, g]) => [m, Math.pow(g, 0.4)]); if (!cand.length) continue;   // a big continent is likelier, not certain
+    if (opt.skip && rnd() < opt.skip(s)) continue;
+    const k = Math.min(cand.length, rnd() < 0.62 ? 1 : rnd() < 0.85 ? 2 : 3);
+    for (let n = 0; n < k; n++) { let tot = 0; for (const [, g] of cand) tot += g; let r = rnd() * tot, pick = 0; for (let q = 0; q < cand.length; q++) { r -= cand[q][1]; if (r <= 0) { pick = q; break; } } out[cand[pick][0]].push(s); cand.splice(pick, 1); }
+  }
+  // every continent has something to eat, if the caller asks for it
+  if (opt.atLeast) for (const m of conts) { const best = []; for (let s = 0; s < count; s++) if (!out[m].includes(s)) best.push([s, goodOn(s, m)]); best.sort((a, b) => b[1] - a[1]); while (out[m].length < opt.atLeast && best.length && best[0][1] >= opt.min) out[m].push(best.shift()[0]); }
+  // islands borrow from the nearest continent, sometimes
+  for (const m of masses) { if (w.massSize[m] >= 350 || !conts.length) continue; let near = conts[0], bd = 1e9; for (const c of conts) { let dx = Math.abs(cen[m][0] - cen[c][0]); if (dx > W / 2) dx = W - dx; const d = dx * dx + (cen[m][1] - cen[c][1]) ** 2; if (d < bd) { bd = d; near = c; } }
+    if (rnd() < opt.island) out[m] = out[near].filter((s) => goodOn(s, m) >= 2 && rnd() < 0.6); }
+  return out;
+}
 export function initOrigins(w) {
   w.pSuit = new Uint8Array(N * NP); w.flora = new Uint8Array(N).fill(255); w.wildCrop = new Float32Array(N); w.floraKinds = {}; w.rinder = {};
   suitMap(w);
-  const byMass = {};
-  for (let i = 0; i < N; i += 3) { if (w.water[i] || w.ice[i]) continue; const m = w.mass[i]; if ((w.massSize[m] || 0) < 30) continue; (byMass[m] || (byMass[m] = [])).push(i); }
-  for (const m in byMass) {
-    const cells = byMass[m], kinds = [];
-    for (let p = 0; p < NP; p++) { let good = 0; for (const i of cells) if (w.pSuit[p * N + i] > 150) good++; if (good >= 8 && w.rnd() < PLANTS[p].p) kinds.push(p); }
-    w.floraKinds[m] = kinds;
-  }
+  w.floraKinds = byContinent(w, NP, (p, i) => w.pSuit[p * N + i] > 150, { min: 8, island: 0.3, skip: (p) => 0.15 });
   floraMap(w);
 }
 // how well each plant would grow in each place, from the climate as it is now

@@ -25,6 +25,7 @@ export const SPR = {
   dragon: ['R.......R', 'RR.....RR', 'RRR.R.RRR', '.RRRRRRR.', '...RkR...', '....R....', '....R....'],
   dragonSleep: ['...........', '..RRRRR....', '.RRRRRRRRk.', 'RRRRRRRRRRk', 'yyyyyyyyyyy'],
   kraken: ['p.p.p.p.p', 'pPpPpPpPp', '.PpppppP.', '..PPPPP..'],
+  winter: ['..a.a.a..', '..aaaaa..', '...khk...', '..hhhhh..', '.hhahahh.', '.hhhhhhh.', 'hhhhhhhhh'],
   missile: ['......kk.', 'oykkkkwwk', 'ookkkkkk.'],
   well: ['..kkkkk..', '.kGgggGk.', 'kGgcccgGk', 'kgcdddcgk', 'kGgcccgGk', '.kGgggGk.', '..kkkkk..'],
   host: ['.a...a...', 'aAa.aAa.a', '.a...a.aAa', 'aAa.aAa..a', '.A...A....', '.A.a.A.a..', '...A...A..'],

@@ -9,6 +9,7 @@
 import { W, H, N, clamp, wx, wrapDx, cyl, DISC, NB8, Heap } from './core.js';
 import { ev, discover, once } from './story.js';
 import { drainOf } from './tech.js';
+import { derive } from './climate.js';
 
 export const KINDS = [
   { key: 'death', name: 'death', col: '#9aa3b8', place: 'haunted' },
@@ -16,8 +17,9 @@ export const KINDS = [
   { key: 'fire', name: 'fire', col: '#ff8a3a', place: 'burning' },
   { key: 'deep', name: 'the deep', col: '#4ab8e8', place: 'drowned' },
   { key: 'faith', name: 'faith', col: '#f2dc6a', place: 'holy' },
+  { key: 'frost', name: 'winter', col: '#cfeeff', place: 'frozen' },
 ];
-export const NK = 5, DEATH = 0, WILD = 1, FIRE = 2, DEEP = 3, FAITH = 4;
+export const NK = 6, DEATH = 0, WILD = 1, FIRE = 2, DEEP = 3, FAITH = 4, FROST = 5;
 export const STANCES = {
   revere: { name: 'Keepers', say: 'keep the old places', col: '#e8c860', drain: 0.3 },
   use: { name: 'Sorcerers', say: 'draw on the old powers', col: '#b07aff', drain: 1.3 },
@@ -58,7 +60,7 @@ export function route(w) {
   }
   w.routeStamp = w.year;
 }
-export function sumMagic(w) { const { mem, magic } = w; for (let i = 0; i < N; i++) { const b = i * NK, s = mem[b] + mem[b + 1] + mem[b + 2] + mem[b + 3] + mem[b + 4]; magic[i] = s > 1 ? 1 : s; } }
+export function sumMagic(w) { const { mem, magic } = w; for (let i = 0; i < N; i++) { const b = i * NK, s = mem[b] + mem[b + 1] + mem[b + 2] + mem[b + 3] + mem[b + 4] + mem[b + 5]; magic[i] = s > 1 ? 1 : s; } }
 export const memAt = (w, i, k) => w.mem[i * NK + k];
 export function kindAt(w, i) { const b = i * NK, m = w.mem; let bk = -1, bv = 0.15; for (let k = 0; k < NK; k++) if (m[b + k] > bv) { bv = m[b + k]; bk = k; } return bk; }
 
@@ -96,13 +98,15 @@ export function memoryYear(w) {
   else if (w.leyDirty || w.year - w.routeStamp > 80) { w.leyDirty = false; route(w); }
   // sources that need no event: old forest nobody touches, the deep sea
   // a quarter of the world each year, four years' worth at a time
-  const farm = w.farm;
+  const farm = w.farm, surge = w.surge && w.year < w.surge, surge3 = surge ? 3 : 1;
   for (let i = w.year & 3; i < N; i += 4) {
     const b = i * NK;
-    if (water[i] === 1) { if (h[i] - sea < -0.4 && mem[b + DEEP] < 0.35) mem[b + DEEP] += 0.012; }
-    else if (t[i] > 0.85 && mi[i] > 0.8 && owner[i] < 0 && mem[b + WILD] < 0.9) mem[b + WILD] += 0.016;
+    if (water[i] === 1) { if (h[i] - sea < -0.4 && mem[b + DEEP] < (surge ? 0.8 : 0.35)) mem[b + DEEP] += 0.012 * surge3; }
+    else if (t[i] > 0.85 && mi[i] > 0.8 && owner[i] < 0 && mem[b + WILD] < 0.9) mem[b + WILD] += 0.016 * surge3;
+    else if (surge && owner[i] < 0 && water[i] !== 1 && mem[b + WILD] < 0.5) mem[b + WILD] += 0.02;   // after the fall, the wild comes back everywhere nobody lives
+    if (w.soot > 0.3 && water[i] !== 1 && mem[b + FROST] < 0.8) mem[b + FROST] += w.soot * 0.03;   // a winter that people made is remembered as winter
     if (memLock[i]) continue;
-    if (mem[b] + mem[b + 1] + mem[b + 2] + mem[b + 3] + mem[b + 4] < 0.002) continue;
+    if (mem[b] + mem[b + 1] + mem[b + 2] + mem[b + 3] + mem[b + 4] + mem[b + 5] < 0.002) continue;
     const k = road[i] ? 0.984 * 0.885 : 0.984; for (let q = 0; q < NK; q++) mem[b + q] *= k;
     if (farm[i] || owner[i] >= 0) mem[b] *= 0.953;   // ploughed and lived-in land forgets its dead
   }
@@ -114,38 +118,43 @@ export function memoryYear(w) {
   for (const v of w.volcanoes) if (w.h[v.y * W + v.x] > sea) remember(w, v.x, v.y, FIRE, 0.012, 3);   // the mountains that burn remember it
   wearAway(w);
   wellsYear(w);
+  if (w.year % 5 === 0 && magicClimate(w) > 0.02) { rebias(w); derive(w); w.climateStamp = (w.climateStamp || 0) + 1; }
   sumMagic(w);
   let tot = 0; w.memStat.fill(0); for (let i = 0; i < N; i += 4) { if (water[i] === 1) continue; const b = i * NK; for (let k = 0; k < NK; k++) w.memStat[k] += mem[b + k]; } for (let k = 0; k < NK; k++) tot += w.memStat[k];
   w.stats.magic = Math.round(tot); w.magicPeak = Math.max(w.magicPeak || 0, tot);
   if (w.year > 300 && tot < (w.magicPeak || 0) * 0.35 && discover(w, 'quiet', null, null)) ev(w, 'The old places have gone quiet almost everywhere. Children are told the stories, and do not believe them.', null, null, null, 2);
   if (w.found.quiet && tot > w.magicPeak * 0.7 && w.year - w.found.quiet.year > 60 && discover(w, 'return', null, null)) ev(w, 'With the cities fallen, the old things are coming back.', null, null, null, 2);
 }
-export const RUIN_KIND = { nuked: DEATH, sacked: DEATH, plague: DEATH, starved: DEATH, frozen: DEATH, abandoned: null, drowned: DEEP, buried: FIRE, crater: FIRE, dragon: FIRE, overgrown: WILD, swallowed: FIRE, burned: FIRE };
+export const RUIN_KIND = { nuked: DEATH, sacked: DEATH, plague: DEATH, starved: DEATH, frozen: FROST, abandoned: null, drowned: DEEP, buried: FIRE, crater: FIRE, dragon: FIRE, overgrown: WILD, swallowed: FIRE, burned: FIRE };
 
 // Knowledge is corrosive. Every furnace, road and book wears the memory of a place away, and a
 // people's stance decides how hard they lean on it.
 function wearAway(w) {
-  const { mem, memLock } = w;
+  const { mem, memLock } = w, pushed = w.pushed || (w.pushed = new Float64Array(NK));
   for (const s of w.sets) {
     if (s.dead) continue; const c = w.cults[s.cult], A = c.arts, st = STANCES[c.stance || 'revere'];
     const d = (0.002 * c.tech + drainOf(A)) * (s.nomad ? 0.3 : 0.5 + 0.5 * s.tier) * st.drain;
     if (d <= 0) continue; const R = Math.min(12, s.R + 2);
-    for (const o of DISC[R]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(s.x + o[0]); if (memLock[j]) continue; const k = 1 - d * (1 - o[2] / (R + 1)), b = j * NK; for (let q = 0; q < NK; q++) mem[b + q] *= k; }
+    for (const o of DISC[R]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(s.x + o[0]); if (memLock[j]) continue; const k = 1 - d * (1 - o[2] / (R + 1)), b = j * NK; for (let q = 0; q < NK; q++) pushed[q] += mem[b + q] * (1 - k); for (let q = 0; q < NK; q++) mem[b + q] *= k; }
     if (s.tower) for (const o of DISC[6]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(s.x + o[0])) * NK; for (let q = 0; q < NK; q++) mem[b + q] *= 0.97; }   // sorcerers draw the place dry
   }
 }
 
 // A well holds what the lines bring it; past a point it spills, and the spill runs back up the
 // lines as a storm of whatever it was full of.
-const WNAME = { death: ['the Weeping Well', 'the Black Spring', 'the Well of Bones'], wild: ['the Green Spring', 'the Antler Well', 'the Well of Roots'], fire: ['the Burning Well', 'the Ember Spring', 'the Red Pool'], deep: ['the Salt Well', 'the Drowned Spring', 'the Well of Tides'], faith: ['the Bright Well', 'the Saint’s Spring', 'the Well of Bells'] };
+const WNAME = { death: ['the Weeping Well', 'the Black Spring', 'the Well of Bones'], wild: ['the Green Spring', 'the Antler Well', 'the Well of Roots'], fire: ['the Burning Well', 'the Ember Spring', 'the Red Pool'], deep: ['the Salt Well', 'the Drowned Spring', 'the Well of Tides'], faith: ['the Bright Well', 'the Saint’s Spring', 'the Well of Bells'], frost: ['the Frozen Well', 'the White Spring', 'the Well of Winter'] };
 function wellsYear(w) {
   const { mem } = w;
+  // Memory that the cities wear away does not vanish. It is driven out along the lines into the
+  // wells, so the cleverer the world gets, the fuller and more dangerous its wells become.
+  if (w.pushed && w.wells.length) { for (let k = 0; k < NK; k++) { const per = w.pushed[k] * 0.35 / w.wells.length; if (per > 0) for (const q of w.wells) mem[(q.y * W + q.x) * NK + k] += per; w.pushed[k] *= 0.65; } }
   for (const q of w.wells) {
     const sum = new Float32Array(NK); let tot = 0;
     for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) { sum[k] += mem[b + k]; tot += mem[b + k]; } }
     let bk = 0; for (let k = 1; k < NK; k++) if (sum[k] > sum[bk]) bk = k; q.kind = bk; q.fill = tot;
     if (!q.name && tot > 4) q.name = WNAME[KINDS[bk].key][(w.rnd() * 3) | 0];
-    if (tot > 14 && w.storms2.length < 3 && w.year - (q.at || -99) > 40) { q.at = w.year;
+    if (tot > 14 && w.storms2.length < 4 && w.year - (q.at || -99) > 25) { q.at = w.year;
+      if (tot > 40 && w.rise) w.rise(w, q, bk);   // a well this full breaks open and something comes out of it
       for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) mem[b + k] *= 0.35; }
       q.spilt++; w.storms2.push({ x: q.x, y: q.y, px: q.x, py: q.y, kind: bk, left: 70, from: q.name || 'a wellspring', amt: Math.min(0.5, sum[bk] / 30), seen: new Set() });
       ev(w, `${q.name ? q.name[0].toUpperCase() + q.name.slice(1) : 'A wellspring'} spills over. A storm of ${KINDS[bk].name} runs out along the ley lines.`, q.x, q.y, null, q.spilt === 1 ? 0 : 1); discover(w, 'leystorm', q.x, q.y);
@@ -188,4 +197,21 @@ export function stanceYear(w, c) {
     return cur;   // a stance has changed: pacts may break
   }
   return null;
+}
+
+// Magic changes the weather, and not just under its feet: winter memory chills a whole region,
+// fire memory warms it. The effect is spread wide (a coarse, blurred map) and added to the climate.
+const CSZ = 8, CWB = W / CSZ, CHB = H / CSZ, _cb = new Float32Array(CWB * CHB), _cb2 = new Float32Array(CWB * CHB);
+export function magicClimate(w) {
+  const { mem } = w; _cb.fill(0);
+  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) { const b = (y * W + x) * NK; _cb[((y / CSZ) | 0) * CWB + ((x / CSZ) | 0)] += (-Math.min(1.2, mem[b + FROST]) * 22 + Math.min(1, mem[b + FIRE]) * 10 + Math.min(1, mem[b + FAITH]) * 2) / 16; }
+  for (let pass = 0; pass < 3; pass++) { for (let y = 0; y < CHB; y++) for (let x = 0; x < CWB; x++) { let s = 0, n = 0; for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= CHB) continue; for (let dx = -1; dx <= 1; dx++) { s += _cb[yy * CWB + ((x + dx + CWB) % CWB)]; n++; } } _cb2[y * CWB + x] = s / n; } _cb.set(_cb2); }
+  const tb = w.tBias || (w.tBias = new Float32Array(N)), user = w.tUser; let change = 0;
+  for (let y = 0; y < H; y++) { const cy = Math.min(CHB - 1, (y / CSZ) | 0); for (let x = 0; x < W; x++) { const i = y * W + x, v = _cb[cy * CWB + ((x / CSZ) | 0)] * 2.2 + (user ? user[i] : 0); change += Math.abs(v - tb[i]); tb[i] = v; } }
+  return change / N;
+}
+// apply a new bias on top of the climate already worked out, without recomputing it
+export function rebias(w) {
+  const tb = w.tBias, ap = w.tApplied || (w.tApplied = new Float32Array(N)); if (!tb) return;
+  for (let i = 0; i < N; i++) { const d = tb[i] - ap[i]; if (d) { w.tJan[i] += d; w.tJul[i] += d; ap[i] = tb[i]; } }
 }

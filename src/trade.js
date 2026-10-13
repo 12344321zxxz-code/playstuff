@@ -100,7 +100,7 @@ export function deliver(w, m) {
   if (key2 === 'grain') b.fed = w.year;
   else if (key2 === 'tin' || key2 === 'copper') { if (!cb.arts.bronze && once(w, 'tinfirst')) ev(w, `${key2 === 'tin' ? 'Tin' : 'Copper'} from ${a.name} reaches ${b.name}, where they have only ${key2 === 'tin' ? 'copper' : 'tin'}. The smiths know what to do with it.`, b.x, b.y, cb.color, 0); }
   else if (key2 === 'horses' && !cb.tame.horse && w.rnd() < 0.25) { cb.tame.horse = w.year; ev(w, `The ${cb.name} buy horses from the ${ca.name}. Within a generation their young men ride.`, b.x, b.y, cb.color, 1); }
-  else if (key2 === 'relics') { if (w.mem) w.mem[(b.y * W + b.x) * 5 + (w.rnd() < 0.5 ? 4 : 0)] += 0.05; }
+  else if (key2 === 'relics') { if (w.mem) w.mem[(b.y * W + b.x) * 6 + (w.rnd() < 0.5 ? 4 : 0)] += 0.05; }
 }
 // Imports count as owning: a people with copper at home and tin from a far shore can cast bronze,
 // for as long as the tin keeps coming.

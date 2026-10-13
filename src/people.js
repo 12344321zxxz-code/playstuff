@@ -15,7 +15,7 @@ import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAga
 export { ART, TECH, techOf };
 import { wallBetween } from './works.js';
 import { ignite } from './life.js';
-import { remember, DEATH, WILD, FIRE, DEEP, FAITH, memAt, stanceYear, RUIN_KIND } from './memory.js';
+import { remember, DEATH, WILD, FIRE, DEEP, FAITH, FROST, memAt, stanceYear, RUIN_KIND } from './memory.js';
 import { breakPacts } from './spirits.js';
 import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock } from './origins.js';
 
@@ -82,7 +82,7 @@ function meet(w, c, o, p) {
   for (const [a, b] of [[c, o], [o, c]]) {
     for (const k in b.tame) if (!a.tame[k] && rnd() < 0.12 && suits(w, a, 'beast', k)) { a.tame[k] = w.year; if (TAME_GRAZE[k] && !a.grazer) { a.grazer = k; learn(w, a, 'herding'); } }
     for (const k of b.cropL) if (!hasCrop(a, k) && rnd() < 0.07 && suits(w, a, 'crop', k)) { giveCrop(w, a, k, b); if (!a.arts.farming && a.tech >= 1) learn(w, a, 'farming', b); break; }
-    if (rnd() < p * 0.4 * (a.arts.alphabet || b.arts.alphabet ? 1.4 : 1) * (b.arts.printing ? 2 : 1)) { const got = ART_KEYS.filter((k) => b.arts[k] && canLearn(a, k, true)); if (got.length) learn(w, a, got[(rnd() * got.length) | 0], b); }
+    if (rnd() < p * 0.4 * (a.arts.alphabet || b.arts.alphabet ? 1.4 : 1) * (b.arts.printing ? 2 : 1) * (b.arts.networks ? 2 : 1)) { const got = ART_KEYS.filter((k) => b.arts[k] && canLearn(a, k, true)); if (got.length) learn(w, a, got[(rnd() * got.length) | 0], b); }
   }
   c.nb[o.id] = (c.nb[o.id] || 0) + 1; o.nb[c.id] = (o.nb[c.id] || 0) + 1;
 }
@@ -128,9 +128,9 @@ function plaguesYear(w) {
 }
 
 /* ---------- ruins ---------- */
-const RUIN_TEXT = { abandoned: 'lies empty. Grass grows in its streets.', sacked: 'is burned to the ground.', drowned: 'is under the water.', buried: 'is buried under ash and stone.', burned: 'is lost to the fire.', plague: 'is a city of the dead.', frozen: 'is under the ice.', overgrown: 'is swallowed by the forest.', crater: 'is gone in a flash of light.', swallowed: 'falls into the earth.', dragon: 'is a dragon’s roost now.', starved: 'starves, and empties.', nuked: 'is ash and glass.' };
+const RUIN_TEXT = { abandoned: 'lies empty. Grass grows in its streets.', sacked: 'is burned to the ground.', drowned: 'is under the water.', buried: 'is buried under ash and stone.', burned: 'is lost to the fire.', plague: 'is a city of the dead.', frozen: 'is under the ice.', overgrown: 'is swallowed by the forest.', crater: 'is gone in a flash of light.', swallowed: 'falls into the earth.', dragon: 'is a dragon’s roost now.', starved: 'starves, and empties.', nuked: 'is ash and glass.', left: 'stands empty. Its people left the world.', machine: 'goes dark. Whatever lives there now does not need light.' };
 const RUIN_PAGE = { drowned: 'drowned', buried: 'buried', overgrown: 'overgrown', frozen: 'frozen' };
-const DEPOSIT = { sacked: [DEATH, 0.55, 'sacked', (s) => `the sack of ${s.name}`], plague: [DEATH, 0.5, 'plague', (s) => `the plague at ${s.name}`], starved: [DEATH, 0.45, 'famine', (s) => `${s.name} starved`], frozen: [DEATH, 0.4, 'famine', (s) => `the ice took ${s.name}`], drowned: [DEEP, 0.6, 'drowned', (s) => `${s.name} went under the water`], buried: [FIRE, 0.6, null], crater: [FIRE, 0.8, null], dragon: [FIRE, 0.4, null], overgrown: [WILD, 0.4, null], swallowed: [FIRE, 0.4, null] };
+const DEPOSIT = { sacked: [DEATH, 0.55, 'sacked', (s) => `the sack of ${s.name}`], plague: [DEATH, 0.5, 'plague', (s) => `the plague at ${s.name}`], starved: [DEATH, 0.45, 'famine', (s) => `${s.name} starved`], frozen: [FROST, 0.6, 'frozen', (s) => `the ice took ${s.name}`], drowned: [DEEP, 0.6, 'drowned', (s) => `${s.name} went under the water`], buried: [FIRE, 0.6, null], crater: [FIRE, 0.8, null], dragon: [FIRE, 0.4, null], overgrown: [WILD, 0.4, null], swallowed: [FIRE, 0.4, null] };
 export function endSet(w, s, kind, by) {
   if (s.dead) return; s.dead = true; w.anyDead = true; const c = w.cults[s.cult];
   // only a real tragedy is remembered: a town or city, not a hamlet; and the dead do not raise more dead by killing
@@ -241,8 +241,8 @@ export function* peopleSteps(w) {
     if (w.lava[i0]) { endSet(w, s, 'buried'); continue; }
     if (w.ice[i0] && !s.nomad) { flee(w, s, s.pop * 0.5); endSet(w, s, 'frozen'); continue; }
     if (fireT[i0]) s.pop *= 0.9;
-    if (w.fallout[i0] > 0.05) { s.pop *= 1 - 0.06 * Math.min(1, w.fallout[i0]); if (w.fallout[i0] > 0.5 && !s.nomad && rnd() < 0.2) flee(w, s, s.pop * 0.1); }
-    const herder = !!c.grazer, wa = Math.max(wetAt(w, s.x, s.y), w.mem[i0 * 5 + 4] > 0.4 ? 0.95 : 0), irrR = A.irrigation ? 3 : 1, grove = c.tenet === 'grove', maxH = A.terraces ? 0.5 : 0.32, farmR = A.engines ? 6.2 : s.tier >= 3 ? 5.2 : 4.2; s.wa = wa;
+    if (w.fallout[i0] > 0.05) { s.pop *= 1 - 0.16 * Math.min(1, w.fallout[i0]); if (w.fallout[i0] > 0.5 && !s.nomad && rnd() < 0.2) flee(w, s, s.pop * 0.1); }
+    const herder = !!c.grazer, wa = Math.max(wetAt(w, s.x, s.y), w.mem[i0 * 6 + 4] > 0.4 ? 0.95 : 0), irrR = A.irrigation ? 3 : 1, grove = c.tenet === 'grove', maxH = A.terraces ? 0.5 : 0.32, farmR = A.engines ? 6.2 : s.tier >= 3 ? 5.2 : 4.2; s.wa = wa;
     let domS = null, wildF = 0, seaN = 0, freshF = 0, rain = 0, irrg = 0, farms = 0, blight = 0, bestI = -1, bestK = 0.34, huntLeft = Math.min(s.pop, 150) * 0.012, tameAt = -1, hunt = 0, past = 0, ores = 0, cropS = 0, landN = 0, soilS = 0;
     for (const o of DISC[s.R]) {
       const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]);
@@ -254,7 +254,7 @@ export function* peopleSteps(w) {
       if (ore[i]) ores |= 1 << ore[i];
       if (w.graze[i] > 0.05) { if (huntLeft > 0) { const take = takeGame(w, i, huntLeft); huntLeft -= take; hunt += take * 3.2; } if (w.graze[i] > 0.4 && w.spAt[i] !== 255) tameAt = i; }
       if (farm[i]) {
-        farms++; soilS += soil[i]; const ir = fresh[i] <= irrR, mb = i * 5, y0 = Math.min(1, cy + (ir && cy > 0.05 ? 0.5 : 0)) * Math.min(1, soil[i]) * (1 - 0.7 * Math.min(1, w.mem[mb])) * (1 + 0.3 * Math.min(1, w.mem[mb + 4])) * (w.year < (c.blightTo || 0) ? 0.35 : 1) * (1 - Math.min(1, w.fallout[i]));
+        farms++; soilS += soil[i]; const ir = fresh[i] <= irrR, mb = i * 6, y0 = Math.min(1, cy + (ir && cy > 0.05 ? 0.5 : 0)) * Math.min(1, soil[i]) * (1 - 0.7 * Math.min(1, w.mem[mb])) * (1 + 0.3 * Math.min(1, w.mem[mb + 4])) * (w.year < (c.blightTo || 0) ? 0.35 : 1) * (1 - Math.min(1, w.fallout[i]));
         if (farm[i] === 2) { blight++; farm[i] = 1; } else if (ir) irrg += y0; else rain += y0;
         if (!(fresh[i] <= 1 && mi[i] > 0.3)) { const sh = t[i + 1] > 0.3 || t[i - 1] > 0.3 || t[i + W] > 0.3 || t[i - W] > 0.3; soil[i] -= (A.writing ? 0.002 : 0.004) * (sh ? 1 : 2) * (A.terraces ? 0.7 : 1) * (mi[i] > 1.6 ? 2.2 : 1) + (ir && mi[i] < 0.3 ? 0.002 : 0); if (soil[i] < 0.42) { farm[i] = 0; if (w.tCap[i] > 0.3) t[i] = 0.05; } }
         else if (wa > 1.45) soil[i] = Math.min(1.3, soil[i] + 0.02);
@@ -269,7 +269,7 @@ export function* peopleSteps(w) {
     if (tameAt >= 0 && c.know > 600 && rnd() < 0.08) { const sp = SPECIES[w.spAt[tameAt]];
       if (sp && sp.tame && !c.tame[sp.tame]) { c.tame[sp.tame] = w.year; if (TAME_GRAZE[sp.tame] && !c.grazer) { c.grazer = sp.tame; learn(w, c, 'herding'); } if (once(w, 'tame' + sp.tame)) ev(w, `The ${c.name} tame the ${sp.tame === 'cattle' ? 'aurochs' : sp.tame === 'pig' ? 'boar' : sp.tame}. Others will learn it from them.`, s.x, s.y, c.color); } }
     s.ores = ores; c._metals |= ores; s.port = seaN >= 3 && !s.nomad;
-    const L = c._L || (c._L = livestock(c)), yieldF = 15 * (1 + (A.plough ? 0.3 : 0.08) * L.plough) * (A.pottery ? 1.03 : 1) * (A.mills ? 1.15 : 1) * (A.aqueducts && s.tier >= 3 ? 1.15 : 1) * (A.dikes ? 1.05 : 1) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * (A.engines ? 1.5 : 1);
+    const L = c._L || (c._L = livestock(c)), yieldF = 15 * (1 + (A.plough ? 0.3 : 0.08) * L.plough) * (A.pottery ? 1.03 : 1) * (A.mills ? 1.15 : 1) * (A.genetics ? 1.3 : 1) * (A.automation ? 1.15 : 1) * (A.aqueducts && s.tier >= 3 ? 1.15 : 1) * (A.dikes ? 1.05 : 1) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * (A.engines ? 1.5 : 1);
     const fW = wildF * (s.nomad ? 3.2 : 1.1) * (0.55 + 0.45 * Math.min(wa, 1.3)) * sun, fH = hunt * 6;
     const fFr = Math.min(freshF * (A.boats ? 2.2 : 1.5), s.pop * 0.9 + 10), want = seaN ? Math.max(0, Math.min(s.pop * 0.95 + 12 - fFr, seaN * (A.sailing ? 4.5 : A.boats ? 3 : 1.1) * (c.tenet === 'sea' ? 1.3 : 1))) : 0;
     const fSea = want > 0 ? catchFish(w, s.x, s.y, s.R + (A.sailing ? 10 : A.boats ? 4 : 1), want) : 0, fF = fFr + fSea, fishGap = want > 8 ? fSea / want : 1;
@@ -297,7 +297,7 @@ export function* peopleSteps(w) {
       near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (st.engineered ? 1 : 1 - 0.8 * w.cults[o.cult].germ) * (w.cults[o.cult].arts.quarantine ? 0.5 : 1)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
-    c.know += s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    c.know += s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -585,7 +585,7 @@ export function addBand(w, x, y) {
   ev(w, `A new people, the ${c.name}, wake ${whereAbouts(w, x, y)}.`, x, y, c.color); return c;
 }
 // a leap of knowledge, handed down
-export const FAMILY = [null, ['pottery', 'farming', 'granaries', 'plough', 'irrigation', 'terraces', 'mills', 'dikes', 'canals', 'sanitation', 'reactors'], ['copper', 'bronze', 'iron', 'steel', 'engines', 'electricity', 'oil', 'atomic'], ['boats', 'wheel', 'riding', 'roads', 'sailing', 'bridges', 'navigation', 'railways', 'flight', 'rockets'], ['counting', 'writing', 'laws', 'alphabet', 'coinage', 'medicine', 'schools', 'bureaucracy', 'banking', 'printing', 'quarantine', 'telegraph', 'radio'], ['masonry', 'chariots', 'stirrups', 'siege', 'gunpowder', 'cannon', 'dynamite', 'bomb', 'missiles', 'germlabs']];
+export const FAMILY = [null, ['pottery', 'farming', 'granaries', 'plough', 'irrigation', 'terraces', 'mills', 'dikes', 'canals', 'sanitation', 'reactors'], ['copper', 'bronze', 'iron', 'steel', 'engines', 'electricity', 'oil', 'atomic'], ['boats', 'wheel', 'riding', 'roads', 'sailing', 'bridges', 'navigation', 'railways', 'flight', 'rockets'], ['counting', 'writing', 'laws', 'alphabet', 'coinage', 'medicine', 'schools', 'bureaucracy', 'banking', 'printing', 'quarantine', 'telegraph', 'radio', 'computers', 'networks', 'genetics', 'ai', 'orbital', 'starships'], ['masonry', 'chariots', 'stirrups', 'siege', 'gunpowder', 'cannon', 'dynamite', 'bomb', 'missiles', 'germlabs']];
 export function gift(w, c, fam) {
   c.know += Math.max(3000, c.know * 0.3); c.tech = techOf(c.know); c.coh = Math.min(1, c.coh + 0.15);
   const got = (FAMILY[fam || 0] || ART_KEYS).filter((k) => canLearn(c, k, true)); if (got.length) { learn(w, c, got[0]); return ART[got[0]].say; } return null;

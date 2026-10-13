@@ -37,11 +37,15 @@ export function addDragon(w, x, y) {
 }
 function dragonsYear(w) {
   const rnd = w.rnd, sea = w.params.sea;
-  if (w.dragons.length < 3 && w.year > 60 && rnd() < 0.03) {
+  if (w.dragons.length < (w.surge ? 6 : 3) && w.year > 60 && rnd() < (w.surge ? 0.08 : 0.03)) {
     for (let q = 0; q < 300; q++) { const i = (rnd() * N) | 0; if (w.h[i] - sea > 0.36 && !w.ice[i] && (memAt(w, i, FIRE) > 0.35 || rnd() < 0.01)) { const d = addDragon(w, i % W, (i / W) | 0); if (d) { ev(w, `Something has taken the high peaks for its own. Shepherds call it ${d.name}.`, d.x, d.y, null); discover(w, 'dragon', d.x, d.y); } break; } }
   }
   for (const d of w.dragons) {
-    d.age++; const li = d.ly * W + d.lx; remember(w, d.lx, d.ly, FIRE, 0.03, 3);
+    d.age++;
+    // an old dragon lays a clutch; a very old one becomes a great wyrm with a country of its own
+    if (d.age > 140 && w.dragons.length < 6 && rnd() < 0.012) { const e = addDragon(w, d.lx + ((rnd() * 20) | 0) - 10, d.ly + ((rnd() * 12) | 0) - 6); if (e) { e.name = e.name + ', child of ' + d.name; ev(w, `${d.name} has hatched a brood in the high rock. Shepherds count three shapes in the sky now.`, d.lx, d.ly, null, 0); discover(w, 'brood', d.lx, d.ly); } }
+    if (d.age > 260 && !d.wyrm) { d.wyrm = true; d.R = 14; ev(w, `${d.name} is a great wyrm now. Nothing lives under its mountain that it has not allowed to live.`, d.lx, d.ly, null, 2); discover(w, 'wyrm', d.lx, d.ly); }
+    if (d.wyrm) { d.R = Math.min(26, d.R + 0.05); near(w, d.lx, d.ly, d.R, null, false, (s) => { if (d.pacts && d.pacts.has(s.cult)) return; s.pop *= 0.98; }); for (let q = 0; q < 6; q++) { const a = rnd() * 6.283, r = rnd() * d.R; remember(w, d.lx + Math.cos(a) * r, d.ly + Math.sin(a) * r, FIRE, 0.05, 2); } if (rnd() < 0.2) { const a = rnd() * 6.283, r = rnd() * d.R, i = Math.max(0, Math.min(H - 1, Math.round(d.ly + Math.sin(a) * r))) * W + wx(Math.round(d.lx + Math.cos(a) * r)); if (!w.water[i]) ignite(w, i); } } const li = d.ly * W + d.lx; remember(w, d.lx, d.ly, FIRE, 0.03, 3);
     if (w.water[li] === 1) { d.dead = true; continue; }
     if (d.st === 'sleep') { if (--d.sleep <= 0) d.st = 'wake'; continue; }
     if (d.st !== 'wake') continue;

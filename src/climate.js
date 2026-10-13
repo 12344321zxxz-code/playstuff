@@ -38,7 +38,7 @@ let epoch = 0;
 function* season(w, s, out, my) {
   const P = w.params, tiltF = P.tilt / 23.5, phiI = s * P.tilt * 0.42, spin = P.spin;
   const { elev, land, cont, ts, tb, u, v, curl, psi, cu, cv, sst, base, ta, q, acc, a: A, b: B } = C;
-  const cool = w.aerosol * 9, warm = (w.greenhouse || 0) + (w.solar || 0);
+  const cool = w.aerosol * 9, warm = (w.greenhouse || 0) + (w.solar || 0) + (w.params.green || 0);
   // 1. heat at the surface
   for (let y = 0; y < CH; y++) {
     const phi = C.lat[y], sp = Math.sin(phi * RAD), seas = s * Math.sign(phi) * tiltF * Math.pow(Math.abs(sp), 0.8);
@@ -151,11 +151,12 @@ function* upsample(w, my) {
     for (let x = 0; x < W; x++) {
       const i = y * W + x, hh = Math.max(0, h[i] - sea), xl = x === 0 ? W - 1 : x - 1, xr = x === W - 1 ? 0 : x + 1;
       const dx = (Math.max(sea, h[y * W + xr]) - Math.max(sea, h[y * W + xl])) * 0.5, dy = (Math.max(sea, h[yp * W + x]) - Math.max(sea, h[ym * W + x])) * 0.5;
-      const wb = 1 + wetBias[i];
-      tJan[i] = up(o0.T, x, y) - LAPSE * hh; tJul[i] = up(o1.T, x, y) - LAPSE * hh;
+      const wb = (1 + wetBias[i]) * (w.params.wet || 1);
+      const tb = w.tBias ? w.tBias[i] : 0; tJan[i] = up(o0.T, x, y) - LAPSE * hh + tb; tJul[i] = up(o1.T, x, y) - LAPSE * hh + tb;
       rJan[i] = Math.max(0, up(o0.P, x, y) * clamp(1 + 9 * (up(o0.u, x, y) * dx + up(o0.v, x, y) * dy), 0.4, 2.4) * wb);
       rJul[i] = Math.max(0, up(o1.P, x, y) * clamp(1 + 9 * (up(o1.u, x, y) * dx + up(o1.v, x, y) * dy), 0.4, 2.4) * wb);
     } }
+  if (w.tBias) w.tApplied = Float32Array.from(w.tBias);
   w.climateStamp = (w.climateStamp || 0) + 1;
 }
 
