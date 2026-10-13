@@ -297,7 +297,7 @@ export function* peopleSteps(w) {
       near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (st.engineered ? 1 : 1 - 0.8 * w.cults[o.cult].germ) * (w.cults[o.cult].arts.quarantine ? 0.5 : 1)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
-    c.know += s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (w.darkUntil > w.year ? 0.25 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    c.know += 0.65 * learnDrag(w, c, i0) * s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -648,4 +648,17 @@ function scar(w, o, c) {
 function scorch(w, o, c) {
   let n = 0; for (const q of DISC[Math.min(8, o.R + 2)]) { const yy = o.y + q[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(o.x + q[0]); if (w.farm[i]) { w.farm[i] = 0; w.ash[i] = 1; n++; if (w.rnd() < 0.2) ignite(w, i); } }
   if (n > 6 && w.year - (c.scorchTold || -99) > 40) { c.scorchTold = w.year; ev(w, `The ${c.name} burn every field around ${o.name} before they march on. The smoke is seen for three days.`, o.x, o.y, c.color, 1); discover(w, 'scorched', o.x, o.y); }
+}
+
+// What holds learning back: a dark age after the bombs (slow to lift), strong magic in the air,
+// and a poor larder (thin crops, no pulses, no herd animals to plough and carry).
+function learnDrag(w, c, i0) {
+  let k = 1;
+  if (w.darkUntil > w.year) { const len = w.darkLen || 300, left = (w.darkUntil - w.year) / len; k *= 0.25 + 0.75 * (1 - left) * (1 - left); }
+  k *= 1 - 0.55 * Math.min(1, w.magic[i0]);
+  if (w.surge && w.year < w.surge) k *= 0.7;
+  if (c.stance === 'revere') k *= 0.85;
+  const L = c._L || livestock(c), staples = (c.cropL || []).filter((p) => !PLANTS[p].pulse), best = staples.reduce((a, p) => Math.max(a, PLANTS[p].q), 0), pulse = (c.cropL || []).some((p) => PLANTS[p].pulse);
+  k *= 0.55 + 0.25 * best + (pulse ? 0.05 : 0) + 0.15 * Math.min(1, L.plough + L.cart * 0.5);
+  return k;
 }

@@ -9,6 +9,8 @@ import { W, H, N, DISC, wx, wrapDx, clamp } from './core.js';
 import { ev, discover, once } from './story.js';
 import { zoneOf } from './zones.js';
 import { near } from './people.js';
+import { PLANTS, giveCrop, hasCrop } from './origins.js';
+import { SPECIES, habRaw, introduce } from './fauna.js';
 
 export const GOODS = [
   { key: 'grain', name: 'grain', col: '#e8c860', v: 1 },
@@ -93,6 +95,7 @@ export function deliver(w, m) {
   const key = Math.min(a.id, b.id) + '-' + Math.max(a.id, b.id); let r = w.routes.get(key);
   if (!r) { r = { a, b, n: 0, g: new Float32Array(GOODS.length), wet: !!m.wet0, year: w.year, name: null }; w.routes.set(key, r); }
   r.n += 1; r.last = w.year; if (g >= 0) r.g[g] += 1;
+  carryLife(w, a, b, ca, cb, m, g);
   if (g < 0) return;
   (b.imp || (b.imp = {}))[g] = w.year; (a.exp || (a.exp = {}))[g] = w.year;
   (cb.imp || (cb.imp = {}))[g] = w.year;
@@ -159,5 +162,21 @@ function dependence(w) {
     if (c.arts.bronze && (own & 6) !== 6 && (imp[G.tin] != null || imp[G.copper] != null)) { const cut = w.year - Math.max(imp[G.tin] ?? -99, imp[G.copper] ?? -99) > 30 && !((own & 2) && w.year - (imp[G.tin] ?? -99) < 30) && !((own & 4) && w.year - (imp[G.copper] ?? -99) < 30);
       if (cut && !c.bronzeCut) { c.bronzeCut = w.year; c.coh = Math.max(0.05, c.coh - 0.2); if (c.tinTold) continue; c.tinTold = true; ev(w, `The tin stops coming. The smiths of the ${c.name} melt down old blades to make new ones, and there are fewer every year.`, c.big.x, c.big.y, c.color, c.count >= 20 ? 2 : c.count >= 6 ? 0 : 1); discover(w, 'tinstop', c.big.x, c.big.y); }
       else if (!cut && c.bronzeCut) c.bronzeCut = 0; }
+  }
+}
+
+// Seed and stock travel with the goods: a grain cargo is a sack of seed, a caravan has animals in
+// its train. Partners can take up a crop or a beast that suits their land; a ship that crosses to
+// another continent can leave both behind, where they take root or run wild.
+const TAME_SP = {}; SPECIES.forEach((sp, k) => { if (sp.tame) TAME_SP[sp.tame] = k; });
+function carryLife(w, a, b, ca, cb, m, g) {
+  if (ca === cb) return; const rnd = w.rnd, ib = b.y * W + b.x;
+  const pc = (g === G.grain ? 0.3 : 0.06);
+  if (rnd() < pc) for (const p of ca.cropL || []) { if (hasCrop(cb, p) || w.pSuit[p * N + ib] < 110) continue; giveCrop(w, cb, p, ca); if (!cb.arts.farming && cb.tech >= 1) cb.arts.farming = w.year; break; }
+  if (rnd() < (g === G.horses ? 0.3 : 0.05)) for (const k in ca.tame) { if (cb.tame[k] || TAME_SP[k] == null || habRaw(w, TAME_SP[k], ib) < 0.5) continue; cb.tame[k] = w.year; if (!cb.grazer && ['horse', 'cattle', 'goat', 'reindeer', 'camel', 'llama', 'buffalo'].includes(k)) cb.grazer = k; if (once(w, 'stock-' + cb.id + k)) ev(w, `Traders from ${a.name} bring ${k === 'cattle' ? 'cattle' : k + 's'} to ${b.name}. The ${cb.name} keep them.`, b.x, b.y, cb.color, 1); break; }
+  // across the sea, life goes ashore
+  if (m.wet0 && w.mass[ib] !== w.mass[a.y * W + a.x] && rnd() < 0.08) {
+    const fk = w.floraKinds[w.mass[ib]] || (w.floraKinds[w.mass[ib]] = []); for (const p of ca.cropL || []) if (!fk.includes(p) && w.pSuit[p * N + ib] > 110) { fk.push(p); break; }
+    for (const k in ca.tame) if (TAME_SP[k] != null && rnd() < 0.5) { introduce(w, b.x, b.y, TAME_SP[k], `ships from ${a.name}`); break; }
   }
 }
