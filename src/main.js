@@ -176,7 +176,7 @@ const LEG = {
 function legend() {
   const el = $('legend'), L = LEG[S.lens]; el.textContent = ''; const w = S.w;
   if (S.lens === 6 || S.lens === 9) {
-    const items = S.lens === 6 ? w.cults.filter((c) => c.alive && c.count > 0).sort((a, b) => b.pop - a.pop).slice(0, 7).map((c) => [c.color, c.name + ' · ' + c.kind]) : w.faiths.filter((f) => f.alive && f.towns > 0).sort((a, b) => b.towns - a.towns).slice(0, 7).map((f) => [f.color, f.name.replace(/^the /, '') + ' · ' + f.towns + (f.towns === 1 ? ' place' : ' places')]);
+    const items = S.lens === 6 ? w.cults.filter((c) => c.alive && c.count > 0 && !c.power).sort((a, b) => b.pop - a.pop).slice(0, 7).map((c) => [c.color, c.name + ' · ' + c.kind]) : w.faiths.filter((f) => f.alive && f.towns > 0).sort((a, b) => b.towns - a.towns).slice(0, 7).map((f) => [f.color, f.name.replace(/^the /, '') + ' · ' + f.towns + (f.towns === 1 ? ' place' : ' places')]);
     if (!items.length) { el.hidden = true; return; }
     const b = document.createElement('b'); b.textContent = S.lens === 6 ? 'Largest peoples' : 'Faiths'; const k = document.createElement('div'); k.className = 'keys';
     for (const [c, t] of items) { const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = c; r.append(i, document.createTextNode(t)); k.appendChild(r); }

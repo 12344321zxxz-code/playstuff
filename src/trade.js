@@ -41,7 +41,7 @@ export function initTrade(w) { w.routes = new Map(); w.pirates = []; w.leagues =
 export function tradeYear(w) {
   const { t, tMean, mi, water } = w; for (const c of w.cults) c.timberOK = !!(c.metals & 256);
   for (const s of w.sets) {
-    if (s.dead) continue; const c = w.cults[s.cult], A = c.arts, make = (s.make = s.make || new Float32Array(GOODS.length)), need = (s.need = s.need || new Float32Array(GOODS.length)); make.fill(0); need.fill(0);
+    if (s.dead || s.undead) continue; const c = w.cults[s.cult], A = c.arts, make = (s.make = s.make || new Float32Array(GOODS.length)), need = (s.need = s.need || new Float32Array(GOODS.length)); make.fill(0); need.fill(0);
     let forest = 0, land = 0; const i0 = s.y * W + s.x;
     for (const o of DISC[Math.min(6, s.R)]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(s.x + o[0]); if (water[i]) continue; land++; if (t[i] > 0.6) forest++; }
     const src = s.src || [0, 0, 0, 0, 0], food = src.reduce((a, b) => a + b, 0) || 1, T = tMean[i0], m = mi[i0];

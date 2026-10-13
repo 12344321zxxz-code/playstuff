@@ -103,7 +103,7 @@ function maps(w) {
   rScore.fill(0); fScore.fill(0);
   if (w.stamp.land !== landStamp || w !== landW) { landStamp = w.stamp.land; landW = w; land.fill(0); for (let y = 0; y < H; y++) { const cy = ((y / CS) | 0) * CW; for (let x = 0, i = y * W; x < W; x++, i++) if (w.water[i] !== 1) land[cy + ((x / CS) | 0)] += 1 / (CS * CS); } }
   for (const s of w.sets) {
-    if (s.dead || s.nomad) continue;   // the wanderers hold no borders
+    if (s.dead || s.nomad || s.undead) continue;   // the wanderers hold no borders, and the dead hold no country
     const c = w.cults[s.cult], sl = c.slot % RS, f = s.faith != null ? w.faiths[s.faith] : null, fs = f && f.alive ? f.slot % FS : -1;
     const R = s.nomad ? 2.2 : 2 + Math.sqrt(s.pop) / 12, wgt = Math.sqrt(s.pop) * (s.nomad ? 0.5 : 1), cx = s.x / CS - 0.5, cy = s.y / CS - 0.5, r = Math.ceil(R);
     for (let dy = -r; dy <= r; dy++) { const y = Math.round(cy) + dy; if (y < 0 || y >= CH) continue; for (let dx = -r; dx <= r; dx++) { const x = Math.round(cx) + dx, d = Math.hypot(x - cx, y - cy); if (d >= R) continue; const i = y * CW + ((x % CW) + CW) % CW; if (land[i] < 0.3) continue; const v = wgt * (1 - d / R) * (1 - d / R); rScore[i * RS + sl] += v; if (fs >= 0) fScore[i * FS + fs] += v; } }

@@ -24,7 +24,7 @@ function chronicle() {
   }
 }
 function roster() {
-  const w = state.w, live = w.cults.filter((c) => c.alive && c.count > 0).sort((a, b) => b.pop - a.pop);
+  const w = state.w, live = w.cults.filter((c) => c.alive && c.count > 0 && !c.power).sort((a, b) => b.pop - a.pop);
   const key = live.map((c) => c.id + ':' + Math.round(c.pop / 50) + ':' + c.count + c.kind + (c.war ? 'w' : '')).join('|'); if (key === rosterKey) return; rosterKey = key;
   const box = $('roster'); box.textContent = '';
   if (!live.length) box.appendChild(el('p', 'muted', 'Nobody lives here. The People tool wakes a new band wherever you tap.'));

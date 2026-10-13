@@ -89,7 +89,7 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
     if (st.name && (st.tier === 3 ? z >= 2.2 : st.tier === 2 ? z >= 5 : z >= 10)) names.push(st, x, y + 2 * cam.dpr);
   }
   for (let q = 0; q < names.length; q += 3) { const st = names[q]; label(ctx, st.name, names[q + 1], names[q + 2], Math.round((st.tier === 3 ? 13 : st.tier === 2 ? 11.5 : 10.5) * cam.dpr), '#fff', false, st.tier * 100 + Math.log(st.pop + 1)); }
-  if (lens === 6 || lens === 0) for (const c of w.cults) if (lens === 6 || (z < 4 && c.count >= 8)) { if (!c.alive || !c.big || c.count < 2 || !seen(c.big.x, c.big.y, 10)) continue; const p = at(cam, c.big.x + 0.5, c.big.y + 0.5); const px = Math.round(clamp(9 + Math.sqrt(c.count) * 1.6, 11, 20) * cam.dpr), yy = p[1] - clamp(z * 2.4, 22, 46) * cam.dpr; label(ctx, c.name.toUpperCase(), p[0], yy, px, colorOf(c), false, 1000 + c.pop / 100); }
+  if (lens === 6 || lens === 0) for (const c of w.cults) if (lens === 6 || (z < 4 && c.count >= 8)) { if (!c.alive || c.power || !c.big || c.count < 2 || !seen(c.big.x, c.big.y, 10)) continue; const p = at(cam, c.big.x + 0.5, c.big.y + 0.5); const px = Math.round(clamp(9 + Math.sqrt(c.count) * 1.6, 11, 20) * cam.dpr), yy = p[1] - clamp(z * 2.4, 22, 46) * cam.dpr; label(ctx, c.name.toUpperCase(), p[0], yy, px, colorOf(c), false, 1000 + c.pop / 100); }
   if (lens === 9) { const top = new Map(); for (const st of w.sets) if (!st.dead && st.faith != null && (!top.has(st.faith) || top.get(st.faith).pop < st.pop)) top.set(st.faith, st);
     for (const [id, st] of top) { const f = w.faiths[id]; if (!f.alive || f.towns < 2 || !seen(st.x, st.y, 10)) continue; const p = at(cam, st.x + 0.5, st.y + 0.5); label(ctx, f.name.replace(/^the /, '').toUpperCase(), p[0], p[1] - clamp(z * 2.4, 22, 46) * cam.dpr, Math.round(clamp(10 + Math.sqrt(f.towns), 12, 20) * cam.dpr), f.color, false, 1000 + f.towns); } }
 }
@@ -99,6 +99,7 @@ function drawMovers(ctx, w, cam, z, frac) {
   for (const m of w.movers) {
     if (m.done) continue; const x = m.px + wrapDx(m.x - m.px) * frac + 0.5, y = m.py + (m.y - m.py) * frac + 0.8; if (!seen(x, y, 2)) continue; const p = at(cam, x, y);
     const c = w.cults[m.cult], col = m.kind === 'trade' && m.goods >= 0 ? GOODS[m.goods].col : c.color, flip = wrapDx(m.x - m.px) < 0;
+    if (m.dead || (c && c.power === 'dead' && m.kind === 'army')) { blit(ctx, 'shamblers', p[0], p[1], k, '#9fb59a', flip); continue; }
     if (m.kind === 'missile') { const t = (wrapDx(m.tx - m.x) < 0); blit(ctx, 'missile', p[0], p[1] - 6 * k, k, null, t); continue; }
     const era = c.tech;
     if (m.wet && !m.path) { blit(ctx, m.kind === 'trade' || m.kind === 'army' ? (era >= 8 ? 'liner' : era >= 6 ? 'steamer' : 'ship') : 'boat', p[0], p[1], k, col, flip); if (m.kind === 'army') { ctx.fillStyle = '#e03a1f'; ctx.fillRect(Math.round(p[0] - k), Math.round(p[1] - 8 * k), 2 * k, k); } continue; }

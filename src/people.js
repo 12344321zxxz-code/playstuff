@@ -561,11 +561,11 @@ function findPath(w, a, b) {
   return null;
 }
 function roads(w) {
-  for (const [key, L] of w.links) if (L.a.dead || L.b.dead || L.a.cult !== L.b.cult || L.path.some((i) => w.water[i] === 1 || w.lava[i])) { for (const i of L.path) if (w.road[i] > 0) w.road[i]--; w.links.delete(key); }
+  for (const [key, L] of w.links) if (L.a.dead || L.b.dead || L.a.undead || L.b.undead || L.a.cult !== L.b.cult || L.path.some((i) => w.water[i] === 1 || w.lava[i])) { for (const i of L.path) if (w.road[i] > 0) w.road[i]--; w.links.delete(key); }
   for (const s of w.sets) s.links = 0; for (const L of w.links.values()) { L.a.links++; L.b.links++; }
   let budget = 4;
   for (const s of w.sets) {
-    if (budget <= 0) break; if (s.nomad || s.dead || s.links >= 3) continue; const c = w.cults[s.cult]; if (!c.arts.roads) continue;
+    if (budget <= 0) break; if (s.nomad || s.dead || s.undead || s.links >= 3) continue; const c = w.cults[s.cult]; if (!c.arts.roads || c.power) continue;
     let o = null, bd = 18 * 18 + 1;
     near(w, s.x, s.y, 18, s, true, (u, q) => { if (u.cult !== s.cult || u.links >= 4 || q >= bd) return; const key = Math.min(s.id, u.id) + '-' + Math.max(s.id, u.id); if (w.links.has(key) || (s.noPath && s.noPath.has(u.id))) return; bd = q; o = u; });
     if (!o) continue; budget--; const path = findPath(w, s, o); if (!path) { (s.noPath || (s.noPath = new Set())).add(o.id); continue; }

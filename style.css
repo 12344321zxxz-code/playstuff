@@ -148,3 +148,4 @@ button[aria-pressed="true"],button[aria-selected="true"]{background:var(--accent
 .keeprow .lab { margin-right: auto; }
 .keeprow button { padding: 3px 10px; font-size: 13px; }
 .card.keep .watching { text-align: left; max-width: none; padding: 0; min-height: 1.2em; }
+#log li:has(.why) .ev { padding-right: 40px; }
