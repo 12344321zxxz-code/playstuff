@@ -22,7 +22,6 @@ const KIND = {
   hunger: { mem: DEATH, name: (s) => `the Hunger of ${s.place}`, rise: (s) => `Something walks the cold woods around ${s.place}, where ${s.why}. It is never full.`, gone: (p) => `No one has seen ${p.name} in years.` },
   drowned: { mem: DEEP, name: (s) => `the Bells of ${s.place}`, rise: (s) => `Fishermen hear bells under the water where ${s.place} went down. On stormy nights the drowned walk up the beach.`, gone: (p) => `The bells of ${p.place} have stopped.` },
   fey: { mem: WILD, name: (s) => `the Court under ${s.place}`, rise: (s) => `There is a court under the trees of ${s.place}. People who go in come out years later, or not at all.`, gone: (p) => `The trees of ${p.place} are only trees now.` },
-  winter: { mem: FROST, name: (s) => `the Winter Court of ${s.place}`, rise: (s) => `Where ${s.why}, the snow does not melt in summer any more. Something sits in the white and spreads its hands, and the cold goes out from it a little further every year.`, gone: (p) => `${cap(p.name)} is broken. For the first time in living memory, the thaw comes.` },
   saint: { mem: FAITH, name: (s) => `the Saint of ${s.place}`, rise: (s) => `Pilgrims say the sick are healed at ${s.place}. Some of them are.`, gone: (p) => `Nobody is healed at ${p.place} any more.` },
 };
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
@@ -35,6 +34,7 @@ export function spiritNear(w, x, y, r, kind) { for (const p of w.spirits) if ((!
 const placeName = (w, x, y) => { const s = near(w, x, y, 20, null, true); if (s && s.name) return s.name; const r = w.ruins.find((q) => wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 < 25); return r ? r.name : ['the Grey Hills', 'the Old Wood', 'the Long Shore', 'the High Moor', 'the Still Water'][(x * 7 + y) % 5]; };
 
 function rise(w, kind, x, y, why, extra) {
+  if (!KIND[kind]) return null;
   const dead = (k) => KIND[k].mem === DEATH;
   const wild = w.deadAge || (w.surge && w.year < w.surge);
   if (w.spirits.length >= (wild ? 40 : 18) || w.spirits.filter((p) => p.kind === kind).length >= (dead(kind) ? (wild ? 8 : 2) : kind === 'winter' ? (wild ? 3 : 2) : wild ? 8 : 4) || (dead(kind) && w.spirits.filter((p) => dead(p.kind)).length >= (wild ? 24 : 4)) || spiritNear(w, x, y, wild ? 7 : 14)) return null;
@@ -64,6 +64,7 @@ export function spiritsYear(w) {
   // an old enough wood grows a court
   if (rnd() < (w.surge && w.year < w.surge ? 0.5 : 0.15)) for (let q = 0; q < 40; q++) { const i = (rnd() * N) | 0; if (w.water[i] || w.t[i] < 0.8 || memAt(w, i, WILD) < 0.75) continue; rise(w, 'fey', i % W, (i / W) | 0, 'the oldest trees'); break; }
   for (const p of w.spirits) {
+    if (!KIND[p.kind]) { p.dead = true; continue; }   /* winter magic is gone, even from old saves */
     const i = p.y * W + p.x, m = memAt(w, i, KIND[p.kind].mem);
     if (p.realm != null) continue;   // an Undying King with a realm lives as that realm (dead.js)
     if (p.great) { realmYear(w, p); if (p.dead) continue; }
@@ -131,12 +132,6 @@ const ACT = {
     if (w.rnd() < 0.3) { p.x = wx(p.x + ((w.rnd() * 5) | 0) - 2); p.y = clamp(p.y + ((w.rnd() * 5) | 0) - 2, 2, H - 3); }
   },
   drowned(w, p) { near(w, p.x, p.y, 10, null, true, (s) => { if (s.port) hurt(w, s, 0.01 * warded(w, s)); }); },
-  winter(w, p) {
-    // the cold goes out from it: frost memory chills the whole region through the climate
-    for (let q = 0; q < 12; q++) { const a = w.rnd() * 6.283, r = Math.sqrt(w.rnd()) * p.R * 1.3; remember(w, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, FROST, 0.25 * p.str / 3, 4); }
-    near(w, p.x, p.y, p.R * 0.5, null, false, (s) => { if (s.pop < 60 && !s.nomad && w.rnd() < 0.2) endSet(w, s, 'frozen'); });
-    if (w.year - p.last > 60) { p.last = w.year; ev(w, `The winter of ${p.name} reaches further this year. The rivers freeze in summer as far as ${placeName(w, wx(p.x + Math.round(p.R)), p.y)}.`, p.x, p.y, null, 1); }
-  },
   fey(w, p) {
     // the court's forest creeps over fields and roads
     if (!p.R) p.R = 6; if (memAt(w, p.y * W + p.x, WILD) > 0.6) p.R = Math.min(p.great ? 26 : 16, p.R + 0.15);

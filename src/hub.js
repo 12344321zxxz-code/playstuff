@@ -54,7 +54,7 @@ export function hubYear(w, c, hooks) {
   const F = FORMS[h.form];
   h.P = postsOf(c);
   const fed = 1 - Math.min(1, (c.hungry || 0) / Math.max(1, c.count));
-  h.X = clamp(F.x + 0.2 * Math.max(0, h.pi - 1) + (c.tribute || 0) - (w.year < h.eased ? 0.05 : 0), 0.05, 0.6);
+  h.X = clamp(F.x + 0.2 * Math.max(0, h.pi - 1) + (c.tribute || 0) + (c.q ? 0.03 * c.q.build : 0) - (w.year < h.eased ? 0.05 : 0), 0.05, 0.6);
   h.L = fed * (1 - h.X) / (1 - 0.12);
   // elite income follows surplus and take with a lag of about 40 years
   const raw = (c.pop / 100) * (0.25 + (c.surplus || 0)) * h.X * fed;

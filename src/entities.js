@@ -1,5 +1,6 @@
 // Everything on the map that is not terrain: animals, peoples, roads, ruins, dragons, storms and
 // the brief flashes when something big happens. Drawn on the 2D overlay, on top of the shader.
+import { tongueColor } from './tongues.js';
 import { KINDS, STANCES, memAt, kindAt } from './memory.js';
 import { GOODS } from './trade.js';
 import { ERA, blockedReasons } from './tech.js';
@@ -134,6 +135,15 @@ function drawOther(ctx, w, cam, z, now, frac) {
   for (const st of w.storms2) { const x = st.px + wrapDx(st.x - st.px) * frac + 0.5, y = st.py + (st.y - st.py) * frac + 0.5; if (!seen(x, y, 4)) continue; const p = at(cam, x, y), col = KINDS[st.kind].col, q = Math.max(2, Math.round(z * cam.dpr * 0.35));
     for (let n = 0; n < 14; n++) { const a = n * 2.4 + (still ? 0 : now * 0.004), r = (0.4 + (n % 5) * 0.35) * z * cam.dpr; ctx.fillStyle = col; ctx.globalAlpha = 0.9 - (n % 5) * 0.15; ctx.fillRect(Math.round((p[0] + Math.cos(a) * r) / q) * q, Math.round((p[1] + Math.sin(a) * r) / q) * q, q, q); } ctx.globalAlpha = 1; }
 }
+// the Tongues lens: every town as a dot in the colour of its language family, branches in shades of
+// it; each living tongue's name over its biggest town
+function drawTongues(ctx, w, cam, s) {
+  if (!w.langs) return; const big = new Map(), r = Math.max(2, s * 1.6);
+  for (const t of w.sets) { if (t.dead || t.lang == null || !seen(t.x, t.y, 4)) continue; const p = at(cam, t.x + 0.5, t.y + 0.5); ctx.fillStyle = tongueColor(w, t.lang); ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.arc(p[0], p[1], r * (t.nomad ? 0.6 : 0.8 + 0.3 * t.tier), 0, 6.2832); ctx.fill(); const b = big.get(t.lang); if (!b || t.pop > b.pop) big.set(t.lang, t); }
+  ctx.globalAlpha = 1;
+  for (const [id, t] of big) { const p = at(cam, t.x + 0.5, t.y + 0.5); label(ctx, w.langs[id].name, p[0], p[1] - r * 2.4, Math.round(11 * cam.dpr), tongueColor(w, id), true, 40 + Math.sqrt(w.langs[id].pop)); }
+}
 // the Trade lens: every route as a line, as thick as its traffic, in the colour of what it carries
 function drawRoutes(ctx, w, cam, z, lens) {
   if (lens !== 14) { if (z < 1.2 || z > 6) return; for (const r of w.routes.values()) if (r.name && seen(r.a.x, r.a.y, 30)) { const a = at(cam, r.a.x + 0.5, r.a.y + 0.5).slice(), b = at(cam, r.a.x + wrapDx(r.b.x - r.a.x) + 0.5, r.b.y + 0.5); label(ctx, r.name, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.round(10 * cam.dpr), r.wet ? '#bfe4ff' : '#f2e0b0', true, 20 + r.n); } return; }
@@ -199,7 +209,7 @@ hook('overlay', (ctx, w, cam, S, now) => {
   const s = cam.z * cam.dpr, z = cam.z, frac = clamp(S.acc, 0, 1);
   view = { x: cam.x, y: cam.y, hw: cam.w / (2 * s), hh: cam.h / (2 * s) };
   const bare = S.lens === 4 || S.lens === 5;
-  if (!bare) { drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawRoutes(ctx, w, cam, z, S.lens); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
+  if (!bare) { drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawRoutes(ctx, w, cam, z, S.lens); if (S.lens === 17) drawTongues(ctx, w, cam, s); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
   flushLabels(ctx); drawFx(ctx, w, cam, s, now); drawSel(ctx, cam, S, now);
 });
 

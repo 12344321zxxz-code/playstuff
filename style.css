@@ -93,8 +93,8 @@ button[aria-pressed="true"],button[aria-selected="true"]{background:var(--accent
 .chip{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;border:1px solid var(--ink);flex:none}
 .chip.none{background:transparent;border-color:var(--line)}
 .side>.book{flex:1 1 220px;min-height:220px;display:flex;flex-direction:column;gap:8px}
-.tabs{display:flex;gap:4px}
-.tabs button{padding:4px 10px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{padding:4px 8px}
 #log{list-style:none;margin:0;padding:0;overflow-y:auto;min-height:0;flex:1}
 #log li.muted{padding:4px 0}
 .ev{display:grid;grid-template-columns:4.4ch 10px minmax(0,1fr);gap:8px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:4px;padding:4px 4px 4px 0}
@@ -149,3 +149,9 @@ button[aria-pressed="true"],button[aria-selected="true"]{background:var(--accent
 .keeprow button { padding: 3px 10px; font-size: 13px; }
 .card.keep .watching { text-align: left; max-width: none; padding: 0; min-height: 1.2em; }
 #log li:has(.why) .ev { padding-right: 40px; }
+.tg{display:grid;grid-template-columns:10px minmax(0,1fr) auto auto;gap:2px 8px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:5px 6px;font:inherit;color:inherit;cursor:pointer}
+.tg:hover{background:var(--hover,rgba(127,127,127,.08))}
+.tg .chip{margin:0;align-self:center}
+.tg .nm{font-weight:600}
+.tg.dead .nm{font-weight:400;text-decoration:line-through;opacity:.6}
+.tg .num{font-variant-numeric:tabular-nums;font-size:.85em}

@@ -10,6 +10,7 @@ import { W, H, N, wrapDx } from './core.js';
 import { ERA } from './tech.js';
 import { KINDS, NK } from './memory.js';
 import { topTerms } from './ledger.js';
+import { quirksOf } from './tongues.js';
 import { tensions } from './watch.js';
 
 const r2 = (v) => (v == null ? '-' : Math.abs(v) >= 100 ? Math.round(v) : +v.toFixed(2));
@@ -28,7 +29,7 @@ export function powersOf(w) {
 export function realmLine(w, c) {
   const P = c.press || {}, t = topTerms(P, 3).map(([k, v]) => `${k}${v > 0 ? '+' : ''}${r2(v)}`).join(' ');
   const war = c.war ? ` war:${w.cults[c.war.foe].name}(${w.year - c.war.since}y)` : '';
-  return `${c.name}#${c.id} pop ${kfmt(c.pop)} towns ${c.count} era ${c.tech} coh ${r2(c.coh)}→${r2(c.cohT)} [${t}]${war}${c.carry != null ? ` carriers ${kfmt(c.carry)}→tier ${c.hold}` : ''}${c.hub ? ` hub ${c.hub.st} π${r2(c.hub.pi)} X${r2(c.hub.X)} L${r2(c.hub.L)} A${r2(c.hub.A)} ${c.hub.form}` : ''}${c.leaving ? ' LEAVING' : ''}`;
+  return `${c.name}#${c.id} pop ${kfmt(c.pop)} towns ${c.count} era ${c.tech} coh ${r2(c.coh)}→${r2(c.cohT)} [${t}]${war}${c.carry != null ? ` carriers ${kfmt(c.carry)}→tier ${c.hold}` : ''}${c.langId != null && w.langs ? ` tongue ${w.langs[c.langId].name} (court ${Math.round((c.courtShare || 0) * 100)}%, foreign ${Math.round((c.foreignShare || 0) * 100)}%) ways ${quirksOf(w, c).join('/') || 'plain'}` : ''}${c.hub ? ` hub ${c.hub.st} π${r2(c.hub.pi)} X${r2(c.hub.X)} L${r2(c.hub.L)} A${r2(c.hub.A)} ${c.hub.form}` : ''}${c.leaving ? ' LEAVING' : ''}`;
 }
 
 export function digest(w, opts) {
@@ -90,7 +91,7 @@ export function asciiMap(w, layer = 'owner', cols = 128, rows = 64, box) {
       else if (layer === 'biome') ch = w.ice[i] ? '*' : w.farm[i] ? 'f' : w.urban[i] ? '#' : w.t[i] > 0.5 ? 'T' : w.g[i] > 0.3 ? ',' : w.mi[i] < 0.2 ? ':' : '.';
       else if (layer === 'memory') { let bk = 0, bv = 0.08; for (let k = 0; k < NK; k++) { const v = w.mem[i * NK + k]; if (v > bv) { bv = v; bk = k + 1; } } ch = bk ? 'dwfaxs'[bk - 1] : (w.water[i] === 1 ? '~' : '.'); if (bk && bv > 0.6) ch = ch.toUpperCase(); }
       else if (layer === 'fallout') ch = w.fallout && w.fallout[i] > 0.05 ? (w.fallout[i] > 0.5 ? '#' : '+') : w.water[i] === 1 ? '~' : '.';
-      else if (layer === 'tier') ch = '.';
+      else if (layer === 'tier' || layer === 'tongue' || layer === 'culture') ch = '.';
       else if (crop >= 0) ch = w.flora && w.flora[i] === crop ? 'C' : '.';
       else if (layer === 'faith') { const cx = x >> 2, cy = y >> 2, f = w.faithMap ? w.faithMap[cy * (W >> 2) + cx] : 0; ch = f ? ALPH[(f - 1) % 26] : '.'; }
       else ch = '?';
@@ -100,7 +101,10 @@ export function asciiMap(w, layer = 'owner', cols = 128, rows = 64, box) {
     lines.push(line);
   }
   if (layer === 'tier') { for (const s of w.sets) { const xx = (((s.x - x0) % W + W) % W) / sx | 0, yy = ((s.y - y0) / sy) | 0; if (xx < cols && yy >= 0 && yy < rows) { const l = lines[yy]; lines[yy] = l.slice(0, xx) + (s.nomad ? 'n' : String(s.tier)) + l.slice(xx + 1); } } }
-  const legend = layer === 'owner' ? 'owner: letter = people (lower case = a town in that block), . unclaimed, ~ water. ' + [...key].map(([k, v]) => `${k}=${v}`).join(' ') : layer === 'biome' ? 'biome: * ice f farm # city T forest , grass : desert . other ~ water' : layer === 'memory' ? 'memory: d death w wild f fire a deep x faith s frost (upper case = strong)' : layer === 'tier' ? 'tier: 0 band 1 village 2 town 3 city n nomad' : layer;
+  if (layer === 'tongue' || layer === 'culture') { const kk = layer === 'tongue' ? 'lang' : 'cul', list = layer === 'tongue' ? w.langs || [] : w.culs || [], ids = [...new Set(w.sets.filter((s) => !s.dead && s[kk] != null).map((s) => s[kk]))]; ids.forEach((id, n) => key.set(ALPH[n % 26], list[id].name + (layer === 'tongue' ? ' (' + list[list[id].root].name + ')' : '')));
+    for (const s of w.sets) { if (s.dead || s[kk] == null) continue; const xx = (((s.x - x0) % W + W) % W) / sx | 0, yy = ((s.y - y0) / sy) | 0; if (xx < cols && yy >= 0 && yy < rows) { const l = lines[yy]; lines[yy] = l.slice(0, xx) + ALPH[ids.indexOf(s[kk]) % 26] + l.slice(xx + 1); } } }
+  if (layer === 'tongue' || layer === 'culture') return `[${layer} ${cols}x${rows}]\n` + lines.join('\n') + `\n${layer}: letter = what the towns in that block speak / live by. ` + [...key].map(([k, v]) => `${k}=${v}`).join(' ');
+  const legend = layer === 'owner' ? 'owner: letter = people (lower case = a town in that block), . unclaimed, ~ water. ' + [...key].map(([k, v]) => `${k}=${v}`).join(' ') : layer === 'biome' ? 'biome: * ice f farm # city T forest , grass : desert . other ~ water' : layer === 'memory' ? 'memory: d death w wild f fire a deep x faith (upper case = strong)' : layer === 'tier' ? 'tier: 0 band 1 village 2 town 3 city n nomad' : layer;
   return `[${layer} ${cols}x${rows}${box ? ' box ' + box.join(',') : ''}]\n` + lines.join('\n') + '\n' + legend;
 }
 

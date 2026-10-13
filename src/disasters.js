@@ -95,9 +95,10 @@ export function overgrow(w, x, y, r) {
   hitTowns(w, x, y, r, (s) => { s.pop *= 0.82; if (s.pop < 45) endSet(w, s, 'overgrown'); });
   w.need.derive = true; return any;
 }
+import { confound } from './tongues.js';
 export function babel(w, x, y) {
   const s = near(w, Math.round(x), Math.round(y), 8, null, false); if (!s) return false; const c = w.cults[s.cult]; if (c.count < 3) return false;
-  ev(w, `The ${c.name} wake one morning and cannot understand each other.`, s.x, s.y, colorOf(c)); c.coh = 0.06; c.born = w.year - 2200; w.babel = (w.babel || 0) + 1; return true;
+  const k = confound(w, c); ev(w, `The ${c.name} wake one morning and cannot understand each other. By evening there are ${['', '', 'two', 'three', 'four'][k] || 'several'} tongues where there was one.`, s.x, s.y, colorOf(c)); c.coh = 0.06; c.born = w.year - 2200; w.babel = (w.babel || 0) + 1; return true;
 }
 export function inspire(w, x, y, fam) {
   const s = near(w, Math.round(x), Math.round(y), 8, null, false); if (!s) return false; const c = w.cults[s.cult];

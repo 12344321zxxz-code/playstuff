@@ -4,6 +4,7 @@ import { hook, flyTo, showInfo, state, toast } from './main.js';
 import { PAGES, pageCount } from './story.js';
 import { describeSet, cultLines } from './entities.js';
 import { explain } from './ledger.js';
+import { tongueColor } from './tongues.js';
 
 const $ = (id) => document.getElementById(id);
 let log = [], shown = '', almDirty = true, tab = 'chron', rosterKey = '';
@@ -49,8 +50,22 @@ function almanac() {
     box.appendChild(grid);
   }
 }
-function render() { if (tab === 'chron') chronicle(); else if (tab === 'ppl') roster(); else almanac(); }
-function setTab(t) { tab = t; for (const [id, k] of [['tab-chron', 'chron'], ['tab-ppl', 'ppl'], ['tab-alm', 'alm']]) $(id).setAttribute('aria-selected', t === k); $('log').hidden = t !== 'chron'; $('roster').hidden = t !== 'ppl'; $('almanac').hidden = t !== 'alm'; shown = ''; rosterKey = ''; almDirty = true; render(); }
+// the family tree of tongues: every language that ever was, living ones bold, with where it is spoken
+let tgKey = '';
+function tongues() {
+  const w = state.w, L = w.langs || [], key = L.length + ':' + L.filter((l) => l.alive).length + ':' + Math.round(L.reduce((a, l) => a + l.pop, 0) / 5000); if (key === tgKey) return; tgKey = key;
+  const box = $('tongues'); box.textContent = ''; const kids = {}; for (const l of L) if (l.parent != null) (kids[l.parent] || (kids[l.parent] = [])).push(l);
+  const livingBelow = (l) => l.alive || (kids[l.id] || []).some(livingBelow);
+  box.appendChild(el('p', 'muted', 'Every people began with a tongue of its own. Speakers cut off from each other for generations drift into daughter tongues; towns slowly take up the speech of a strong court. Dead tongues are struck through.'));
+  const row = (l, d) => { if (!livingBelow(l) && d > 0) return; const b = el('button', 'tg' + (l.alive ? '' : ' dead')); b.type = 'button'; b.style.paddingLeft = (6 + d * 14) + 'px';
+    const chip = el('span', 'chip'); chip.style.background = tongueColor(w, l.id); b.append(chip, el('span', 'nm', l.name), el('span', 'num', l.alive ? `${l.towns} ${l.towns === 1 ? 'place' : 'places'}` : `† ${l.died || ''}`), el('span', 'num muted', 'from ' + l.born));
+    b.addEventListener('click', () => { let t = null; for (const s of w.sets) if (!s.dead && s.lang === l.id && (!t || s.pop > t.pop)) t = s; if (t) flyTo(t.x + 0.5, t.y + 0.5, 6); });
+    box.appendChild(b); for (const k of kids[l.id] || []) row(k, d + 1); };
+  const roots = L.filter((l) => l.parent == null && livingBelow(l)).sort((a, b) => b.pop - a.pop); for (const r of roots) row(r, 0);
+  const lost = L.filter((l) => l.parent == null && !livingBelow(l)); if (lost.length) box.appendChild(el('p', 'gone', `Lost with no heirs: ${lost.slice(-12).map((l) => l.name).join(', ')}.`));
+}
+function render() { if (tab === 'chron') chronicle(); else if (tab === 'ppl') roster(); else if (tab === 'tg') tongues(); else almanac(); }
+function setTab(t) { tab = t; for (const [id, k] of [['tab-chron', 'chron'], ['tab-ppl', 'ppl'], ['tab-tg', 'tg'], ['tab-alm', 'alm']]) $(id).setAttribute('aria-selected', t === k); $('log').hidden = t !== 'chron'; $('roster').hidden = t !== 'ppl'; $('almanac').hidden = t !== 'alm'; $('tongues').hidden = t !== 'tg'; tgKey = ''; shown = ''; rosterKey = ''; almDirty = true; render(); }
 
 // world population as a small line: the rises and the falls are the story
 function spark(w) {
@@ -62,7 +77,7 @@ function spark(w) {
 }
 
 let bound = false;
-hook('newWorld', () => { log = []; shown = ''; rosterKey = ''; almDirty = true; if (!bound) { bound = true; $('tab-chron').addEventListener('click', () => setTab('chron')); $('tab-ppl').addEventListener('click', () => setTab('ppl')); $('tab-alm').addEventListener('click', () => setTab('alm')); } setTab(tab); });
+hook('newWorld', () => { log = []; shown = ''; rosterKey = ''; almDirty = true; if (!bound) { bound = true; $('tab-chron').addEventListener('click', () => setTab('chron')); $('tab-ppl').addEventListener('click', () => setTab('ppl')); $('tab-tg').addEventListener('click', () => setTab('tg')); $('tab-alm').addEventListener('click', () => setTab('alm')); } setTab(tab); });
 hook('tick', (w) => { drain(w); });
 hook('vitals', (w, rows) => {
   drain(w); render(); spark(w); const s = w.stats;

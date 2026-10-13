@@ -1,0 +1,18 @@
+import { chromium } from 'playwright';
+import fs from 'node:fs';
+process.chdir('/home/claude/playstuff');
+const out = '/tmp/claude-0/sc/shots'; fs.mkdirSync(out, { recursive: true });
+const page0 = fs.readFileSync('dist/formicarium.html', 'utf8');
+fs.writeFileSync('.cache/page.html', `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>[hidden]{display:none!important}</style></head><body>${page0}</body></html>`);
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const errs = []; page.on('pageerror', (e) => errs.push('pageerror: ' + e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+await page.goto('file://' + process.cwd() + '/.cache/page.html');
+await page.waitForFunction(() => window.__f, null, { timeout: 30000 });
+await page.evaluate(() => { window.__f.start({ seed: 7 }); document.querySelectorAll('#welcome,.welcome,#making').forEach((e) => (e.hidden = true)); });
+await page.evaluate((y) => { const f = window.__f; for (let k = 0; k < y * 8; k++) f.tick(f.S.w); f.S.dirty = true; f.setSpeed(0); }, +process.argv[2] || 1000);
+await page.evaluate(() => { const f = window.__f; f.setLens(17); f.cam.x = 256; f.cam.y = 128; f.cam.z = f.cam.fit || 2.5; f.S.dirty = true; });
+await page.click('#tab-tg'); await page.waitForTimeout(1500);
+await page.screenshot({ path: out + '/tongues.png' });
+console.log(errs.join('\n') || 'no errors');
+await browser.close();

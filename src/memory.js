@@ -104,7 +104,6 @@ export function memoryYear(w) {
     if (water[i] === 1) { if (h[i] - sea < -0.4 && mem[b + DEEP] < (surge ? 0.8 : 0.35)) mem[b + DEEP] += 0.012 * surge3; }
     else if (t[i] > 0.85 && mi[i] > 0.8 && owner[i] < 0 && mem[b + WILD] < 0.9) mem[b + WILD] += 0.016 * surge3;
     else if (surge && owner[i] < 0 && water[i] !== 1 && mem[b + WILD] < 0.5) mem[b + WILD] += 0.02;   // after the fall, the wild comes back everywhere nobody lives
-    if (w.soot > 0.3 && water[i] !== 1 && mem[b + FROST] < 0.8) mem[b + FROST] += w.soot * 0.03;   // a winter that people made is remembered as winter
     if (memLock[i]) continue;
     if (mem[b] + mem[b + 1] + mem[b + 2] + mem[b + 3] + mem[b + 4] + mem[b + 5] < 0.002) continue;
     const k = road[i] ? 0.984 * 0.885 : 0.984; for (let q = 0; q < NK; q++) mem[b + q] *= k;
@@ -125,7 +124,7 @@ export function memoryYear(w) {
   if (w.year > 300 && tot < (w.magicPeak || 0) * 0.35 && discover(w, 'quiet', null, null)) ev(w, 'The old places have gone quiet almost everywhere. Children are told the stories, and do not believe them.', null, null, null, 2);
   if (w.found.quiet && tot > w.magicPeak * 0.7 && w.year - w.found.quiet.year > 60 && discover(w, 'return', null, null)) ev(w, 'With the cities fallen, the old things are coming back.', null, null, null, 2);
 }
-export const RUIN_KIND = { nuked: DEATH, sacked: DEATH, plague: DEATH, starved: DEATH, frozen: FROST, abandoned: null, drowned: DEEP, buried: FIRE, crater: FIRE, dragon: FIRE, overgrown: WILD, swallowed: FIRE, burned: FIRE };
+export const RUIN_KIND = { nuked: DEATH, sacked: DEATH, plague: DEATH, starved: DEATH, frozen: null, abandoned: null, drowned: DEEP, buried: FIRE, crater: FIRE, dragon: FIRE, overgrown: WILD, swallowed: FIRE, burned: FIRE };
 
 // Knowledge is corrosive. Every furnace, road and book wears the memory of a place away, and a
 // people's stance decides how hard they lean on it.
@@ -149,14 +148,14 @@ function wellsYear(w) {
   // wells, so the cleverer the world gets, the fuller and more dangerous its wells become.
   // Memory that the cities wear away goes down the lines to the well that place drains to, so each
   // industrial heartland fills its own well and each Return breaks out where the cities were.
-  const pw = w.pushedW; if (pw && pw.length === w.wells.length * NK) w.wells.forEach((q, qi) => { const b0 = (q.y * W + q.x) * NK; for (let k = 0; k < NK; k++) { const v = pw[qi * NK + k] * 0.35; if (v > 0) mem[b0 + k] += v; pw[qi * NK + k] *= 0.65; } });
+  const pw = w.pushedW; if (pw && pw.length === w.wells.length * NK) w.wells.forEach((q, qi) => { const b0 = (q.y * W + q.x) * NK; for (let k = 0; k < NK; k++) { const v = pw[qi * NK + k] * 0.35; if (v > 0) mem[b0 + k] = Math.min(4, mem[b0 + k] + v); pw[qi * NK + k] *= 0.65; } });
   for (const q of w.wells) {
     if (q.cap == null) q.cap = 28 + Math.round(30 * w.rnd());   // some wells are deep, some shallow
     const sum = new Float32Array(NK); let tot = 0;
     for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) { sum[k] += mem[b + k]; tot += mem[b + k]; } }
-    let bk = 0; for (let k = 1; k < FROST; k++) if (sum[k] > sum[bk]) bk = k; q.kind = bk;   // no winter wells: that magic is cut q.fill = tot;
+    let bk = 0; for (let k = 1; k < FROST; k++) if (sum[k] > sum[bk]) bk = k; q.kind = bk; q.fill = tot;   /* no winter wells: that magic is cut */
     if (!q.name && tot > 4) q.name = WNAME[KINDS[bk].key][(w.rnd() * 3) | 0];
-    if (tot > q.cap * 1.6 && (w.storms2.length >= 4 || w.year - (q.at || -99) <= 25)) { for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) mem[b + k] *= 0.8; } }   // too full to hold: it seeps away into the ground
+    if (tot > q.cap * 1.6) { for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) mem[b + k] *= 0.8; } }   // too full to hold: it seeps away into the ground
     if (tot > q.cap * 0.35 && w.storms2.length < 4 && w.year - (q.at || -99) > 25) { q.at = w.year;
       if (tot > q.cap && w.rise) w.rise(w, q, bk);   // a well this full breaks open and something comes out of it
       for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) mem[b + k] *= 0.35; }

@@ -4,6 +4,7 @@
 // no riders without horses. Knowledge piles up with numbers and travels with trade; cohesion
 // wears down with size and ease; and what falls leaves ruins the next people build on.
 import { hubYear, hubPush, hubReset, HUB } from './hub.js';
+import { word, makeSound, rootTags, tagFrom, soundOf, tonguesYear, tongueGap, cultureOf } from './tongues.js';
 import { record } from './ledger.js';
 import { POWER, POWER_TOWN } from './registry.js';
 import { W, H, N, DISC, clamp, wx, wrapDx, Heap } from './core.js';
@@ -28,10 +29,6 @@ export const TIER = ['band', 'village', 'town', 'city'];
 export const COLORS = ['#d7263d', '#8e44d6', '#f46d1b', '#f2efe4', '#22201e', '#e040a8', '#ffd400', '#00c2a8', '#7a3b1d', '#ff8fa3', '#3d5afe', '#9bd636', '#00a1e4', '#b56576', '#6d597a', '#e9c46a', '#577590', '#f94144', '#43aa8b', '#bc6c25', '#a2d2ff', '#cdb4db', '#606c38', '#fb8500'];
 export const ORES = ['', 'copper', 'tin', 'iron', 'gold', 'salt', 'coal', 'uranium'];
 const MAXS = 520, MAXC = 20, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
-const CONS = ['p', 't', 'k', 'b', 'd', 'g', 'm', 'n', 's', 'l', 'r', 'v', 'z', 'h', 'sh', 'ch', 'th', 'y', 'w', 'f', 'kh', 'q'], VOW = ['a', 'e', 'i', 'o', 'u', 'a', 'o', 'ai', 'ou', 'ia', 'e'], ENDS = ['n', 'r', 's', 'l', 'm', 'th', 'k', 'sh', 'd'];
-const pickN = (rnd, arr, n) => { const a = arr.slice(), o = []; while (o.length < n && a.length) o.push(a.splice((rnd() * a.length) | 0, 1)[0]); return o; };
-const makeLang = (w) => ({ c: pickN(w.rnd, CONS, 7), v: pickN(w.rnd, VOW, 4), e: pickN(w.rnd, ENDS, 3) });
-function word(w, L, syl) { let s = ''; for (let k = 0; k < syl; k++) s += L.c[(w.rnd() * L.c.length) | 0] + L.v[(w.rnd() * L.v.length) | 0]; if (w.rnd() < 0.45) s += L.e[(w.rnd() * L.e.length) | 0]; return s[0].toUpperCase() + s.slice(1); }
 const placeName = (w, c) => word(w, c.lang, w.rnd() < 0.6 ? 2 : 3);
 function cultName(w, L) { let s = word(w, L, w.rnd() < 0.5 ? 1 : 2); const suf = ['i', 'an', 'ari', 'u', 'esh', 'or', 'im', 'a'][(w.rnd() * 8) | 0]; if (/[aeiou]$/.test(s)) s = s.slice(0, -1); return s + suf; }
 const EPITHET = { great: ['the Great', 'the Conqueror', 'the Lion'], builder: ['the Builder', 'the Mason'], law: ['the Just', 'the Lawgiver', 'the Wise'], mad: ['the Mad', 'the Cruel', 'the Unready'] };
@@ -43,12 +40,12 @@ export function newCult(w, parent) {
   const used = new Uint8Array(COLORS.length); for (const c of w.cults) if (c.alive) used[c.slot] = 1;
   let slot = 0; while (slot < COLORS.length - 1 && used[slot]) slot++;
   if (used[slot]) slot = (w.rnd() * COLORS.length) | 0;
-  const lang = parent ? { c: parent.lang.c.slice(0, 5).concat(pickN(w.rnd, CONS, 2)), v: parent.lang.v.slice(0, 3).concat(pickN(w.rnd, VOW, 1)), e: parent.lang.e.slice() } : makeLang(w);
+  const lang = parent ? parent.lang : makeSound(w);   // a daughter people keeps its parent's tongue; tongues fork by drift, not by politics
   const c = { id: w.cults.length, slot, color: COLORS[slot], lang, name: cultName(w, lang), know: parent ? parent.know : 0, tech: parent ? parent.tech : 0, alive: true, count: 0, pop: 0, peak: 0, wit: 0.75 + 0.6 * w.rnd(),
     arts: parent ? Object.assign({}, parent.arts) : {}, tame: parent ? Object.assign({}, parent.tame) : {}, metals: 0, gold: false, coh: 0.85, born: w.year, way: parent ? parent.way : 'forage', kind: 'foragers', parent: parent ? parent.name : null, grazer: parent ? parent.grazer : null,
     ruler: null, big: null, flags: parent ? { village: 1, town: parent.flags.town, city: parent.flags.city } : {}, wins: 0, wonderAt: -999, war: null, nb: {}, env: { crop: 0, coast: 0, dryRiver: 0, hill: 0, sed: 0, nomads: 0, towns: 0, cities: 0 }, germ: parent ? parent.germ || 0 : 0, stance: parent ? parent.stance || 'revere' : 'revere', crops: parent ? Object.assign({}, parent.crops) : {}, cropL: parent ? (parent.cropL || []).slice() : [], dom: {}, surplus: 0, rivals: 0, lastMet: w.year, banned: parent ? Object.assign({}, parent.banned) : {}, hungry: 0, lastDry: -99, faith: parent ? parent.faith : null, faithShare: 0,
     _n: -1, _p: 0, _sur: 0, _b: null, _metals: 0, _ways: { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }, _dry: 0, _full: 0 };   // _n < 0: born since the last census began
-  crown(w, c, true); w.cults.push(c); return c;
+  crown(w, c, true); w.cults.push(c); rootTags(w, c, parent); return c;
 }
 function crown(w, c, quiet) {
   const r = w.rnd(), trait = r < 0.07 ? 'great' : r < 0.12 ? 'builder' : r < 0.18 ? 'law' : r < 0.23 ? 'mad' : null, nm = word(w, c.lang, 2);
@@ -84,10 +81,11 @@ function meet(w, c, o, p) {
   const rnd = w.rnd; if (c === o) return;
   if (o.know > c.know) c.know += (o.know - c.know) * 0.006; else o.know += (c.know - o.know) * 0.006;
   c.lastMet = o.lastMet = w.year; (c.met || (c.met = {}))[o.id] = 1; (o.met || (o.met = {}))[c.id] = 1;
+  const tg = tongueGap(w, c.langId, o.langId), talk = tg <= 2 ? 1.5 : tg === Infinity ? 0.7 : 1;   // ideas pass easily between close tongues
   for (const [a, b] of [[c, o], [o, c]]) {
     for (const k in b.tame) if (!a.tame[k] && rnd() < 0.12 && suits(w, a, 'beast', k)) { a.tame[k] = w.year; if (TAME_GRAZE[k] && !a.grazer) { a.grazer = k; learn(w, a, 'herding'); } }
     for (const k of b.cropL) if (!hasCrop(a, k) && rnd() < 0.07 && suits(w, a, 'crop', k)) { giveCrop(w, a, k, b); if (!a.arts.farming && a.tech >= 1) learn(w, a, 'farming', b); break; }
-    if (rnd() < p * 0.4 * (a.arts.alphabet || b.arts.alphabet ? 1.4 : 1) * (b.arts.printing ? 2 : 1) * (b.arts.networks ? 2 : 1)) { const got = ART_KEYS.filter((k) => b.arts[k] && canLearn(a, k, true)); if (got.length) learn(w, a, got[(rnd() * got.length) | 0], b); }
+    if (rnd() < p * 0.4 * talk * (a.q ? 1 + 0.5 * a.q.open : 1) * (a.arts.alphabet || b.arts.alphabet ? 1.4 : 1) * (b.arts.printing ? 2 : 1) * (b.arts.networks ? 2 : 1)) { const got = ART_KEYS.filter((k) => b.arts[k] && canLearn(a, k, true)); if (got.length) learn(w, a, got[(rnd() * got.length) | 0], b); }
   }
   c.nb[o.id] = (c.nb[o.id] || 0) + 1; o.nb[c.id] = (o.nb[c.id] || 0) + 1;
 }
@@ -159,7 +157,7 @@ export function flee(w, s, n, sick) {
   n = Math.round(n); if (n < 12 || s.dead) return; const c = w.cults[s.cult]; let to = null, bs = 0;
   near(w, s.x, s.y, 34, s, true, (o, q) => { if (o.cult !== s.cult && w.rnd() < 0.7) return; const sc = (o.note === 'grow' ? 2 : 1) * (o.cult === s.cult ? 2 : 1) / (6 + Math.sqrt(q)); if (sc > bs) { bs = sc; to = o; } });
   let tx, ty; if (to) { tx = to.x; ty = to.y; } else { const a = w.rnd() * 6.283, d = 8 + w.rnd() * 10; tx = wx(Math.round(s.x + Math.cos(a) * d)); ty = clamp(Math.round(s.y + Math.sin(a) * d), 3, H - 4); }
-  send(w, { kind: 'refugees', cult: s.cult, x: s.x, y: s.y, tx, ty, n, to, sick: s.plague > 0 ? s.pid : null, faith: s.faith, land: c.arts.riding ? 1.2 : 0.7 });
+  send(w, { kind: 'refugees', cult: s.cult, x: s.x, y: s.y, tx, ty, n, to, sick: s.plague > 0 ? s.pid : null, faith: s.faith, lang: s.lang, cul: s.cul, land: c.arts.riding ? 1.2 : 0.7 });
 }
 arrive.refugees = (w, m) => {
   const c = w.cults[m.cult];
@@ -167,14 +165,14 @@ arrive.refugees = (w, m) => {
   const x = wx(Math.round(m.x)), y = clamp(Math.round(m.y), 2, H - 3); if (w.water[y * W + x] || w.sets.length >= MAXS * 0.85 || !c.alive || c.env.nomads >= 6) return;
   // refugees of a settled, knowing people settle down again or join their kin; only tribes take to wandering
   if (c.tech >= 3) { const kin = near(w, x, y, 40, null, true, null); if (kin && kin.cult === m.cult) { kin.pop += m.n * 0.8; return; } if (m.n >= 25 && !near(w, x, y, 5, null, true)) { const v = addSet(w, m.cult, x, y, m.n * 0.9, false); v.faith = m.faith; } return; }
-  const b = addSet(w, m.cult, x, y, m.n * 0.9, true); b.faith = m.faith; c.env.nomads++;
+  const b = addSet(w, m.cult, x, y, m.n * 0.9, true); b.faith = m.faith; tagFrom(w, b, m); c.env.nomads++;
 };
 arrive.settlers = (w, m) => {
   const c = w.cults[m.cult], x = wx(Math.round(m.tx)), y = Math.round(m.ty), i = y * W + x, home = m.from;
   if (w.water[i] || w.ice[i] || w.lava[i] || near(w, x, y, 5.5, null, true) || w.sets.length >= MAXS || !c.alive) { if (home && !home.dead) home.pop += m.n; return; }
   let cult = m.cult;
   if (m.split && aliveN(w) < MAXC) { const nc = newCult(w, c); cult = nc.id; ev(w, `Settlers from ${home ? home.name : 'the ' + c.name} cross ${m.wetN > 1 ? 'the water' : 'the hills'} and call themselves the ${nc.name}.`, x, y, nc.color, m.ocean ? 0 : 1); }
-  const v = addSet(w, cult, x, y, m.n, false), ru = ruinAt(w, x, y); if (home) v.faith = home.faith;
+  const v = addSet(w, cult, x, y, m.n, false), ru = ruinAt(w, x, y); if (home) { v.faith = home.faith; tagFrom(w, v, home); }
   if (ru) { v.name = 'New ' + ru.name.replace(/^New /, ''); if (discover(w, 'reborn', x, y)) ev(w, `${v.name} rises on the stones of the old city.`, x, y, w.cults[cult].color); }
   near(w, x, y, 12, v, true, (o) => { if (o.cult !== cult) contact(w, w.cults[cult], o, 'Settlers'); });
   if (m.far) { const nc = w.cults[cult]; for (const k in nc.tame) if (TAME_SP[k] != null && w.rnd() < 0.4) introduce(w, x, y, TAME_SP[k], `settlers of the ${nc.name}`); for (const p of nc.cropL) plantWild(w, p, x, y, 3); }
@@ -193,7 +191,7 @@ arrive.trade = (w, m) => {
   if (m.wet0 && ca !== cb && w.mass[a.y * W + a.x] !== w.mass[b.y * W + b.x] && once(w, 'back-' + ca.id + '-' + cb.id) && w.rnd() < 0.35 && infect(w, a, null)) { const st = w.plagues[a.pid]; st.v = 0.09; st.catchy = 0.5; ev(w, `Sailors home from ${b.name} bring a fever no one on this shore has seen. It spreads through ${a.name} and the ports beyond.`, a.x, a.y, ca.color, 0); discover(w, 'backwash', a.x, a.y); }
   if (m.wet0 && discover(w, 'trade', b.x, b.y)) ev(w, `A ship from ${a.name} ties up at ${b.name} and sells everything aboard.`, b.x, b.y, ca.color);
 };
-export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * warMult(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1); }
+export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * warMult(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1) * (c.q ? 1 + 0.15 * c.q.war : 1); }
 arrive.army = (w, m) => {
   const o = m.to, c = w.cults[m.cult], home = m.from, rnd = w.rnd; const back = (frac) => { if (home && !home.dead && m.n * frac > 3) send(w, { kind: 'home', cult: m.cult, x: m.x, y: m.y, tx: home.x, ty: home.y, n: m.n * frac, to: home, land: m.land }); };
   if (!c.alive) return; if (!o || o.dead || o.cult === m.cult) { back(1); return; }
@@ -305,7 +303,7 @@ export function* peopleSteps(w) {
       near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (st.engineered ? 1 : 1 - 0.8 * w.cults[o.cult].germ) * (w.cults[o.cult].arts.quarantine ? 0.5 : 1)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
-    c.know += 0.65 * learnDrag(w, c, i0) * s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    c.know += 0.65 * (c.kq || 1) * learnDrag(w, c, i0) * s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -318,7 +316,7 @@ export function* peopleSteps(w) {
     if (c.count === 0) { if (!w.sets.some((s) => s.cult === c.id) && !w.movers.some((m) => m.cult === c.id && (m.kind === 'refugees' || m.kind === 'settlers'))) { c.alive = false; record(w, 'gone', [c.id], { note: 'the last of them' }); endWar(w, c, true); ev(w, `The ${c.name} are gone from the world.`, null, null, c.color, c.peak > 2000 ? 2 : c.peak > 300 ? 0 : 1); if (c.peak > 300) discover(w, 'gone', null, null); } continue; }
     alive++; if (c.power) { POWER[c.power](w, c); continue; } cultYear(w, c);
   }
-  ruinsYear(w); plaguesYear(w); faithYear(w);
+  ruinsYear(w); plaguesYear(w); faithYear(w); tonguesYear(w);
   w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop
   if (smoke > 0) { w.greenhouse = Math.min(7, w.greenhouse + smoke * 1.1e-7); if (!w.found.smoke) { const c = w.cults.find((q) => q.alive && q.arts.engines); if (c && c.big) discover(w, 'smoke', c.big.x, c.big.y); } }
   w.stats.people = Math.round(total); w.stats.places = w.sets.length; w.stats.peoples = alive;
@@ -387,16 +385,18 @@ function cultYear(w, c) {
   if (w.year >= c.ruler.until) crown(w, c);
   // cohesion: young, small and pressed peoples hold together; big, old, easy ones come apart
   // the pressures are kept by name, so the ledger and the probe can say what is pulling a realm apart
+  const Q = c.q = cultureOf(w, c); c.kq = Q ? 1 + 0.15 * Q.trade + 0.1 * Q.open - 0.12 * Q.pious : 1;
+  { let bf = 0; for (const k in c.nb) { const o = w.cults[k]; if (o && o.alive && !o.power && c.nb[k] > 0.5 && tongueGap(w, o.langId, c.langId) === Infinity) { bf = 1; break; } } c.borderFoe = bf; }   // a border against strangers holds a people together
   const HB = hubYear(w, c, HOOKS); if (!c.alive) return;
   const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / HUB.sizeDiv[A.bureaucracy ? 0 : A.writing ? 1 : 2], age: HUB.ageDiv ? -(w.year - c.born) / HUB.ageDiv : 0, elites: HB.elites, strife: HB.strife, living: HB.living, frontier: HB.frontier, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
-    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0, peace: c.tenet === 'peace' ? 0.04 : 0 };
+    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: (c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) * (1 + (Q ? Q.pious : 0)), tongues: -0.3 * (c.foreignShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, ways: Q ? 0.05 * Q.build - 0.04 * Q.open : 0, peace: c.tenet === 'peace' ? 0.04 : 0 };
   let tsum = 0; for (const k in P) tsum += P[k]; const target = clamp(tsum, 0.05, 1); c.cohT = target;
   c.coh += (target - c.coh) * 0.035; c.wins *= 0.97;
   if (c._dry >= Math.max(2, c.count * 0.3) && w.year - c.lastDry > 30 && b) { c.lastDry = w.year; ev(w, c.count >= 8 ? `The rains fail across the lands of the ${c.name}. ${b.name ? b.name + ' counts its grain' : 'The herds grow thin'}.` : `The rains fail for the ${c.name}.`, b.x, b.y, c.color, c.count >= 8 ? 0 : 1); if (c.count >= 8) discover(w, 'drought', b.x, b.y); }
   if (c.env.sed >= 40 && b && b.name && !c.flags.empire) { c.flags.empire = 1; ev(w, `The ${c.name} rule from ${b.name} over ${c.env.sed} towns and villages.`, b.x, b.y, c.color, once(w, 'empire') ? 2 : c.flags.empired ? 1 : 0); c.flags.empired = 1; discover(w, 'empire', b.x, b.y); }
   if (b && c.count >= 8) { const p = c.coh < 0.3 ? 0.04 : c.coh < 0.45 ? 0.01 : 0.0008, roll = rnd(); if (roll < p) { const why = { p, roll, terms: P, x: b.x, y: b.y };
     if (c.coh < 0.24 && c.count >= 10 && w.year - (c.fellAt || -999) > 140) { why.note = `cohesion ${c.coh.toFixed(2)}`; c._why = why; collapse(w, c); } else if (w.year - Math.max(c.fellAt || -999, c.splitAt || -999) > 45) { c.splitAt = w.year; c._why = why; schism(w, c); } c._why = null; } }
-  if (b && A.masonry && b.tier === 3 && b.pop > 1500 && !b.wonder && w.year - c.wonderAt > 180 && (c.gold || c.coh > 0.6 || tr === 'builder') && rnd() < 0.03) {
+  if (b && A.masonry && b.tier === 3 && b.pop > 1500 && !b.wonder && w.year - c.wonderAt > 180 && (c.gold || c.coh > 0.6 || tr === 'builder') && rnd() < 0.03 * (Q ? (1 + 1.5 * Q.build) * (1 - 0.5 * Q.horse) : 1)) {
     b.wonder = 1 + ((rnd() * 4) | 0); c.wonderAt = w.year; c.coh = Math.min(1, c.coh + 0.1);
     ev(w, `${b.name} raises ${['', 'a great pyramid', 'a colossus', 'a temple the size of a hill', 'a lighthouse seen from a day away'][b.wonder]}.`, b.x, b.y, c.color); discover(w, 'wonder', b.x, b.y); if (b.wonder === 3) holySite(w, b.x, b.y, 'wonder', 0.6);
   }
@@ -404,22 +404,23 @@ function cultYear(w, c) {
   if (c.war) { const f = w.cults[c.war.foe]; if (!f.alive || w.year >= c.war.until) endWar(w, c); }
   else if (c.count >= 4 && b) {
     let foe = null, fs = 1.5; for (const k in c.nb) { const o = w.cults[k]; if (o.alive && !o.war && c.nb[k] > fs && !leagued(w, c.id, o.id)) { fs = c.nb[k]; foe = o; } }
-    const horde = c.env.nomads > c.env.sed && c.env.nomads >= 9 && A.riding && tr === 'great' && !c.ruler.rode;
+    const horde = c.env.nomads > c.env.sed && c.env.nomads >= 9 && A.riding && (tr === 'great' || (Q && Q.horse > 0.65)) && !c.ruler.rode;
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
     const deter = foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1;
-    if (foe && rnd() < deter * hubPush(c) * ((horde ? 0.3 : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (c.tenet === 'peace' ? 0.15 : 0.4) : holy ? 2 : 1)) startWar(w, c, foe, horde, holy);
+    const kin = foe && foe._tp && (foe._tg[c.langId] || 0) > 0.25 * foe._tp && tongueGap(w, foe.langId, c.langId) > 0;   // "reunite the old tongue"
+    if (foe && rnd() < deter * hubPush(c) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * ((horde ? 0.3 : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (c.tenet === 'peace' ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; startWar(w, c, foe, horde, holy); c._kin = false; }
   }
 }
 function startWar(w, c, f, horde, holy) {
   // friends of the attacked come in: leagues, fellow believers, close neighbours; then the war is everyone's
-  const allies = []; for (const o of w.cults) { if (!o.alive || o === c || o === f || o.war || c.war || o.count < 3) continue; const close = (o.nb[f.id] || 0) > 1 && (o.nb[c.id] || 0) < (o.nb[f.id] || 0); if ((leagued(w, o.id, f.id) || (sameFaith(o, f) && !sameFaith(o, c)) || close) && w.rnd() < 0.35) allies.push(o); }
+  const allies = []; for (const o of w.cults) { if (!o.alive || o === c || o === f || o.war || c.war || o.count < 3) continue; const close = (o.nb[f.id] || 0) > 1 && (o.nb[c.id] || 0) < (o.nb[f.id] || 0); if ((leagued(w, o.id, f.id) || (sameFaith(o, f) && !sameFaith(o, c)) || (tongueGap(w, o.langId, f.langId) <= 2 && tongueGap(w, o.langId, c.langId) > 2) || close) && w.rnd() < 0.35) allies.push(o); }
   setTimeout0(() => { for (const o of allies) { if (o.war || !c.alive) continue; const u = w.year + 6 + ((w.rnd() * 12) | 0); o.war = { foe: c.id, since: w.year, until: u, taken: 0, lost: 0, mine: true }; if (o.big) ev(w, `The ${o.name} come into the war on the side of the ${f.name}.`, o.big.x, o.big.y, o.color, 1); }
     const n = 2 + allies.length; if (n >= 4 && c.tech >= 4) { const b = c.big; if (b && discover(w, 'worldwar', b.x, b.y)) ev(w, `${n} peoples are at war at once, and there is hardly a town in the known world that has not sent its sons. They will call it the Great War.`, b.x, b.y, null, 2); } });
   const until = w.year + 6 + ((w.rnd() * 18) | 0), b = c.big, big = c.count >= 20 && f.count >= 16, again = c.fought === f.id; c.fought = f.id; f.fought = c.id;
   c.war = { foe: f.id, since: w.year, until, taken: 0, lost: 0, mine: true, horde }; f.war = { foe: c.id, since: w.year, until, taken: 0, lost: 0, mine: false };
   // big wars get a name the chronicle can come back to
   if (c.count + f.count >= 20) { const fb = f.big, nm = horde ? `the Riding of ${c.ruler.name}` : holy ? `the War of ${w.faiths[c.faith].name}` : rnd3(w) === 0 && fb && fb.name ? `the ${fb.name.replace(/^New /, '')} War` : rnd3(w) === 1 ? `the War of the ${c.name} and the ${f.name}` : `the ${['Long', 'Red', 'Bitter', 'Iron', 'Hungry', 'Burning', 'Grey', 'Sorrowful'][(w.rnd() * 8) | 0]} War`; c.war.name = f.war.name = nm; }
-  c.war.hid = f.war.hid = record(w, 'war', [c.id, f.id], { x: b.x, y: b.y, note: horde ? 'horde' : holy ? 'holy war' : c.hungry > c.count * 0.25 ? 'hunger' : again ? 'again' : 'rivalry', terms: { rivalry: c.nb[f.id] || 0, hunger: c.hungry / Math.max(4, c.count) } });
+  c.war.hid = f.war.hid = record(w, 'war', [c.id, f.id], { x: b.x, y: b.y, note: horde ? 'horde' : holy ? 'holy war' : c._kin ? 'to reunite the old tongue' : c.hungry > c.count * 0.25 ? 'hunger' : again ? 'again' : 'rivalry', terms: { rivalry: c.nb[f.id] || 0, hunger: c.hungry / Math.max(4, c.count) } });
   if (horde) { c.ruler.rode = true; ev(w, `${c.ruler.name} gathers every rider of the ${c.name}. They ride on the ${f.name}.`, b.x, b.y, c.color, once(w, 'horde') ? 2 : f.count >= 20 ? 0 : 1); discover(w, 'horde', b.x, b.y); }
   else if (holy) { ev(w, `In the name of ${w.faiths[c.faith].name}, the ${c.name} go to war with the ${f.name}.`, b.x, b.y, c.color, big ? 2 : 0); discover(w, 'holywar', b.x, b.y); }
   if (c.war.name && !horde && !holy) ev(w, `The ${c.name} go to war with the ${f.name}. Before it is over it will have a name: ${c.war.name}.`, b.x, b.y, c.color, big ? 2 : 0); else ev(w, c.hungry > c.count * 0.25 ? `Hungry, the ${c.name} turn on the ${f.name}.` : c.ruler.trait === 'great' ? `${c.ruler.name} leads the ${c.name} to war against the ${f.name}.` : again ? `The ${c.name} and the ${f.name} are at war again.` : `The ${c.name} go to war with the ${f.name}.`, b.x, b.y, c.color, again ? 1 : c.count + f.count >= 30 ? 0 : 1);
@@ -435,7 +436,7 @@ function endWar(w, c, quiet) {
 }
 function schism(w, c, quiet) {
   if (!c.big) return null; let far = null, fd = 0;
-  for (const s of w.sets) { if (s.cult !== c.id || s.nomad) continue; const d = wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2; if (d > fd) { fd = d; far = s; } }
+  for (const s of w.sets) { if (s.cult !== c.id || s.nomad) continue; const g = tongueGap(w, s.lang, c.langId), d = (wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2) * (1 + (g > 3 ? 1.5 : g * 0.25) + (s.cul !== c.culId ? 0.5 : 0)); if (d > fd) { fd = d; far = s; } }
   if (!far || fd < 16 * 16) return null;
   if (aliveN(w) >= MAXC) { let to = null; near(w, far.x, far.y, 30, far, true, (o) => { if (o.cult !== c.id && (!to || w.cults[o.cult].pop > w.cults[to.cult].pop)) to = o; }); if (!to) return null; const oc = w.cults[to.cult]; let n = 0;
     for (const s of w.sets) { if (s.cult !== c.id) continue; if (wrapDx(s.x - far.x) ** 2 + (s.y - far.y) ** 2 < 0.5 * (wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2)) { s.cult = oc.id; n++; } }
@@ -463,13 +464,15 @@ export function collapse(w, c) {
 
 function nomadStep(w, s, c, seaN, fishGap) {
   const rnd = w.rnd, herder = !!c.grazer, A = c.arts, src = s.src;
+  // a settled people past the iron age has no wandering bands: they settle where they stand or go to town
+  if (((c.tech >= 4 && c.env.sed > c.env.nomads) || (c.tech >= 5 && c.env.sed >= 1)) && rnd() < 0.25) { const t = near(w, s.x, s.y, 60, s, true, null); if (t && t.cult === s.cult) { t.pop += s.pop; s.dead = true; w.anyDead = true; return; } if (!near(w, s.x, s.y, 5, s, true) && w.magic[s.y * W + s.x] < 0.7) { s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3); return; } if (t) t.pop += s.pop * 0.7; s.dead = true; w.anyDead = true; return; }
   const herding = herder && src[4] >= src[2] && src[4] > src[0] * 0.8;
   if (s.age > 3 && (A.farming || (!herding && c.know > 1200 && src[2] > src[0] + src[1]))) {
     let sk = 0, cnt = 0; for (const o of DISC[2]) { const y = s.y + o[1]; if (y < 1 || y >= H - 1) continue; const i = y * W + wx(s.x + o[0]); if (w.water[i]) continue; sk += (A.farming ? cropYield(w, c, i) : 0) + (w.fresh[i] <= 1 ? 0.3 : 0); cnt++; }
     if (cnt >= 6 && ((A.farming && sk / cnt > (herder ? 0.8 : 0.4)) || (!herder && seaN >= 4 && fishGap > 0.8)) && !near(w, s.x, s.y, 6, s, true) && w.magic[s.y * W + s.x] < 0.7) {
       s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y;
       const ru = ruinAt(w, s.x, s.y);
-      if (ru) { s.name = 'New ' + ru.name.replace(/^New /, ''); discover(w, 'reborn', s.x, s.y); } else s.name = placeName(w, c);
+      if (ru) { s.name = 'New ' + ru.name.replace(/^New /, ''); discover(w, 'reborn', s.x, s.y); } else s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3);
       if (!c.flags.village) { c.flags.village = 1; const fishy = !(A.farming && sk / cnt > 0.4); ev(w, `The ${c.name} put down roots at ${s.name}${fishy ? ', a fishing camp that stayed' : ', their first village'}.`, s.x, s.y, c.color, once(w, 'village') ? 0 : 1); discover(w, 'village', s.x, s.y); }
       return;
     }
@@ -479,7 +482,7 @@ function nomadStep(w, s, c, seaN, fishGap) {
     for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2) continue; const i = y * W + x; if (w.water[i] || w.h[i] - w.params.sea > 0.42 || w.ice[i]) continue;
       let sc = siteScore(w, x, y, A.farming, herding, c) * (0.9 + 0.2 * rnd()); if (near(w, x, y, 4, s)) sc *= 0.4; if (sc > best) { best = sc; bx = x; by = y; } }
     s.x = bx; s.y = by; }
-  if ((s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : 26) : 10) && w.sets.length < MAXS) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
+  if (!(c.tech >= 4 && c.env.sed > c.env.nomads) && !(c.tech >= 5) && (s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : 26) : 10) && w.sets.length < MAXS) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
   if (A.farming && !herding && s.age > 20 && rnd() < 0.08) { const b = near(w, s.x, s.y, 14, s, true); if (b) { b.pop += s.pop * 0.8; s.dead = true; w.anyDead = true; return; } if (s.age > 60) { s.dead = true; w.anyDead = true; return; } }
   const war = c.war;
   if (herder && s.pop > 70 && w.year >= s.busy && rnd() < (A.riding ? 0.07 : 0.02) * (war ? (war.horde ? 6 : 3) : 1)) raid(w, s, c);
@@ -512,7 +515,7 @@ function townStep(w, s, c) {
 }
 
 function colonize(w, s, c) {
-  const rnd = w.rnd, A = c.arts, maxD = A.navigation ? 120 : A.sailing ? 70 : A.railways ? 40 : A.boats || A.roads ? 22 : 12 + 4 * livestock(c).cart, sea = w.params.sea; let best = null, bs = 9.5;
+  const rnd = w.rnd, A = c.arts, maxD = (A.navigation ? 120 : A.sailing ? 70 : A.railways ? 40 : A.boats || A.roads ? 22 : 12 + 4 * livestock(c).cart) * (c.q && (A.boats || A.sailing) ? 1 + 0.6 * c.q.sea : 1), sea = w.params.sea; let best = null, bs = 9.5;
   for (let q = 0; q < 12; q++) {
     const far = A.sailing && q < 3, a = rnd() * 6.2832, d = far ? 26 + rnd() * (maxD - 26) : 6 + rnd() * (Math.min(maxD, 22) - 6), x = wx(Math.round(s.x + Math.cos(a) * d)), y = Math.round(s.y + Math.sin(a) * d * 0.8); if (y < 3 || y >= H - 3) continue; const i = y * W + x;
     if (w.water[i] || w.h[i] - sea > (A.terraces ? 0.5 : 0.36) || w.gCap[i] < 0.24 || w.ice[i] || w.magic[i] > 0.75 || near(w, x, y, 8.5, null, true)) continue;
@@ -535,7 +538,7 @@ function pasture(w, s, c) {
   if (bi < 0 || w.sets.length >= MAXS || Math.max(c.env.nomads, c.nomadsWas || 0) >= 12) return; let cult = s.cult; s.pop -= 30;
   if (c.env.nomads === 0 && aliveN(w) < MAXC && rnd() < 0.7) { const nc = newCult(w, c); cult = nc.id; nc.way = 'herd'; ev(w, `Herders of the ${c.name} take their animals out onto the open grass and do not come back. They call themselves the ${nc.name}.`, bi % W, (bi / W) | 0, nc.color, once(w, 'pastoral') ? 0 : 1); }
   else { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; }
-  const b = addSet(w, cult, bi % W, (bi / W) | 0, 30, true); b.faith = s.faith; b.px = s.x; b.py = s.y; b.mt = w.tickN;
+  const b = addSet(w, cult, bi % W, (bi / W) | 0, 30, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN;
 }
 
 // someone goes looking at the neighbours: half the time to trade, the rest with spears
