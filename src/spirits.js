@@ -35,7 +35,7 @@ const placeName = (w, x, y) => { const s = near(w, x, y, 20, null, true); if (s 
 function rise(w, kind, x, y, why, extra) {
   const dead = (k) => KIND[k].mem === DEATH;
   const wild = w.deadAge || (w.surge && w.year < w.surge);
-  if (w.spirits.length >= (wild ? 40 : 18) || w.spirits.filter((p) => p.kind === kind).length >= (dead(kind) ? (wild ? 8 : 2) : wild ? 8 : 4) || (dead(kind) && w.spirits.filter((p) => dead(p.kind)).length >= (wild ? 24 : 4)) || spiritNear(w, x, y, wild ? 7 : 14)) return null;
+  if (w.spirits.length >= (wild ? 40 : 18) || w.spirits.filter((p) => p.kind === kind).length >= (dead(kind) ? (wild ? 8 : 2) : kind === 'winter' ? (wild ? 3 : 2) : wild ? 8 : 4) || (dead(kind) && w.spirits.filter((p) => dead(p.kind)).length >= (wild ? 24 : 4)) || spiritNear(w, x, y, wild ? 7 : 14)) return null;
   const place = extra && extra.place || placeName(w, x, y), s = { why: why || 'something happened', place };
   // one dead king in ten is something worse: a power with a realm of its own that lasts for ages
   const great = (kind === 'lich' && w.rnd() < (w.surge && w.year < w.surge ? 0.3 : 0.1)) || kind === 'winter' || (extra && extra.great);
@@ -79,8 +79,8 @@ function realmYear(w, p) {
   for (let q = 0; q < 8; q++) { const a = w.rnd() * 6.283, r = Math.sqrt(w.rnd()) * p.R; remember(w, p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, k, 0.12 * p.str / 3, 3); }
   near(w, p.x, p.y, p.R, null, false, (s) => { const c = w.cults[s.cult]; s.pop *= 1 - (p.kind === 'winter' ? 0.03 : 0.025) * warded(w, s); c.hurt = (c.hurt || 0) + 0.3; if (s.pop > 80 && w.rnd() < 0.15) flee(w, s, s.pop * 0.1); });
   // the living can break a great power, if enough of them come at once with enough knowledge
-  if (w.rnd() < 0.05) { let force = 0, lead = null; near(w, p.x, p.y, p.R + 25, null, true, (s) => { const c = w.cults[s.cult]; force += s.pop * (1 + c.tech) * (c.stance === 'use' ? 1.6 : c.stance === 'fear' ? 1.3 : 1); if (!lead || s.pop > lead.pop) lead = s; });
-    if (lead && force > 9000 * p.str * (old ? 0.4 : 1)) { const c = w.cults[lead.cult]; p.dead = true; ev(w, `The living march on ${p.name} together, more of them than anyone has seen in one place. ${p.kind === 'winter' ? 'They break the ice throne' : 'They burn its hall to the stones'}. ${lead.name} keeps what is left of the crown.`, p.x, p.y, c.color, 2); discover(w, 'realmfall', p.x, p.y); for (const o of DISC[8]) { const yy = p.y + o[1]; if (yy < 0 || yy >= H) continue; w.mem[(yy * W + wx(p.x + o[0])) * NK + k] *= 0.3; } c.coh = Math.min(1, c.coh + 0.3); return; } }
+  if (age > 30 && w.rnd() < 0.03) { let force = 0, lead = null; const who = new Set(); near(w, p.x, p.y, p.R + 25, null, true, (s) => { const c = w.cults[s.cult]; force += s.pop * (1 + c.tech) * (c.stance === 'use' ? 1.6 : c.stance === 'fear' ? 1.3 : 1); who.add(s.cult); if (!lead || s.pop > lead.pop) lead = s; });
+    if (lead && who.size >= 2 && force > 45000 * p.str * (old ? 0.35 : 1)) { const c = w.cults[lead.cult]; p.dead = true; ev(w, `The living march on ${p.name} together, more of them than anyone has seen in one place. ${p.kind === 'winter' ? 'They break the ice throne' : p.kind === 'fey' ? 'They cut down the oldest trees and burn them' : 'They burn its hall to the stones'}. ${lead.name} keeps what is left of the crown.`, p.x, p.y, c.color, 2); discover(w, 'realmfall', p.x, p.y); for (const o of DISC[8]) { const yy = p.y + o[1]; if (yy < 0 || yy >= H) continue; w.mem[(yy * W + wx(p.x + o[0])) * NK + k] *= 0.3; } c.coh = Math.min(1, c.coh + 0.3); return; } }
   if (p.kind === 'lich' && w.rnd() < 0.5) { ACT.lich(w, p); if (w.rnd() < 0.2) { const a = w.rnd() * 6.283, r = p.R * (0.5 + 0.5 * w.rnd()); rise(w, 'shamblers', wx(Math.round(p.x + Math.cos(a) * r)), clamp(Math.round(p.y + Math.sin(a) * r), 2, H - 3), `${p.name} called them`, { place: p.place }); } }
 }
 // A well too full breaks open, and what comes out of it is whatever it was full of.

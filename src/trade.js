@@ -157,7 +157,7 @@ function dependence(w) {
   for (const c of w.cults) {
     if (!c.alive || !c.big) continue; const imp = c.imp || {}, own = c._ownMetals || 0;
     if (c.arts.bronze && (own & 6) !== 6 && (imp[G.tin] != null || imp[G.copper] != null)) { const cut = w.year - Math.max(imp[G.tin] ?? -99, imp[G.copper] ?? -99) > 30 && !((own & 2) && w.year - (imp[G.tin] ?? -99) < 30) && !((own & 4) && w.year - (imp[G.copper] ?? -99) < 30);
-      if (cut && !c.bronzeCut) { c.bronzeCut = w.year; c.coh = Math.max(0.05, c.coh - 0.2); ev(w, `The tin stops coming. The smiths of the ${c.name} melt down old blades to make new ones, and there are fewer every year.`, c.big.x, c.big.y, c.color, c.count >= 20 ? 2 : c.count >= 6 ? 0 : 1); discover(w, 'tinstop', c.big.x, c.big.y); }
+      if (cut && !c.bronzeCut) { c.bronzeCut = w.year; c.coh = Math.max(0.05, c.coh - 0.2); if (c.tinTold) continue; c.tinTold = true; ev(w, `The tin stops coming. The smiths of the ${c.name} melt down old blades to make new ones, and there are fewer every year.`, c.big.x, c.big.y, c.color, c.count >= 20 ? 2 : c.count >= 6 ? 0 : 1); discover(w, 'tinstop', c.big.x, c.big.y); }
       else if (!cut && c.bronzeCut) c.bronzeCut = 0; }
   }
 }

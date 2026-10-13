@@ -204,7 +204,7 @@ export function stanceYear(w, c) {
 const CSZ = 8, CWB = W / CSZ, CHB = H / CSZ, _cb = new Float32Array(CWB * CHB), _cb2 = new Float32Array(CWB * CHB);
 export function magicClimate(w) {
   const { mem } = w; _cb.fill(0);
-  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) { const b = (y * W + x) * NK; _cb[((y / CSZ) | 0) * CWB + ((x / CSZ) | 0)] += (-Math.min(1.2, mem[b + FROST]) * 22 + Math.min(1, mem[b + FIRE]) * 10 + Math.min(1, mem[b + FAITH]) * 2) / 16; }
+  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) { const b = (y * W + x) * NK; _cb[((y / CSZ) | 0) * CWB + ((x / CSZ) | 0)] += (-Math.min(1.2, mem[b + FROST]) * 16 + Math.min(1, mem[b + FIRE]) * 10 + Math.min(1, mem[b + FAITH]) * 2) / 16; }
   for (let pass = 0; pass < 3; pass++) { for (let y = 0; y < CHB; y++) for (let x = 0; x < CWB; x++) { let s = 0, n = 0; for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= CHB) continue; for (let dx = -1; dx <= 1; dx++) { s += _cb[yy * CWB + ((x + dx + CWB) % CWB)]; n++; } } _cb2[y * CWB + x] = s / n; } _cb.set(_cb2); }
   const tb = w.tBias || (w.tBias = new Float32Array(N)), user = w.tUser; let change = 0;
   for (let y = 0; y < H; y++) { const cy = Math.min(CHB - 1, (y / CSZ) | 0); for (let x = 0; x < W; x++) { const i = y * W + x, v = _cb[cy * CWB + ((x / CSZ) | 0)] * 2.2 + (user ? user[i] : 0); change += Math.abs(v - tb[i]); tb[i] = v; } }

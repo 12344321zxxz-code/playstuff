@@ -159,7 +159,7 @@ function aftermath(w, n) {
     for (const k in c.arts) { const T = ART[k]; if (T && T.tier > floor && T.tier < 9 && rnd() < (inIt ? 0.95 : 0.75)) delete c.arts[k]; }
     c.know = Math.min(c.know, TECH[floor] * 0.5); c.tech = floor; c.bombs = 0; c.stance = 'revere';
   }
-  w.surge = w.year + 300;
+  w.surge = w.year + 300; w.darkUntil = w.year + (big ? 220 : 120);   // a dark age: no one has time to learn anything but how to live
   for (const q of w.wells) for (let k = 0; k < 6; k++) w.mem[(q.y * W + q.x) * 6 + k] += 6;
   ev(w, big ? 'There is nothing left anywhere of the world that made the bombs. The survivors scratch the old fields with sticks. And the old powers, that the cities had driven into the wells and the deep woods, come up out of them all at once.' : 'The peoples who used the bombs are scattered back to the age of iron. The wells boil over, and the old powers walk out into the burned country.', null, null, null, 2);
   discover(w, 'machinesfall', null, null); if (big) discover(w, 'surge', null, null);

@@ -67,7 +67,11 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
     if (st.nomad) { if (z < 2.4 && st.pop < 60) continue; blit(ctx, 'camp', x, y, k, col); continue; }
     if (z < 1.8 && st.tier < 2) { ctx.fillStyle = col; ctx.fillRect(Math.round(x - cam.dpr), Math.round(y - 2 * cam.dpr), 2 * cam.dpr, 2 * cam.dpr); continue; }
     if (st.walls && st.tier >= 2 && z >= 3) blit(ctx, 'walls', x, y + k, k, col);
-    const hgt = blit(ctx, st.tier >= 3 ? 'city' : st.tier === 2 ? 'town' : st.pop > 60 ? 'village' : 'hut', x, y, k, col);
+    const era = c.tech, look = st.tier >= 3 ? (era >= 10 ? 'cityS' : era >= 8 ? 'cityM' : era >= 6 ? 'cityI' : era >= 4 ? 'cityC' : 'city') : st.tier === 2 ? (era >= 8 ? 'townM' : era >= 6 ? 'townI' : era >= 4 ? 'townC' : 'town') : st.pop > 60 ? 'village' : 'hut';
+    const hgt = blit(ctx, st.machine ? 'cityM' : look, x, y, k, st.machine ? '#4affd0' : col);
+    // smoke from the stacks, lights in the windows at night-time zoom
+    if (era >= 6 && era < 10 && st.tier >= 2 && z >= 3 && !still) { const t = performance.now() * 0.001 + st.id; for (let q = 0; q < 3; q++) { const u = (t * 0.5 + q / 3) % 1; ctx.fillStyle = `rgba(90,90,96,${0.7 * (1 - u)})`; ctx.fillRect(Math.round(x - 2 * k + u * 4 * k), Math.round(y - hgt - u * 9 * k), Math.round(k * (1 + u * 2)), Math.round(k * (1 + u * 2))); } }
+    if (era >= 7 && st.tier >= 2 && z < 3.5) { ctx.fillStyle = 'rgba(255,220,120,0.85)'; const q = Math.max(1, Math.round(cam.dpr)); for (let n = 0; n < (st.tier >= 3 ? 9 : 4); n++) { const a = n * 2.4 + st.id, r = (1 + (n % 3)) * z * cam.dpr * 0.7; ctx.fillRect(Math.round(x + Math.cos(a) * r), Math.round(y - 2 * cam.dpr + Math.sin(a) * r * 0.6), q, q); } }
     if (st.plague > 0 && z >= 3) { ctx.fillStyle = '#b6ff3d'; for (let q = 0; q < 4; q++) { const a = (q / 4) * 6.283 + (still ? 0 : performance.now() * 0.002); ctx.fillRect(Math.round(x + Math.cos(a) * 7 * k), Math.round(y - hgt / 2 + Math.sin(a) * 5 * k), k, k); } }
     if (st.wonder && z >= 3) blit(ctx, 'wonder', x + 8 * k, y, k);
     if (st.tower && z >= 3) blit(ctx, 'tower', x - 7 * k, y, k);
@@ -85,8 +89,9 @@ function drawMovers(ctx, w, cam, z, frac) {
     if (m.done) continue; const x = m.px + wrapDx(m.x - m.px) * frac + 0.5, y = m.py + (m.y - m.py) * frac + 0.8; if (!seen(x, y, 2)) continue; const p = at(cam, x, y);
     const c = w.cults[m.cult], col = m.kind === 'trade' && m.goods >= 0 ? GOODS[m.goods].col : c.color, flip = wrapDx(m.x - m.px) < 0;
     if (m.kind === 'missile') { const t = (wrapDx(m.tx - m.x) < 0); blit(ctx, 'missile', p[0], p[1] - 6 * k, k, null, t); continue; }
-    if (m.wet && !m.path) { blit(ctx, m.kind === 'trade' || m.kind === 'army' ? 'ship' : 'boat', p[0], p[1], k, col, flip); if (m.kind === 'army') { ctx.fillStyle = '#e03a1f'; ctx.fillRect(Math.round(p[0] - k), Math.round(p[1] - 8 * k), 2 * k, k); } continue; }
-    blit(ctx, m.kind === 'army' || m.kind === 'home' ? 'army' : m.kind === 'trade' ? 'caravan' : m.kind === 'settlers' ? 'settlers' : 'refugees', p[0], p[1], k, col, flip);
+    const era = c.tech;
+    if (m.wet && !m.path) { blit(ctx, m.kind === 'trade' || m.kind === 'army' ? (era >= 8 ? 'liner' : era >= 6 ? 'steamer' : 'ship') : 'boat', p[0], p[1], k, col, flip); if (m.kind === 'army') { ctx.fillStyle = '#e03a1f'; ctx.fillRect(Math.round(p[0] - k), Math.round(p[1] - 8 * k), 2 * k, k); } continue; }
+    blit(ctx, m.kind === 'army' || m.kind === 'home' ? (era >= 8 ? 'tanks' : era >= 6 ? 'rifles' : era >= 4 && c.arts.stirrups ? 'knights' : 'army') : m.kind === 'trade' ? (era >= 8 ? 'truck' : era >= 6 && c.arts.railways && m.path ? 'train' : 'caravan') : m.kind === 'settlers' ? 'settlers' : 'refugees', p[0], p[1], k, col, flip);
   }
 }
 function drawSwarms(ctx, w, cam, z, now, frac) {
@@ -113,6 +118,7 @@ function drawOther(ctx, w, cam, z, now, frac) {
     for (let n = 0; n < 90; n++) { if (n % 3 === 2) continue; const a = (n / 90) * TAU, r = R * (0.96 + 0.06 * Math.sin(n * 1.7 + sp.x)); ctx.fillRect(Math.round((c[0] + Math.cos(a) * r) / q) * q, Math.round((c[1] + Math.sin(a) * r) / q) * q, q, q); } ctx.globalAlpha = 1;
     if (z < 6 && z > 1) label(ctx, cap(sp.name), c[0], c[1] - R - 6 * cam.dpr, Math.round(11 * cam.dpr), ctx.fillStyle, true, 70); }
   if (z >= 2.2) for (const sp of w.spirits) { if (!seen(sp.x, sp.y, 2)) continue; const x = sp.px + wrapDx(sp.x - sp.px) * frac + 0.5, y = sp.py + (sp.y - sp.py) * frac + 1; const p = at(cam, x, y); const bob = still || sp.kind === 'lich' || sp.kind === 'saint' || sp.kind === 'drowned' ? 0 : Math.round(Math.sin(now * 0.003 + sp.id) * k); blit(ctx, SPR_OF[sp.kind], p[0], p[1] + bob, k); if (z >= 6) label(ctx, cap(sp.name), p[0], p[1] + 2 * cam.dpr, Math.round(10 * cam.dpr), KINDS[SPIRIT_KINDS[sp.kind].mem].col, true, 40); }
+  if (z >= 1.6) for (const m of w.machines || []) { if (!seen(m.x, m.y, 3)) continue; const p = at(cam, m.x + 0.5, m.y + 1); blit(ctx, 'mind', p[0], p[1] - 10 * k, k + 1); }
   for (const st of w.storms2) { const x = st.px + wrapDx(st.x - st.px) * frac + 0.5, y = st.py + (st.y - st.py) * frac + 0.5; if (!seen(x, y, 4)) continue; const p = at(cam, x, y), col = KINDS[st.kind].col, q = Math.max(2, Math.round(z * cam.dpr * 0.35));
     for (let n = 0; n < 14; n++) { const a = n * 2.4 + (still ? 0 : now * 0.004), r = (0.4 + (n % 5) * 0.35) * z * cam.dpr; ctx.fillStyle = col; ctx.globalAlpha = 0.9 - (n % 5) * 0.15; ctx.fillRect(Math.round((p[0] + Math.cos(a) * r) / q) * q, Math.round((p[1] + Math.sin(a) * r) / q) * q, q, q); } ctx.globalAlpha = 1; }
 }

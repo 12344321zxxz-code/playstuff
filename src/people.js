@@ -297,7 +297,7 @@ export function* peopleSteps(w) {
       near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (st.engineered ? 1 : 1 - 0.8 * w.cults[o.cult].germ) * (w.cults[o.cult].arts.quarantine ? 0.5 : 1)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
-    c.know += s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    c.know += s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (w.darkUntil > w.year ? 0.25 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -331,7 +331,7 @@ function ruinsYear(w) {
     if (!r.looted && r.kind !== 'drowned' && rnd() < 0.03) { const s = near(w, r.x, r.y, 8, null, true); if (s) { const c = w.cults[s.cult];
         if (r.kind === 'nuked') { r.looted = true; if (rnd() < 0.2 && c.tech >= 3) { c.arts.bomb = w.year; c.bombs = (c.bombs || 0) + 1; ev(w, `Diggers from ${s.name} find something in the glass under ${r.name}, still sealed, still heavy. The old ones' writing on it says what it is. They take it home.`, r.x, r.y, c.color, 2); discover(w, 'relicbomb', r.x, r.y); } else { s.pop *= 0.8; ev(w, `Diggers from ${s.name} go into the ruins of ${r.name}. They come back sick, and they do not get better.`, r.x, r.y, c.color, 1); } }
         else if (r.haunt) { r.looted = true; infect(w, s, null, true); ev(w, `Diggers from ${s.name} open the ruins of ${r.name}. What they bring home kills half the town.`, r.x, r.y, c.color); discover(w, 'curse', r.x, r.y); }
-        else if (c.know < r.know * 0.9) { c.know += (r.know - c.know) * 0.35; r.looted = true; ev(w, `Diggers from ${s.name} find old writings in the ruins of ${r.name}.`, r.x, r.y, c.color, (w.relics = (w.relics || 0) + 1) <= 2 ? 0 : 1); discover(w, 'relic', r.x, r.y); } } }
+        else if (c.know < r.know * 0.9) { c.know += Math.min((r.know - c.know) * 0.35, c.know * 0.4 + 2000); r.looted = true; ev(w, `Diggers from ${s.name} find old writings in the ruins of ${r.name}.`, r.x, r.y, c.color, (w.relics = (w.relics || 0) + 1) <= 2 ? 0 : 1); discover(w, 'relic', r.x, r.y); } } }
     // most ruins are only ruins; now and then one where something terrible happened is not
     if (!r.haunt && r.tier >= 2 && w.year - r.year > 80 && memAt(w, i, DEATH) > 0.3 && rnd() < 0.012) { r.haunt = HAUNT[(rnd() * HAUNT.length) | 0]; holySite(w, r.x, r.y, 'haunt', 0.5); ev(w, `No one goes near the ruins of ${r.name} any more. ${r.haunt.replace('%', r.cult)}`, r.x, r.y, null, discover(w, 'haunt', r.x, r.y) ? 0 : 1); }
   }

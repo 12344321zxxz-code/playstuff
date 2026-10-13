@@ -20,7 +20,7 @@ export function futureYear(w) {
     // the remaking of land: shallow seas become land, mountains are cut down for room
     if (A.terraform && rnd() < 0.05) { const s = c.big, sea = w.params.sea; let n = 0; for (const o of DISC[12]) { const yy = s.y + o[1]; if (yy < 3 || yy >= H - 3) continue; const i = yy * W + wx(s.x + o[0]); if (w.water[i] === 1 && sea - w.h[i] < 0.08) { w.h[i] = sea + 0.01; n++; } } if (n > 10) { w.need.water = true; w.stamp.land++; ev(w, `The ${c.name} pour new land into the sea off ${s.name}. A whole province where there was water.`, s.x, s.y, c.color, 1); discover(w, 'newland', s.x, s.y); } }
     // a mind of their own making slips its leash
-    if (A.ai && !c.madeMind && rnd() < 0.004 * (c.war ? 2.5 : 1) * (c.stance === 'forget' ? 1.5 : 1)) wakeMachine(w, c);
+    if (A.ai && !c.madeMind && w.machines.length < 2 && w.year - (w.lastMind || -999) > 60 && rnd() < 0.004 * (c.war ? 2.5 : 1) * (c.stance === 'forget' ? 1.5 : 1)) { w.lastMind = w.year; wakeMachine(w, c); }
     // leaving
     if (A.starships && !c.leaving && rnd() < 0.02) { c.leaving = w.year; ev(w, `The ${c.name} have built ships that can cross the dark between the stars. They begin to leave, a city at a time.`, c.big.x, c.big.y, c.color, 2); discover(w, 'exodus', c.big.x, c.big.y); }
     if (c.leaving) { for (const s of w.sets) { if (s.cult !== c.id) continue; s.pop *= 0.88; if (s.pop < 30) { endSet(w, s, 'left'); remember(w, s.x, s.y, WILD, 0.3, 5); } }

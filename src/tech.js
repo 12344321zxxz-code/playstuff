@@ -88,7 +88,7 @@ export const ART = {
 };
 export const ART_KEYS = Object.keys(ART);
 // How much knowledge in general each era needs (the old thresholds, kept as the pace of history).
-export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 70000000, 120000000, 200000000, 330000000, 520000000];
+export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 70000000, 120000000, 170000000, 230000000, 300000000];
 export const techOf = (k) => { let t = 0; while (t < TECH.length && k >= TECH[t]) t++; return t; };
 
 export function canLearn(c, k, easy) {
