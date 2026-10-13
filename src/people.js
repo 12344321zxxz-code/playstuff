@@ -14,7 +14,7 @@ import { send, arrive } from './movers.js';
 export { send };
 import { holySite, carry, convert, faithYear, sameFaith, tenetOf } from './faith.js';
 import { pickGoods, deliver, importedMetals, leagued, G as GD } from './trade.js';
-import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst } from './tech.js';
+import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst, carriersFor } from './tech.js';
 export { ART, TECH, techOf };
 import { wallBetween } from './works.js';
 import { ignite } from './life.js';
@@ -358,7 +358,7 @@ function kindOf(c) {
 
 function cultYear(w, c) {
   const rnd = w.rnd, b = c.big, A = c.arts; if (c.pop > c.peak) c.peak = c.pop;
-  if (!Number.isFinite(c.know)) c.know = TECH[1]; c.dark = w.darkUntil > w.year && (w.darkUntil - w.year) / (w.darkLen || 300) > 0.35; if (!Number.isFinite(c.surplus)) c.surplus = 0;   // never let one bad number spread to everyone they meet
+  if (!Number.isFinite(c.know)) c.know = TECH[1]; if (!Number.isFinite(c.surplus)) c.surplus = 0;   // never let one bad number spread to everyone they meet
   let way = 'forage', mx = 0; for (const k in c._ways) if (c._ways[k] > mx) { mx = c._ways[k]; way = k; }
   if (way !== c.way) { c.way = way; if (b && c.count >= 3) { if (way === 'herd' && A.riding) { if (discover(w, 'riders', b.x, b.y)) ev(w, `The ${c.name} live in the saddle now.`, b.x, b.y, c.color); } else if (way === 'herd') discover(w, 'herders', b.x, b.y); else if (way === 'fish' && A.boats) discover(w, 'sea', b.x, b.y); } }
   c.nomadsWas = c.env.nomads;
@@ -366,6 +366,16 @@ function cultYear(w, c) {
   c.tenet = tenetOf(w, c); c.zeal = c.tenet === 'war';
   c.kind = kindOf(c); c._ownMetals = c._metals; c.metals = c._metals | importedMetals(w, c); c.gold = !!(c.metals & 16);
   if (c.env.nomads > c.count * 0.5 && c.know > TECH[3] * 0.95) c.know = TECH[3] * 0.95;   // wanderers stop at about the iron age until they settle
+  // Knowledge needs carriers: this people's own numbers plus half of those it is in close contact
+  // with. Below what a tier needs, its arts start to be forgotten, the highest first, and what the
+  // people knows in general sinks toward what its numbers can hold. A plague that thins a big
+  // realm costs nothing; a crash that breaks every network costs whole eras, unevenly.
+  { let carry = c.pop; for (const k in c.nb) { const o = w.cults[k]; if (o && o.alive && !o.power && c.nb[k] > 0.5) carry += 0.5 * o.pop; } c.carry = carry;
+    let hold = 0; while (hold < 10 && carry >= carriersFor(hold + 1)) hold++; c.hold = hold;
+    if (hold < 9 && c.know > TECH[Math.max(0, hold)]) c.know -= (c.know - TECH[Math.max(0, hold)] * 0.97) * 0.06;
+    let top = -1; for (const k in c.arts) { const T = ART[k]; if (T && T.tier < 99 && T.tier > hold && T.tier > top) top = T.tier; }
+    const short = top >= 0 ? 1 - Math.min(1, carry / carriersFor(top)) : 0;   // how far below what the top tier needs
+    if (top >= 3 && b && rnd() < 0.04 + 0.5 * short) { const lose = Object.keys(c.arts).filter((k) => ART[k] && ART[k].tier === top); const k = lose[(rnd() * lose.length) | 0]; delete c.arts[k]; record(w, 'forget', [c.id], { note: ART[k].say, terms: { carriers: carry, needed: carriersFor(top) } }); if (top >= 5 || once(w, 'forget-' + c.id)) ev(w, `The ${c.name} are too few now to keep ${ART[k].say}. Within a generation nobody remembers how it was done.`, b.x, b.y, c.color, top >= 7 ? 0 : 1); discover(w, 'forgot', b.x, b.y); } }
   c.tech = techOf(c.know);
   { const nx = nextInvention(c, rnd); if (nx && rnd() < 0.05 * (1 + 0.25 * nx.push) * (A.schools ? 1.3 : 1) * (A.printing ? 1.3 : 1)) learn(w, c, nx.k); }
   c.plagued = (c.plagued || 0) * 0.8; c.crowded = c.hungry > c.count * 0.3 ? 1 : 0;

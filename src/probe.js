@@ -28,7 +28,7 @@ export function powersOf(w) {
 export function realmLine(w, c) {
   const P = c.press || {}, t = topTerms(P, 3).map(([k, v]) => `${k}${v > 0 ? '+' : ''}${r2(v)}`).join(' ');
   const war = c.war ? ` war:${w.cults[c.war.foe].name}(${w.year - c.war.since}y)` : '';
-  return `${c.name}#${c.id} pop ${kfmt(c.pop)} towns ${c.count} era ${c.tech} coh ${r2(c.coh)}→${r2(c.cohT)} [${t}]${war}${c.dark ? ' DARK' : ''}${c.leaving ? ' LEAVING' : ''}`;
+  return `${c.name}#${c.id} pop ${kfmt(c.pop)} towns ${c.count} era ${c.tech} coh ${r2(c.coh)}→${r2(c.cohT)} [${t}]${war}${c.carry != null ? ` carriers ${kfmt(c.carry)}→tier ${c.hold}` : ''}${c.leaving ? ' LEAVING' : ''}`;
 }
 
 export function digest(w, opts) {
@@ -45,7 +45,7 @@ export function digest(w, opts) {
   for (const c of live.sort((a, b) => b.pop - a.pop).slice(0, o.realms || 12)) L.push('- ' + realmLine(w, c));
   const tn = tensions(w).slice(0, 5); if (tn.length) { L.push('', '## building toward a turn (what Watchful slows for)'); for (const t of tn) L.push(`- ${t.text} (${r2(t.s)})${t.x != null ? ` at ${t.x},${t.y}` : ''}`); }
   const pw = powersOf(w); if (pw.length) { L.push('', '## powers'); for (const p of pw) L.push(`- ${p.id} ${p.kind} "${p.name}" at ${p.x},${p.y} str ${r2(p.str)} R ${r2(p.R)}${p.age != null ? ` age ${p.age}${p.span ? '/' + p.span : ''}` : ''}`); }
-  if (w.wells && w.wells.length) L.push('', '## wells', w.wells.map((q, i) => `${i}:${q.name || 'unnamed'} ${KINDS[q.kind] ? KINDS[q.kind].key : '?'} fill ${r2(q.fill || 0)}`).join(' | '));
+  if (w.wells && w.wells.length) L.push('', '## wells', w.wells.map((q, i) => `${i}:${q.name || 'unnamed'} ${KINDS[q.kind] ? KINDS[q.kind].key : '?'} fill ${r2(q.fill || 0)}/${q.cap || '?'}`).join(' | '));
   const h = (w.hist || []).slice(-(o.hist || 12)); if (h.length) { L.push('', '## recent turning points'); for (const e of h) L.push('- ' + histLine(w, e)); }
   return L.join('\n');
 }

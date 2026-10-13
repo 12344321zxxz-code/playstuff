@@ -52,11 +52,11 @@ export function layLey(w) {
 // lines are roads and open country is slow going.
 const _heap = new Heap(N);
 export function route(w) {
-  const { ley, leyTo, leyD } = w; leyD.fill(1e9); leyTo.fill(-1); _heap.clear();
-  for (const q of w.wells) { const i = q.y * W + q.x; leyD[i] = 0; _heap.push(0, i); for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(q.x + o[0]); if (leyD[j] > 0) { leyD[j] = 0; leyTo[j] = -1; _heap.push(0, j); } } }
+  const { ley, leyTo, leyD } = w, of = w.wellOf || (w.wellOf = new Int8Array(N)); leyD.fill(1e9); leyTo.fill(-1); of.fill(-1); _heap.clear();
+  for (let qi = 0; qi < w.wells.length; qi++) { const q = w.wells[qi], i = q.y * W + q.x; leyD[i] = 0; of[i] = qi; _heap.push(0, i); for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(q.x + o[0]); if (leyD[j] > 0) { leyD[j] = 0; leyTo[j] = -1; of[j] = qi; _heap.push(0, j); } } }
   while (_heap.n) {
     const c = _heap.pop(), dc = _heap.key; if (dc > leyD[c]) continue; const x = c % W, y = (c / W) | 0;
-    for (let k = 0; k < 8; k++) { const yy = y + NB8[k][1]; if (yy < 0 || yy >= H) continue; const n = yy * W + wx(x + NB8[k][0]); const cost = (k === 1 || k === 3 || k === 4 || k === 6 ? 1 : 1.41) * (ley[n] > LEY ? 1 : 9); const nd = dc + cost; if (nd < leyD[n]) { leyD[n] = nd; leyTo[n] = c; _heap.push(nd, n); } }
+    for (let k = 0; k < 8; k++) { const yy = y + NB8[k][1]; if (yy < 0 || yy >= H) continue; const n = yy * W + wx(x + NB8[k][0]); const cost = (k === 1 || k === 3 || k === 4 || k === 6 ? 1 : 1.41) * (ley[n] > LEY ? 1 : 9); const nd = dc + cost; if (nd < leyD[n]) { leyD[n] = nd; leyTo[n] = c; of[n] = of[c]; _heap.push(nd, n); } }
   }
   w.routeStamp = w.year;
 }
@@ -130,9 +130,9 @@ export const RUIN_KIND = { nuked: DEATH, sacked: DEATH, plague: DEATH, starved: 
 // Knowledge is corrosive. Every furnace, road and book wears the memory of a place away, and a
 // people's stance decides how hard they lean on it.
 function wearAway(w) {
-  const { mem, memLock } = w, pushed = w.pushed || (w.pushed = new Float64Array(NK));
+  const { mem, memLock } = w, nw = Math.max(1, w.wells.length), pw = w.pushedW && w.pushedW.length === nw * NK ? w.pushedW : (w.pushedW = new Float64Array(nw * NK));
   for (const s of w.sets) {
-    if (s.dead) continue; const c = w.cults[s.cult], A = c.arts, st = STANCES[c.stance || 'revere'];
+    if (s.dead) continue; const wi = w.wellOf ? Math.max(0, w.wellOf[s.y * W + s.x]) : 0, pushed = pw.subarray(wi * NK, wi * NK + NK); const c = w.cults[s.cult], A = c.arts, st = STANCES[c.stance || 'revere'];
     const d = (0.002 * c.tech + drainOf(A)) * (s.nomad ? 0.3 : 0.5 + 0.5 * s.tier) * st.drain;
     if (d <= 0) continue; const R = Math.min(12, s.R + 2);
     for (const o of DISC[R]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(s.x + o[0]); if (memLock[j]) continue; const k = 1 - d * (1 - o[2] / (R + 1)), b = j * NK; for (let q = 0; q < NK; q++) pushed[q] += mem[b + q] * (1 - k); for (let q = 0; q < NK; q++) mem[b + q] *= k; }
@@ -147,14 +147,18 @@ function wellsYear(w) {
   const { mem } = w;
   // Memory that the cities wear away does not vanish. It is driven out along the lines into the
   // wells, so the cleverer the world gets, the fuller and more dangerous its wells become.
-  if (w.pushed && w.wells.length) { for (let k = 0; k < NK; k++) { const per = w.pushed[k] * 0.35 / w.wells.length; if (per > 0) for (const q of w.wells) mem[(q.y * W + q.x) * NK + k] += per; w.pushed[k] *= 0.65; } }
+  // Memory that the cities wear away goes down the lines to the well that place drains to, so each
+  // industrial heartland fills its own well and each Return breaks out where the cities were.
+  const pw = w.pushedW; if (pw && pw.length === w.wells.length * NK) w.wells.forEach((q, qi) => { const b0 = (q.y * W + q.x) * NK; for (let k = 0; k < NK; k++) { const v = pw[qi * NK + k] * 0.35; if (v > 0) mem[b0 + k] += v; pw[qi * NK + k] *= 0.65; } });
   for (const q of w.wells) {
+    if (q.cap == null) q.cap = 28 + Math.round(30 * w.rnd());   // some wells are deep, some shallow
     const sum = new Float32Array(NK); let tot = 0;
     for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) { sum[k] += mem[b + k]; tot += mem[b + k]; } }
     let bk = 0; for (let k = 1; k < NK; k++) if (sum[k] > sum[bk]) bk = k; q.kind = bk; q.fill = tot;
     if (!q.name && tot > 4) q.name = WNAME[KINDS[bk].key][(w.rnd() * 3) | 0];
-    if (tot > 14 && w.storms2.length < 4 && w.year - (q.at || -99) > 25) { q.at = w.year;
-      if (tot > 40 && w.rise) w.rise(w, q, bk);   // a well this full breaks open and something comes out of it
+    if (tot > q.cap * 1.6 && (w.storms2.length >= 4 || w.year - (q.at || -99) <= 25)) { for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) mem[b + k] *= 0.8; } }   // too full to hold: it seeps away into the ground
+    if (tot > q.cap * 0.35 && w.storms2.length < 4 && w.year - (q.at || -99) > 25) { q.at = w.year;
+      if (tot > q.cap && w.rise) w.rise(w, q, bk);   // a well this full breaks open and something comes out of it
       for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) mem[b + k] *= 0.35; }
       q.spilt++; w.storms2.push({ x: q.x, y: q.y, px: q.x, py: q.y, kind: bk, left: 70, from: q.name || 'a wellspring', amt: Math.min(0.5, sum[bk] / 30), seen: new Set() });
       ev(w, `${q.name ? q.name[0].toUpperCase() + q.name.slice(1) : 'A wellspring'} spills over. A storm of ${KINDS[bk].name} runs out along the ley lines.`, q.x, q.y, null, q.spilt === 1 ? 0 : 1); discover(w, 'leystorm', q.x, q.y);

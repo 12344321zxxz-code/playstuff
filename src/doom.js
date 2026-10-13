@@ -61,7 +61,7 @@ export function doomYear(w) {
   const recent = (w.recent || []).filter((y) => w.year - y < 15); w.recent = recent;
   // a world that loses most of its people loses what they knew, bombed or not
   const ppl = w.stats.people || 0; if (!(w.darkUntil > w.year)) { if (w.fellAll || w.wasDark) w.peakPop = 0; w.fellAll = w.wasDark = false; w.peakPop = Math.max(w.peakPop || 0, ppl); } else w.wasDark = true;
-  if (w.darkUntil > w.year && !w.fellAll && w.peakPop > 50000 && ppl < 0.3 * w.peakPop) { w.fellAll = true; aftermath(w, 99); }
+  // (a world that loses most of its people loses what they knew through the carrier rule in people.js, unevenly)
   if (recent.length >= 8 && w.year - (w.fellAt || -999) > 100) { w.fellAt = w.year; if (recent.length >= 15) w.fellAll = true; aftermath(w, recent.length);
     ev(w, 'No one is left who knows how the machines worked. The wires are cold, the engines rust in the fields, and the books are used to light fires through the long winter.', null, null, null, 2); discover(w, 'machinesfall', null, null); }
 }
@@ -166,7 +166,8 @@ function aftermath(w, n) {
     c.know = Math.min(c.know, TECH[floor] * 0.5); c.tech = floor; c.bombs = 0; c.stance = 'revere';
   }
   w.surge = w.year + 300; w.darkLen = big ? 450 : 220; w.darkUntil = w.year + w.darkLen;   // a dark age: no one has time to learn anything but how to live
-  for (const q of w.wells) for (let k = 0; k < 6; k++) w.mem[(q.y * W + q.x) * 6 + k] += 6;
+  // the wells that the burned countries drain to boil over; the rest of the world's wells are spared
+  for (const c of w.cults) { if (!c.alive || !c.big || !(w.year - (c.fired || -99) < 20 || w.year - (c.struck || -99) < 20) || !w.wellOf) continue; const qi = w.wellOf[c.big.y * W + c.big.x], q = w.wells[qi]; if (!q) continue; for (let k = 0; k < 6; k++) w.mem[(q.y * W + q.x) * 6 + k] += 4; }
   ev(w, big ? 'There is nothing left anywhere of the world that made the bombs. The survivors scratch the old fields with sticks. And the old powers, that the cities had driven into the wells and the deep woods, come up out of them all at once.' : 'The peoples who used the bombs are scattered back to the age of iron. The wells boil over, and the old powers walk out into the burned country.', null, null, null, 2);
   discover(w, 'machinesfall', null, null); if (big) discover(w, 'surge', null, null);
 }

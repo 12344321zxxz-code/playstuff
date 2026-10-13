@@ -89,6 +89,9 @@ export const ART = {
 export const ART_KEYS = Object.keys(ART);
 // How much knowledge in general each era needs (the old thresholds, kept as the pace of history).
 export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 70000000, 120000000, 170000000, 230000000, 300000000];
+// The collective brain: knowing a thing takes enough people connected to each other to keep it.
+// Each tier of knowledge needs about twice the carriers of the one below.
+export const carriersFor = (tier) => 60 * Math.pow(2.1, tier);
 export const techOf = (k) => { let t = 0; while (t < TECH.length && k >= TECH[t]) t++; return t; };
 
 export function canLearn(c, k, easy) {
@@ -96,7 +99,7 @@ export function canLearn(c, k, easy) {
   if (k === 'craft') return false;   // the craft comes from towers, not from study
   if (c.tech + (easy ? 1 : 0) < T.tier) return false;
   if (c.banned && c.banned[k] && !easy) return false;
-  if (T.tier >= 7 && c.dark) return false;   // in a dark age after the bombs, nobody can rebuild the machines
+  if (T.tier >= 3 && T.tier < 99 && (c.carry || 0) < 1.5 * carriersFor(T.tier)) return false;   // too few people, too thinly connected, to hold this much knowledge
   for (const r of T.req) if (!a[r]) return false;
   return T.can ? !!T.can(c, c.env, easy) : true;
 }

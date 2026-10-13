@@ -16,7 +16,7 @@ export function tensions(w) {
     if (c.leaving) out.push({ k: 'exodus', s: 0.3, text: `The ${c.name} are leaving the world`, x: c.big.x, y: c.big.y, who: c.id });
   }
   // a well between nearly full and breaking point (one far past it is stuck, a slice-5 fix, not a story)
-  for (const q of w.wells || []) if ((q.fill || 0) > 32 && q.fill <= 40) out.push({ k: 'well', s: 0.12 + (q.fill - 32) / 40, text: `${q.name || 'A wellspring'} is close to bursting`, x: q.x, y: q.y });
+  for (const q of w.wells || []) { const cap = q.cap || 40; if ((q.fill || 0) > cap * 0.8 && q.fill <= cap) out.push({ k: 'well', s: 0.12 + (q.fill / cap - 0.8), text: `${q.name || 'A wellspring'} is close to bursting`, x: q.x, y: q.y }); }
   if (w.clock != null && w.clock <= 5 && w.stats.clock && w.stats.clock !== '—') out.push({ k: 'clock', s: 0.4, text: `The doomsday clock stands at ${w.stats.clock}`, x: null, y: null });
   if (w.darkUntil > w.year) out.push({ k: 'dark', s: 0.05, text: 'A dark age', x: null, y: null });
   return out.sort((a, b) => b.s - a.s);

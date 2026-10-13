@@ -60,6 +60,8 @@ export const PAGES = [
     ['iron', 'Iron', 'A harder metal, and harder wars.'],
     ['empire', 'Empire', 'One banner over many peoples.'],
     ['darkage', 'Dark age', 'A people forgot what their grandparents knew.'],
+    ['forgot', 'Too few to remember', 'A people became too few, or too cut off, to keep an art alive.'],
+    ['deadtown', 'A town of the dead', 'The dead took a living town and kept it.'],
     ['schism', 'Schism', 'One people became two.'],
     ['plague', 'Plague', 'A sickness that travelled the roads.'],
     ['wonder', 'Wonder', 'A people piled stone on stone for no reason but pride.'],
