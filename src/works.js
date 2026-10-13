@@ -13,7 +13,7 @@ const done = (w, kind, x, y, cult, name) => { w.works.push({ kind, x, y, cult, y
 
 export function worksYear(w) {
   const rnd = w.rnd;
-  for (const c of w.cults) {
+  for (const c of w.cults) { if (c.power) continue;
     if (!c.alive || !c.big || c.count < 3) continue; const A = c.arts;
     if (A.irrigation && A.masonry && rnd() < (A.mills ? 0.02 : 0.008)) dam(w, c);
     if (A.canals && rnd() < 0.012) canal(w, c);

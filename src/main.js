@@ -1,5 +1,6 @@
 // The page: camera, input, tools, panels. The world itself lives in world.js and friends.
 import { W, H, N, TPY, CW, CH, TAU, clamp, idx, wrapDx, wx } from './core.js';
+import { tensions, makeWatch, watchRate } from './watch.js';
 import { makeWorld, tick, refreshWater, queueClimate, background, movePlates } from './world.js';
 import { createRenderer, toScreen, toWorld } from './render.js';
 import { ZONES } from './zones.js';
@@ -20,8 +21,9 @@ if (!R) $('nogl').hidden = false;
 
 const cam = { x: W / 2, y: H / 2, z: 3, dpr: 1, w: 0, h: 0, minZ: 1 };
 const pal = new Float32Array(96);
-const S = { w: null, tool: null, brush: 5, lens: 0, speed: 2, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {}, touched: false, ref: null, ghost: null, perf: { sim: 0, gl: 0, ov: 0, ticks: 0, frame: 16 }, q: 1, qT: 0, adapt: true };
-const TPS = [0, 8, 32, 96];
+const S = { w: null, tool: null, brush: 5, lens: 0, speed: 1, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {}, touched: false, ref: null, ghost: null, perf: { sim: 0, gl: 0, ov: 0, ticks: 0, frame: 16 }, q: 1, qT: 0, adapt: true };
+const TPS = [0, 16, 32, 96];   // [1] is Watchful's quiet pace; it slows itself near turning points
+const WATCH = makeWatch();
 const LENSES = [[0, 'Land'], [10, 'Climate'], [1, 'Heat'], [2, 'Rain'], [11, 'Life'], [8, 'Wind'], [3, 'Soil'], [5, 'Height'], [4, 'Plates']];
 const SEASONS = ['midwinter', 'late winter', 'spring', 'early summer', 'midsummer', 'late summer', 'autumn', 'early winter'];
 
@@ -209,6 +211,14 @@ export function toast(e) {
   b.append(y, c, t); b.addEventListener('click', () => { if (e.x != null) flyTo(e.x + 0.5, e.y + 0.5, 6); b.remove(); }); box.appendChild(b); setTimeout(() => b.remove(), 7000);
 }
 
+/* ---------- the Watchful banner ---------- */
+function banner(now) {
+  const b = $('banner'); if (!b) return; const B = WATCH.banner;
+  if (B && now < B.until) { if (b.hidden || b.dataset.t !== B.text) { b.dataset.t = B.text; b.querySelector('.bt').textContent = B.text; b.hidden = false; b.querySelector('.bgo').hidden = B.x == null; b.querySelector('.bgo').onclick = () => { flyTo(B.x + 0.5, B.y + 0.5, 6); }; } }
+  else if (!b.hidden) b.hidden = true;
+  const t = WATCH.top, l = $('watching'); if (l) { const txt = t ? t.text : ''; if (l.dataset.t !== txt) { l.dataset.t = txt; l.textContent = txt ? 'Watching: ' + txt : ''; l.disabled = !t || t.x == null; l.onclick = () => { if (t && t.x != null) flyTo(t.x + 0.5, t.y + 0.5, 6); }; } }
+}
+
 /* ---------- panels ---------- */
 function look(p) { const info = describe(S.w, p.x, p.y); S.sel = info && info.follow ? info.follow : null; showInfo(info); }
 export function showInfo(info) {
@@ -307,9 +317,10 @@ function frame(now) {
   // a slow graphics card gets a coarser terrain rather than a slideshow
   if (raw < 400) P.frame += (raw - P.frame) * 0.06;
   if (S.adapt && now > S.qT) { S.qT = now + 2500; if (P.frame > 36 && P.sim < P.frame * 0.5 && S.q > 0.5) { S.q = Math.max(0.5, S.q * 0.8); P.frame = 20; fit(); } }
-  if (S.speed && !(S.press && !S.press.pan)) { S.acc += dt * TPS[S.speed]; while (S.acc >= 1 && ran < 10 && performance.now() - t0 < 12) { tick(w); for (const fn of hooks.tick) fn(w); S.acc -= 1; ran++; } if (ran) S.simDirty = true; if (S.acc > 3) S.acc = 0; }
+  if (S.speed && !(S.press && !S.press.pan)) { const rate = S.speed === 1 ? (S.rate || TPS[1]) : TPS[S.speed]; S.acc += dt * rate; const big = []; while (S.acc >= 1 && ran < 10 && performance.now() - t0 < 12) { tick(w); for (const e of w.events) if (e.big) big.push(e); for (const fn of hooks.tick) fn(w); S.acc -= 1; ran++; } if (ran) S.simDirty = true; if (S.acc > 3) S.acc = 0;
+    if (S.speed === 1) { S.rate = watchRate(w, WATCH, now, big); banner(now); } }
   if (S.climT && now > S.climT && !S.press) { S.climT = 0; queueClimate(w); }
-  if (!ran && w.job && !(S.press && !S.press.pan)) { const st = w.stamp.land; background(w, 8); if (w.stamp.land !== st) S.dirty = true; }
+  if (!ran && w.job && !(S.press && !S.press.pan)) { const st = w.stamp.land; background(w, 1); if (w.stamp.land !== st) S.dirty = true; }
   const t1 = performance.now(); P.sim += (t1 - t0 - P.sim) * 0.05; P.ticks += (ran - P.ticks) * 0.05;
   if (S.press && !S.press.pan && w.need.water && now > S.waterT) { S.waterT = now + 320; refreshWater(w); }
   climateWatch(now);
@@ -341,7 +352,11 @@ export const addLens = (id, label) => LENSES.push([id, label]);
 let built = false;
 export function start(data) {
   const seed = data && data.seed != null ? data.seed : (Math.random() * 1e9) | 0;
-  S.w = makeWorld(seed, data && data.bands != null ? { bands: data.bands } : null); S.sel = null; S.acc = 0; S.dirty = true;
+  adopt(makeWorld(seed, data && data.bands != null ? { bands: data.bands } : null));
+}
+// Take over a world (a new one, or one loaded from a save) and show it.
+export function adopt(world) {
+  S.w = world; S.sel = null; S.acc = 0; S.dirty = true; S.touched = false;
   for (const fn of hooks.newWorld) fn(S.w);
   if (!built) { built = true; buildUI(); fit(); setTool(TOOLS[0]); setLens(0); setBrush(5); if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) S.speed = 1; setSpeed(S.speed); S.last = performance.now(); requestAnimationFrame(frame); }
   cam.x = W / 2; cam.y = H / 2; cam.z = cam.fitZ || cam.minZ; clampCam(); dials(); showInfo(null); vitals();

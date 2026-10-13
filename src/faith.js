@@ -67,7 +67,7 @@ export function faithYear(w) {
   const rnd = w.rnd, tally = new Map();
   for (const f of w.faiths) { f.towns = 0; f.peoples = 0; f._pop = 0; }
   for (const s of w.sets) { if (s.dead || s.faith == null) continue; const f = w.faiths[s.faith]; if (!f.alive) { s.faith = null; continue; } f.towns++; f._pop += s.pop; const k = s.cult * 64 + s.faith; tally.set(k, (tally.get(k) || 0) + s.pop); }
-  for (const c of w.cults) {
+  for (const c of w.cults) { if (c.power) continue;
     if (!c.alive) continue; let best = null, bp = 0; for (const f of w.faiths) { const v = tally.get(c.id * 64 + f.id) || 0; if (v > bp) { bp = v; best = f; } }
     // the state faith is the biggest one; failing that, whatever the rulers already prayed to, or the capital's
     const was = c.faith, share = (f) => (c.pop > 0 && f != null ? (tally.get(c.id * 64 + f) || 0) / c.pop : 0);

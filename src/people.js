@@ -3,12 +3,15 @@
 // learn depends on what is around them: no boats without a shore, no bronze without both ores,
 // no riders without horses. Knowledge piles up with numbers and travels with trade; cohesion
 // wears down with size and ease; and what falls leaves ruins the next people build on.
+import { record } from './ledger.js';
+import { POWER, POWER_TOWN } from './registry.js';
 import { W, H, N, DISC, clamp, wx, wrapDx, Heap } from './core.js';
 import { ev, discover, once } from './story.js';
 import { SPECIES, takeGame, habRaw as habitat, introduce } from './fauna.js';
 import { wetAt } from './weather.js';
 import { catchFish } from './sea.js';
 import { send, arrive } from './movers.js';
+export { send };
 import { holySite, carry, convert, faithYear, sameFaith, tenetOf } from './faith.js';
 import { pickGoods, deliver, importedMetals, leagued, G as GD } from './trade.js';
 import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst } from './tech.js';
@@ -17,6 +20,7 @@ import { wallBetween } from './works.js';
 import { ignite } from './life.js';
 import { remember, DEATH, WILD, FIRE, DEEP, FAITH, FROST, memAt, stanceYear, RUIN_KIND } from './memory.js';
 import { breakPacts } from './spirits.js';
+import { deadConquest } from './dead.js';
 import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock } from './origins.js';
 
 export const TIER = ['band', 'village', 'town', 'city'];
@@ -32,7 +36,7 @@ function cultName(w, L) { let s = word(w, L, w.rnd() < 0.5 ? 1 : 2); const suf =
 const EPITHET = { great: ['the Great', 'the Conqueror', 'the Lion'], builder: ['the Builder', 'the Mason'], law: ['the Just', 'the Lawgiver', 'the Wise'], mad: ['the Mad', 'the Cruel', 'the Unready'] };
 
 export const colorOf = (c) => c.color;
-const aliveN = (w) => { let n = 0; for (const c of w.cults) if (c.alive) n++; return n; };
+const aliveN = (w) => { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; return n; };   // realms of the dead don't take a living people's place
 
 export function newCult(w, parent) {
   const used = new Uint8Array(COLORS.length); for (const c of w.cults) if (c.alive) used[c.slot] = 1;
@@ -195,19 +199,19 @@ arrive.army = (w, m) => {
   if (c.arts.cannon || oc.arts.cannon) scar(w, o, c);
   w.fx.push({ k: 'clash', x: o.x, y: o.y, T: 1.1 });
   if (o.nomad) { if (rnd() < 0.7) { const a = rnd() * 6.283, x = wx(Math.round(o.x + Math.cos(a) * 7)), y = clamp(Math.round(o.y + Math.sin(a) * 7), 3, H - 4); if (!w.water[y * W + x]) { o.px = o.x; o.py = o.y; o.mt = w.tickN; o.x = x; o.y = y; } o.pop *= 0.92; back(0.95); } else if (o.pop < m.n * 2.5) { endSet(w, o, 'absorbed'); back(1.1); } else { o.pop *= 0.8; back(0.7); } return; }
-  const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()), B = strength(oc, o.pop) * (o.walls ? wallsAgainst(c) : 1.2) * (0.6 + 0.8 * rnd());
+  const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()) * (c.power ? 1.5 + 2 * c.coh : 1), B = strength(oc, o.pop) * (o.walls ? wallsAgainst(c) : 1.2) * (0.6 + 0.8 * rnd()) * (oc.power ? 1.2 + 1.5 * oc.coh : 1);   // the dead do not break and run
   if (A <= B) { oc.wins += 0.5; if (war) war.lost++; back(0.45); return; }
-  o.pop *= 0.72; c.wins++; oc.coh = Math.max(0.05, oc.coh - 0.03); const hp = home && !home.dead ? home.pop : m.n * 6;
+  o.pop *= 0.72; c.wins++; oc.coh = Math.max(0.05, oc.coh - (oc.power ? 0.008 : 0.03)); const hp = home && !home.dead ? home.pop : m.n * 6;
   const raider = m.nomad && !(war && war.horde);
   if (raider || (c.ruler.trait === 'mad' && rnd() < 0.5)) {
     if (o.pop < hp * 0.6 && rnd() < 0.4) { endSet(w, o, 'sacked', c.name); back(1.2); return; }
     if (o.tier >= 2 && w.year - o.lastSack > 30) { o.lastSack = w.year; ev(w, `${m.nomad ? 'Riders' : 'Warriors'} of the ${c.name} sack ${o.name}.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1); }
     flee(w, o, o.pop * 0.12); o.pop *= 0.88; back(1.15); return;
   }
-  if ((o.pop < hp * 0.5 || (war && rnd() < 0.55)) && w.year - o.lastSack > 25) {
-    o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); o.cult = m.cult; o.trade = 0; if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
+  if ((o.pop < hp * 0.5 || ((war || c.power || oc.power) && rnd() < 0.55)) && w.year - o.lastSack > (c.power ? 8 : 25)) {
+    o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); const fromDead = oc.power; o.cult = m.cult; o.trade = 0; if (c.power || fromDead) deadConquest(w, o, c, oc); if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
     ev(w, wasCap ? `${o.name}, seat of the ${oc.name}, falls to the ${c.name}.` : `${o.name} falls to the ${c.name}.`, o.x, o.y, c.color, wasCap && oc.count > 24 ? 2 : wasCap || o.tier === 3 ? 0 : 1);
-    if (wasCap) { oc.coh = Math.max(0.05, oc.coh - 0.25); oc.big = null; if (war) war.until = Math.min(war.until, w.year + 2); }
+    if (wasCap) { oc.coh = Math.max(0.05, oc.coh - (oc.power ? 0.1 : 0.25)); oc.big = null; if (war) war.until = Math.min(war.until, w.year + 2); }
     flee(w, o, o.pop * 0.08); o.pop *= 0.92; back(0.6); return;
   }
   if (o.tier >= 2 && w.year - o.lastSack > 30) { o.lastSack = w.year; ev(w, `Warriors from ${home && home.name ? home.name : 'the ' + c.name} sack ${o.name}.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1); }
@@ -237,6 +241,7 @@ export function* peopleSteps(w) {
     if (k % 40 === 39) yield;
     const s = sets[k]; if (s.dead) continue; const c = w.cults[s.cult], A = c.arts, i0 = s.y * W + s.x; s.age++;
     if (water[i0] === 1) { endSet(w, s, 'drowned'); continue; }
+    if (c.power) { POWER_TOWN[c.power](w, s, c); continue; }   // a town of the dead neither eats nor grows
     { const ms = w.mass[i0]; if (!w.arrived[ms]) w.arrived[ms] = [w.year]; }
     if (w.lava[i0]) { endSet(w, s, 'buried'); continue; }
     if (w.ice[i0] && !s.nomad) { flee(w, s, s.pop * 0.5); endSet(w, s, 'frozen'); continue; }
@@ -307,8 +312,8 @@ export function* peopleSteps(w) {
   for (const c of w.cults) {
     if (!c.alive) continue; if (c._n < 0) { alive++; continue; }   // too new to have been counted
     c.count = c._n; c.pop = c._p; c.big = c._b && !c._b.dead ? c._b : null;
-    if (c.count === 0) { if (!w.sets.some((s) => s.cult === c.id) && !w.movers.some((m) => m.cult === c.id && (m.kind === 'refugees' || m.kind === 'settlers'))) { c.alive = false; endWar(w, c, true); ev(w, `The ${c.name} are gone from the world.`, null, null, c.color, c.peak > 2000 ? 2 : c.peak > 300 ? 0 : 1); if (c.peak > 300) discover(w, 'gone', null, null); } continue; }
-    alive++; cultYear(w, c);
+    if (c.count === 0) { if (!w.sets.some((s) => s.cult === c.id) && !w.movers.some((m) => m.cult === c.id && (m.kind === 'refugees' || m.kind === 'settlers'))) { c.alive = false; record(w, 'gone', [c.id], { note: 'the last of them' }); endWar(w, c, true); ev(w, `The ${c.name} are gone from the world.`, null, null, c.color, c.peak > 2000 ? 2 : c.peak > 300 ? 0 : 1); if (c.peak > 300) discover(w, 'gone', null, null); } continue; }
+    alive++; if (c.power) { POWER[c.power](w, c); continue; } cultYear(w, c);
   }
   ruinsYear(w); plaguesYear(w); faithYear(w);
   w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop
@@ -365,11 +370,15 @@ function cultYear(w, c) {
   for (const k in c.nb) { c.nb[k] *= 0.9; if (c.nb[k] < 0.05) delete c.nb[k]; }
   if (w.year >= c.ruler.until) crown(w, c);
   // cohesion: young, small and pressed peoples hold together; big, old, easy ones come apart
-  const tr = c.ruler.trait, target = clamp(1.05 + (A.laws ? 0.06 : 0) - c.count / (A.bureaucracy ? 95 : A.writing ? 58 : 38) - (w.year - c.born) / 1300 - (c.hungry / Math.max(4, c.count)) * 0.35 - (c._full / Math.max(4, c.count)) * 0.22 + (tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0) + Math.min(0.2, c.wins * 0.04) + (c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) + (c.tenet === 'peace' ? 0.04 : 0), 0.05, 1);
+  // the pressures are kept by name, so the ledger and the probe can say what is pulling a realm apart
+  const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / (A.bureaucracy ? 95 : A.writing ? 58 : 38), age: -(w.year - c.born) / 1300, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
+    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0, peace: c.tenet === 'peace' ? 0.04 : 0 };
+  let tsum = 0; for (const k in P) tsum += P[k]; const target = clamp(tsum, 0.05, 1); c.cohT = target;
   c.coh += (target - c.coh) * 0.035; c.wins *= 0.97;
   if (c._dry >= Math.max(2, c.count * 0.3) && w.year - c.lastDry > 30 && b) { c.lastDry = w.year; ev(w, c.count >= 8 ? `The rains fail across the lands of the ${c.name}. ${b.name ? b.name + ' counts its grain' : 'The herds grow thin'}.` : `The rains fail for the ${c.name}.`, b.x, b.y, c.color, c.count >= 8 ? 0 : 1); if (c.count >= 8) discover(w, 'drought', b.x, b.y); }
   if (c.env.sed >= 40 && b && b.name && !c.flags.empire) { c.flags.empire = 1; ev(w, `The ${c.name} rule from ${b.name} over ${c.env.sed} towns and villages.`, b.x, b.y, c.color, once(w, 'empire') ? 2 : c.flags.empired ? 1 : 0); c.flags.empired = 1; discover(w, 'empire', b.x, b.y); }
-  if (b && c.count >= 8 && rnd() < (c.coh < 0.3 ? 0.04 : c.coh < 0.45 ? 0.01 : 0.0008)) { if (c.coh < 0.24 && c.count >= 10 && w.year - (c.fellAt || -999) > 140) collapse(w, c); else if (w.year - Math.max(c.fellAt || -999, c.splitAt || -999) > 45) { c.splitAt = w.year; schism(w, c); } }
+  if (b && c.count >= 8) { const p = c.coh < 0.3 ? 0.04 : c.coh < 0.45 ? 0.01 : 0.0008, roll = rnd(); if (roll < p) { const why = { p, roll, terms: P, x: b.x, y: b.y };
+    if (c.coh < 0.24 && c.count >= 10 && w.year - (c.fellAt || -999) > 140) { why.note = `cohesion ${c.coh.toFixed(2)}`; c._why = why; collapse(w, c); } else if (w.year - Math.max(c.fellAt || -999, c.splitAt || -999) > 45) { c.splitAt = w.year; c._why = why; schism(w, c); } c._why = null; } }
   if (b && A.masonry && b.tier === 3 && b.pop > 1500 && !b.wonder && w.year - c.wonderAt > 180 && (c.gold || c.coh > 0.6 || tr === 'builder') && rnd() < 0.03) {
     b.wonder = 1 + ((rnd() * 4) | 0); c.wonderAt = w.year; c.coh = Math.min(1, c.coh + 0.1);
     ev(w, `${b.name} raises ${['', 'a great pyramid', 'a colossus', 'a temple the size of a hill', 'a lighthouse seen from a day away'][b.wonder]}.`, b.x, b.y, c.color); discover(w, 'wonder', b.x, b.y); if (b.wonder === 3) holySite(w, b.x, b.y, 'wonder', 0.6);
@@ -391,17 +400,20 @@ function startWar(w, c, f, horde, holy) {
     const n = 2 + allies.length; if (n >= 4 && c.tech >= 4) { const b = c.big; if (b && discover(w, 'worldwar', b.x, b.y)) ev(w, `${n} peoples are at war at once, and there is hardly a town in the known world that has not sent its sons. They will call it the Great War.`, b.x, b.y, null, 2); } });
   const until = w.year + 6 + ((w.rnd() * 18) | 0), b = c.big, big = c.count >= 20 && f.count >= 16, again = c.fought === f.id; c.fought = f.id; f.fought = c.id;
   c.war = { foe: f.id, since: w.year, until, taken: 0, lost: 0, mine: true, horde }; f.war = { foe: c.id, since: w.year, until, taken: 0, lost: 0, mine: false };
+  // big wars get a name the chronicle can come back to
+  if (c.count + f.count >= 20) { const fb = f.big, nm = horde ? `the Riding of ${c.ruler.name}` : holy ? `the War of ${w.faiths[c.faith].name}` : rnd3(w) === 0 && fb && fb.name ? `the ${fb.name.replace(/^New /, '')} War` : rnd3(w) === 1 ? `the War of the ${c.name} and the ${f.name}` : `the ${['Long', 'Red', 'Bitter', 'Iron', 'Hungry', 'Burning', 'Grey', 'Sorrowful'][(w.rnd() * 8) | 0]} War`; c.war.name = f.war.name = nm; }
+  c.war.hid = f.war.hid = record(w, 'war', [c.id, f.id], { x: b.x, y: b.y, note: horde ? 'horde' : holy ? 'holy war' : c.hungry > c.count * 0.25 ? 'hunger' : again ? 'again' : 'rivalry', terms: { rivalry: c.nb[f.id] || 0, hunger: c.hungry / Math.max(4, c.count) } });
   if (horde) { c.ruler.rode = true; ev(w, `${c.ruler.name} gathers every rider of the ${c.name}. They ride on the ${f.name}.`, b.x, b.y, c.color, once(w, 'horde') ? 2 : f.count >= 20 ? 0 : 1); discover(w, 'horde', b.x, b.y); }
   else if (holy) { ev(w, `In the name of ${w.faiths[c.faith].name}, the ${c.name} go to war with the ${f.name}.`, b.x, b.y, c.color, big ? 2 : 0); discover(w, 'holywar', b.x, b.y); }
-  else ev(w, c.hungry > c.count * 0.25 ? `Hungry, the ${c.name} turn on the ${f.name}.` : c.ruler.trait === 'great' ? `${c.ruler.name} leads the ${c.name} to war against the ${f.name}.` : again ? `The ${c.name} and the ${f.name} are at war again.` : `The ${c.name} go to war with the ${f.name}.`, b.x, b.y, c.color, again ? 1 : c.count + f.count >= 30 ? 0 : 1);
+  if (c.war.name && !horde && !holy) ev(w, `The ${c.name} go to war with the ${f.name}. Before it is over it will have a name: ${c.war.name}.`, b.x, b.y, c.color, big ? 2 : 0); else ev(w, c.hungry > c.count * 0.25 ? `Hungry, the ${c.name} turn on the ${f.name}.` : c.ruler.trait === 'great' ? `${c.ruler.name} leads the ${c.name} to war against the ${f.name}.` : again ? `The ${c.name} and the ${f.name} are at war again.` : `The ${c.name} go to war with the ${f.name}.`, b.x, b.y, c.color, again ? 1 : c.count + f.count >= 30 ? 0 : 1);
 }
 function endWar(w, c, quiet) {
   const wr = c.war; if (!wr) return; const f = w.cults[wr.foe], fw = f.war && f.war.foe === c.id ? f.war : null; c.war = null; if (fw) f.war = null;
   if (quiet || !f.alive || !c.alive) return;
   const a = wr.mine ? c : f, d = wr.mine ? f : c, aw = wr.mine ? wr : fw, dw = wr.mine ? fw : wr, got = aw ? aw.taken : 0, lost = dw ? dw.taken : 0, yrs = w.year - wr.since, at = a.big || d.big;
-  const big = got + lost >= 8;
+  const big = got + lost >= 8; record(w, 'peace', [a.id, d.id], { note: `${wr.name ? wr.name + ': ' : ''}${got} towns taken, ${lost} lost after ${yrs} years`, cause: wr.hid, x: at ? at.x : null, y: at ? at.y : null });
   const txt = wr.horde || (fw && fw.horde) ? (got >= 4 ? `The riders of the ${a.name} now rule ${got} towns of the ${d.name}. In a generation they will be townsfolk themselves.` : `The riders of the ${a.name} go home with what they could carry.`) : got > lost + 1 ? `After ${yrs} years the ${d.name} sue for peace. ${got} of their towns now answer to the ${a.name}.` : lost > got + 1 ? `The war the ${a.name} started ends badly for them: ${lost} towns lost to the ${d.name}.` : `The war between the ${a.name} and the ${d.name} ends after ${yrs} years with little to show for it.`;
-  ev(w, txt, at ? at.x : null, at ? at.y : null, a.color, big ? 2 : got + lost >= 3 ? 0 : 1);
+  ev(w, wr.name ? `${wr.name[0].toUpperCase() + wr.name.slice(1)} is over. ${txt}` : txt, at ? at.x : null, at ? at.y : null, a.color, big || wr.name ? (big ? 2 : 0) : got + lost >= 3 ? 0 : 1);
   if (got + lost >= 3 && at) { const fr = d.big || at; remember(w, (at.x + fr.x) / 2, (at.y + fr.y) / 2, DEATH, 0.35 + 0.06 * Math.min(8, got + lost), 4, 'battle', `the ${a.name} and the ${d.name} fought for ${yrs} years`); } if (big) discover(w, 'war', at ? at.x : null, at ? at.y : null);
 }
 function schism(w, c, quiet) {
@@ -410,24 +422,24 @@ function schism(w, c, quiet) {
   if (!far || fd < 16 * 16) return null;
   if (aliveN(w) >= MAXC) { let to = null; near(w, far.x, far.y, 30, far, true, (o) => { if (o.cult !== c.id && (!to || w.cults[o.cult].pop > w.cults[to.cult].pop)) to = o; }); if (!to) return null; const oc = w.cults[to.cult]; let n = 0;
     for (const s of w.sets) { if (s.cult !== c.id) continue; if (wrapDx(s.x - far.x) ** 2 + (s.y - far.y) ** 2 < 0.5 * (wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2)) { s.cult = oc.id; n++; } }
-    if (n) { c.coh = Math.min(1, c.coh + 0.15); if (!quiet) ev(w, `${n === 1 ? far.name + ' goes' : far.name + ' and ' + (n - 1) + ' other ' + (n === 2 ? 'place go' : 'places go')} over to the ${oc.name}. The ${c.name} are too weak to stop it.`, far.x, far.y, oc.color, n < 8 ? 1 : 0); } return n ? { n, to: oc } : null; }
+    if (n) { if (!quiet) record(w, 'defect', [c.id, oc.id], Object.assign({ note: `${n} towns go over` }, c._why || { x: far.x, y: far.y })); c.coh = Math.min(1, c.coh + 0.15); if (!quiet) ev(w, `${n === 1 ? far.name + ' goes' : far.name + ' and ' + (n - 1) + ' other ' + (n === 2 ? 'place go' : 'places go')} over to the ${oc.name}. The ${c.name} are too weak to stop it.`, far.x, far.y, oc.color, n < 8 ? 1 : 0); } return n ? { n, to: oc } : null; }
   const nc = newCult(w, c); let n = 0;
   for (const s of w.sets) { if (s.cult !== c.id) continue; if (wrapDx(s.x - far.x) ** 2 + (s.y - far.y) ** 2 < wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2) { s.cult = nc.id; n++; } }
-  nc.count = n; nc.coh = 0.9; c.coh = Math.min(1, c.coh + 0.2);
+  nc.count = n; nc.coh = 0.9; c.coh = Math.min(1, c.coh + 0.2); if (!quiet) record(w, 'breakaway', [c.id, nc.id], Object.assign({ note: `${n} towns` }, c._why || { x: far.x, y: far.y }));
   const dx = wrapDx(far.x - c.big.x), dy = far.y - c.big.y, dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'eastern' : 'western') : dy > 0 ? 'southern' : 'northern';
   if (!quiet) ev(w, `The ${dir} ${TIER[Math.max(1, far.tier)]}s of the ${c.name} break away. They call themselves the ${nc.name}.`, far.x, far.y, nc.color, n < 6 ? 1 : 0); discover(w, 'schism', far.x, far.y);
   return { n, to: nc, born: true };
 }
 export function collapse(w, c) {
   const b = c.big, old = c.tech, n0 = c.count, heirs = [];
-  c.fellAt = w.year; let went = 0; for (let k = 0; k < 3; k++) { const r = schism(w, c, true); if (r) { went += r.n; if (!heirs.includes(r.to)) heirs.push(r.to); } }
+  c.fellAt = w.year; record(w, 'collapse', [c.id], c._why || { terms: c.press, x: b.x, y: b.y }); let went = 0; for (let k = 0; k < 3; k++) { const r = schism(w, c, true); if (r) { went += r.n; if (!heirs.includes(r.to)) heirs.push(r.to); } }
   for (const s of w.sets) if (s.cult === c.id && !s.nomad) { const lost = s.pop * (0.15 + 0.3 * w.rnd()); flee(w, s, lost * 0.5); s.pop -= lost; if (s === b) continue; if (s.tier >= 2 && w.rnd() < 0.18) { endSet(w, s, 'abandoned'); continue; }
     if (w.rnd() < 0.3) { let to = null; near(w, s.x, s.y, 22, s, true, (u, q) => { if (u.cult !== c.id && (!to || q < to.q)) to = { u, q }; }); if (to) { s.cult = to.u.cult; s.trade = 0; went++; const h = w.cults[to.u.cult]; if (!heirs.includes(h)) heirs.push(h); } } }
   const who = heirs.length ? ` ${went === 1 ? 'One' : went} of ${b.name ? 'its places' : 'their camps'} ${went === 1 ? 'goes' : 'go'} over to the ${heirs.slice(0, 2).map((h) => h.name).join(' and the ')}${heirs.length > 2 ? ' and others' : ''}.` : '';
-  ev(w, b.name ? `The realm of the ${c.name} comes apart.${who} ${b.name} holds what is left.` : `The ${c.name} fall to fighting among themselves.${who}`, b.x, b.y, c.color, n0 >= 30 || once(w, 'collapse') ? 2 : 0);
+  ev(w, b.name ? `${realmTitle(c).replace(/^the /, 'The ').replace(/^The (?!.*realm)/, 'The realm of the ')} comes apart.${who} ${b.name} holds what is left.` : `The ${c.name} fall to fighting among themselves.${who}`, b.x, b.y, c.color, n0 >= 30 || once(w, 'collapse') ? 2 : 0);
   const keep = c.tenet === 'ancestors';
   if (old >= 2 && w.rnd() < (keep ? 0.3 : 0.7)) { c.know = TECH[old - 1] * (keep ? 0.85 : 0.55); c.tech = techOf(c.know); const lose = ['engines', 'sailing', 'writing', 'irrigation', 'roads'].find((k) => c.arts[k]); if (lose) { delete c.arts[lose]; ev(w, `The ${c.name} forget ${ART[lose].say}.`, b.x, b.y, c.color); } discover(w, 'darkage', b.x, b.y); }
-  c.coh = 0.85; c.born = w.year; c.flags.empire = 0; endWar(w, c, true);
+  c.coh = 0.85; c.born = w.year; c.flags.empire = 0; c.realmN = (c.realmN || 1) + 1; endWar(w, c, true);
 }
 
 function nomadStep(w, s, c, seaN, fishGap) {
@@ -513,8 +525,8 @@ function raid(w, s, c) {
   if (!o) return; const oc = w.cults[o.cult], foe = war && war.foe === oc.id;
   const wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet > 1 && !A.boats) return; if (wet > 5 && !A.sailing) return;
   if (s.nomad && w.wall && wallBetween(w, s.x, s.y, o.x, o.y) && rnd() < 0.75) return;   // the wall holds
-  if (!foe && (oc.war || (c.tenet === 'peace' && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8, goods: pickGoods(w, s, o) }); else meet(w, c, oc, 0.15); return; }
-  meet(w, c, oc, 0.1);
+  if (oc.power) { if (w.rnd() < 0.5) return; } else if (!foe && (oc.war || (c.tenet === 'peace' && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8, goods: pickGoods(w, s, o) }); else meet(w, c, oc, 0.15); return; }
+  if (!oc.power) meet(w, c, oc, 0.1);
   const men = Math.max(6, s.pop * (s.nomad ? 0.3 : A.bureaucracy ? 0.2 : 0.14)); s.pop -= men; s.busy = w.year + (A.bureaucracy ? 2 : 3);
   if (wet > 5 && foe && once(w, 'invasion-' + c.id + '-' + oc.id)) ev(w, `A fleet of the ${c.name} crosses the sea to make war on the ${oc.name}.`, s.x, s.y, c.color, 0);
   send(w, { kind: 'army', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: men, from: s, to: o, nomad: s.nomad, land: A.railways ? 2.4 : A.riding ? 1.5 : 0.8, sea: A.navigation ? 2.4 : 1.7 });
@@ -639,6 +651,10 @@ function cropRisks(w, c, b) {
 }
 
 const setTimeout0 = (fn) => fn();
+const rnd3 = (w) => (w.rnd() * 3) | 0;
+// 'the Thim', or 'the second realm of the Thim' once they have fallen and risen again
+const ORD = ['', '', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh'];
+export const realmTitle = (c) => (c.realmN >= 2 ? `the ${ORD[Math.min(7, c.realmN)] || c.realmN + 'th'} realm of the ${c.name}` : `the ${c.name}`);
 // Armies that know powder leave the ground torn up where they fight.
 function scar(w, o, c) {
   for (const q of DISC[2]) { const yy = o.y + q[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(o.x + q[0]); if (w.water[i]) continue; if (w.rnd() < 0.4) { w.ash[i] = 1; w.t[i] *= 0.5; w.farm[i] = 0; } }

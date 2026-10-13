@@ -3,6 +3,7 @@
 import { hook, flyTo, showInfo, state, toast } from './main.js';
 import { PAGES, pageCount } from './story.js';
 import { describeSet, cultLines } from './entities.js';
+import { explain } from './ledger.js';
 
 const $ = (id) => document.getElementById(id);
 let log = [], shown = '', almDirty = true, tab = 'chron', rosterKey = '';
@@ -17,7 +18,9 @@ function chronicle() {
   for (let k = log.length - 1; k >= Math.max(0, log.length - 160); k--) {
     const e = log[k], li = el('li'), b = el('button', 'ev' + (e.page ? ' pg' : e.digest ? ' dg' : e.big ? ' big' : '')); b.type = 'button';
     const c = el('span', 'chip' + (e.color ? '' : ' none')); if (e.color) c.style.background = e.color;
-    b.append(el('span', 'y', e.year), c, el('span', null, e.text)); if (e.x == null) b.disabled = true; else b.addEventListener('click', () => flyTo(e.x + 0.5, e.y + 0.5, 7)); li.appendChild(b); ol.appendChild(li);
+    b.append(el('span', 'y', e.year), c, el('span', null, e.text)); if (e.x == null) b.disabled = true; else b.addEventListener('click', () => flyTo(e.x + 0.5, e.y + 0.5, 7)); li.appendChild(b);
+    if (e.hid) { const q = el('button', 'why', 'why?'); q.type = 'button'; q.title = 'What led to this'; q.addEventListener('click', (ev) => { ev.stopPropagation(); state.sel = null; showInfo({ title: 'Why: ' + e.year, lines: explain(state.w, e.hid) }); }); li.appendChild(q); }
+    ol.appendChild(li);
   }
 }
 function roster() {
@@ -27,7 +30,7 @@ function roster() {
   if (!live.length) box.appendChild(el('p', 'muted', 'Nobody lives here. The People tool wakes a new band wherever you tap.'));
   for (const c of live) {
     const b = el('button', 'pp'); b.type = 'button'; const chip = el('span', 'chip'); chip.style.background = c.color;
-    b.append(chip, el('span', 'nm', c.name), el('span', 'num', short(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (c.faith != null ? ' · ' + w.faiths[c.faith].name : '') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
+    b.append(chip, el('span', 'nm', c.name + (c.realmN >= 2 ? ' ' + ['', '', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][Math.min(10, c.realmN)] : '')), el('span', 'num', short(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (c.faith != null ? ' · ' + w.faiths[c.faith].name : '') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
     b.addEventListener('click', () => { const s = c.big; if (!s) return; flyTo(s.x + 0.5, s.y + 0.5, 6); const info = describeSet(w, s); state.sel = info.follow; showInfo(info); });
     box.appendChild(b);
   }

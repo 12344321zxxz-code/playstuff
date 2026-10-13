@@ -4,7 +4,7 @@ export const once = (w, key) => (w.onces[key] ? false : (w.onces[key] = true));
 // level: 0 or nothing = worth a line; 1 or true = small (only one is kept every few years); 2 = a headline
 export function ev(w, text, x, y, color, level) {
   if (level && level !== 2) { if (w.year - (w.lastMinor || -99) < 9) return; w.lastMinor = w.year; }
-  w.events.push({ year: w.year, text, x, y, color: color || null, big: level === 2 });
+  const e = { year: w.year, text, x, y, color: color || null, big: level === 2 }; if (w._hl && w._hl.tick === w.tickN) e.hid = w._hl.id; w.events.push(e);
 }
 
 // Almanac pages. They start blank; a page is filled in the first time the world produces the

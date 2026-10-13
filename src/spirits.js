@@ -4,6 +4,8 @@
 // with a grudge, a famine leaves something hungry in the cold woods, a drowned town rings its
 // bells under the water, an old enough forest grows a court, a shrine grows a saint. Each one
 // fades when the memory under it does, so peoples can starve them, or feed them.
+import { record } from './ledger.js';
+import { foundDeadRealm } from './dead.js';
 import { W, H, N, clamp, wx, wrapDx, DISC } from './core.js';
 import { ev, discover, once } from './story.js';
 import { near, endSet, flee, infect } from './people.js';
@@ -38,10 +40,12 @@ function rise(w, kind, x, y, why, extra) {
   if (w.spirits.length >= (wild ? 40 : 18) || w.spirits.filter((p) => p.kind === kind).length >= (dead(kind) ? (wild ? 8 : 2) : kind === 'winter' ? (wild ? 3 : 2) : wild ? 8 : 4) || (dead(kind) && w.spirits.filter((p) => dead(p.kind)).length >= (wild ? 24 : 4)) || spiritNear(w, x, y, wild ? 7 : 14)) return null;
   const place = extra && extra.place || placeName(w, x, y), s = { why: why || 'something happened', place };
   // one dead king in ten is something worse: a power with a realm of its own that lasts for ages
-  const great = (kind === 'lich' && w.rnd() < (w.surge && w.year < w.surge ? 0.3 : 0.1)) || kind === 'winter' || (extra && extra.great);
+  let great = (kind === 'lich' && w.rnd() < (w.surge && w.year < w.surge ? 0.3 : 0.1)) || kind === 'winter' || (extra && extra.great);
+  if (great && kind === 'lich' && w.cults.filter((c) => c.alive && c.power === 'dead').length >= (wild ? 3 : 2)) great = false;   // only so many realms of the dead at once
   const p = Object.assign({ id: (w.spiritN = (w.spiritN || 0) + 1), kind, x, y, px: x, py: y, str: great ? 3 : 1, great, R: great ? 6 : 0, born: w.year, span: great ? (kind === 'winter' ? 350 : 900) + ((w.rnd() * 250) | 0) : (KIND[kind].mem === DEATH ? 90 : 220) + ((w.rnd() * 160) | 0), place, why: s.why, name: KIND[kind].name(s), last: -99, pact: null }, extra || {});
   if (great && kind === 'lich') { p.name = p.name.replace('Dead King', 'Undying King'); }
-  w.spirits.push(p); if (great && kind === 'lich') { ev(w, `${cap(p.name)} does not stay in its ruin. It calls the dead of the whole country to it, and they come. A realm of the dead is born.`, x, y, null, 2); discover(w, 'undying', x, y); }
+  if (great && kind === 'lich') { w.spirits.push(p); foundDeadRealm(w, p); w.spirits.pop(); }
+  w.spirits.push(p); if (great) record(w, 'power-rise', ['p:' + p.id], { x, y, note: `${p.name}: ${s.why}`, terms: { memory: memAt(w, y * W + x, KIND[kind].mem) } }); if (great && kind === 'lich') { ev(w, `${cap(p.name)} does not stay in its ruin. It calls the dead of the whole country to it, and they come. A realm of the dead is born.`, x, y, null, 2); discover(w, 'undying', x, y); }
   const told = (w.riseN = w.riseN || {})[kind] = (w.riseN[kind] || 0) + 1; ev(w, KIND[kind].rise(s), x, y, null, told <= 2 || !w.deadAge ? 0 : 1); discover(w, 'sp-' + kind, x, y); return p;
 }
 
@@ -61,8 +65,9 @@ export function spiritsYear(w) {
   if (rnd() < (w.surge && w.year < w.surge ? 0.5 : 0.15)) for (let q = 0; q < 40; q++) { const i = (rnd() * N) | 0; if (w.water[i] || w.t[i] < 0.8 || memAt(w, i, WILD) < 0.75) continue; rise(w, 'fey', i % W, (i / W) | 0, 'the oldest trees'); break; }
   for (const p of w.spirits) {
     const i = p.y * W + p.x, m = memAt(w, i, KIND[p.kind].mem);
+    if (p.realm != null) continue;   // an Undying King with a realm lives as that realm (dead.js)
     if (p.great) { realmYear(w, p); if (p.dead) continue; }
-    if ((m < FADE && !p.great) || p.str < 0.2 || w.year - p.born > p.span) { p.dead = true; ev(w, KIND[p.kind].gone(p), p.x, p.y, null, 1); continue; }
+    if ((m < FADE && !p.great) || p.str < 0.2 || w.year - p.born > p.span) { p.dead = true; if (p.great) record(w, 'power-fall', ['p:' + p.id], { x: p.x, y: p.y, note: `${p.name}: ${p.str < 0.2 ? 'broken' : w.year - p.born > p.span ? 'its time ran out' : 'its memory faded'}`, terms: { strength: p.str, age: (w.year - p.born) / p.span, memory: m } }); ev(w, KIND[p.kind].gone(p), p.x, p.y, null, 1); continue; }
     p.px = p.x; p.py = p.y; ACT[p.kind](w, p, m);
   }
   if (w.spirits.some((p) => p.dead)) w.spirits = w.spirits.filter((p) => !p.dead);
@@ -80,7 +85,7 @@ function realmYear(w, p) {
   near(w, p.x, p.y, p.R, null, false, (s) => { const c = w.cults[s.cult]; s.pop *= 1 - (p.kind === 'winter' ? 0.03 : 0.025) * warded(w, s); c.hurt = (c.hurt || 0) + 0.3; if (s.pop > 80 && w.rnd() < 0.15) flee(w, s, s.pop * 0.1); });
   // the living can break a great power, if enough of them come at once with enough knowledge
   if (age > 30 && w.rnd() < 0.03) { let force = 0, lead = null; const who = new Set(); near(w, p.x, p.y, p.R + 25, null, true, (s) => { const c = w.cults[s.cult]; force += s.pop * (1 + c.tech) * (c.stance === 'use' ? 1.6 : c.stance === 'fear' ? 1.3 : 1); who.add(s.cult); if (!lead || s.pop > lead.pop) lead = s; });
-    if (lead && who.size >= 2 && force > 45000 * p.str * (old ? 0.35 : 1)) { const c = w.cults[lead.cult]; p.dead = true; ev(w, `The living march on ${p.name} together, more of them than anyone has seen in one place. ${p.kind === 'winter' ? 'They break the ice throne' : p.kind === 'fey' ? 'They cut down the oldest trees and burn them' : 'They burn its hall to the stones'}. ${lead.name} keeps what is left of the crown.`, p.x, p.y, c.color, 2); discover(w, 'realmfall', p.x, p.y); for (const o of DISC[8]) { const yy = p.y + o[1]; if (yy < 0 || yy >= H) continue; w.mem[(yy * W + wx(p.x + o[0])) * NK + k] *= 0.3; } c.coh = Math.min(1, c.coh + 0.3); return; } }
+    if (lead && who.size >= 2 && force > 45000 * p.str * (old ? 0.35 : 1)) { const c = w.cults[lead.cult]; p.dead = true; record(w, 'power-fall', ['p:' + p.id, ...who], { x: p.x, y: p.y, note: `${p.name}: broken by ${who.size} peoples`, terms: { force: force / (45000 * p.str), strength: p.str } }); ev(w, `The living march on ${p.name} together, more of them than anyone has seen in one place. ${p.kind === 'winter' ? 'They break the ice throne' : p.kind === 'fey' ? 'They cut down the oldest trees and burn them' : 'They burn its hall to the stones'}. ${lead.name} keeps what is left of the crown.`, p.x, p.y, c.color, 2); discover(w, 'realmfall', p.x, p.y); for (const o of DISC[8]) { const yy = p.y + o[1]; if (yy < 0 || yy >= H) continue; w.mem[(yy * W + wx(p.x + o[0])) * NK + k] *= 0.3; } c.coh = Math.min(1, c.coh + 0.3); return; } }
   if (p.kind === 'lich' && w.rnd() < 0.5) { ACT.lich(w, p); if (w.rnd() < 0.2) { const a = w.rnd() * 6.283, r = p.R * (0.5 + 0.5 * w.rnd()); rise(w, 'shamblers', wx(Math.round(p.x + Math.cos(a) * r)), clamp(Math.round(p.y + Math.sin(a) * r), 2, H - 3), `${p.name} called them`, { place: p.place }); } }
 }
 // A well too full breaks open, and what comes out of it is whatever it was full of.
@@ -110,10 +115,10 @@ const ACT = {
   lich(w, p) {
     p.str = Math.min(1.6, p.str * 0.985 + memAt(w, p.y * W + p.x, DEATH) * 0.01);
     if (w.rnd() > 0.3) return; let tg = null, bs = 0;
-    near(w, p.x, p.y, 36, null, true, (s, q) => { const sc = (s.pop + 50) / (q + 30) * (p.grudge != null && w.cults[s.cult].name === p.grudge ? 4 : 1); if (sc > bs) { bs = sc; tg = s; } });
+    near(w, p.x, p.y, 36, null, true, (s, q) => { if (w.cults[s.cult].power) return; const sc = (s.pop + 50) / (q + 30) * (p.grudge != null && w.cults[s.cult].name === p.grudge ? 4 : 1); if (sc > bs) { bs = sc; tg = s; } });
     if (!tg) return; const s = tg, c = w.cults[s.cult], A = c.arts;
     if (c.tech >= 3 && s.pop > 500 && w.rnd() < 0.08 + (c.stance === 'use' ? 0.15 : 0) + (A.iron ? 0.05 : 0) + (c.stance === 'fear' ? 0.06 : 0)) {
-      p.dead = true; ev(w, `The ${c.name} march on the hall of ${p.name} and burn it to the stones. ${s.name} keeps the crown.`, p.x, p.y, c.color, 0); discover(w, 'lichslain', p.x, p.y);
+      p.dead = true; record(w, 'power-fall', ['p:' + p.id, c.id], { x: p.x, y: p.y, note: `${p.name}: its hall burned by the ${c.name}` }); ev(w, `The ${c.name} march on the hall of ${p.name} and burn it to the stones. ${s.name} keeps the crown.`, p.x, p.y, c.color, 0); discover(w, 'lichslain', p.x, p.y);
       for (const o of DISC[4]) { const yy = p.y + o[1]; if (yy < 0 || yy >= H) continue; w.mem[(yy * W + wx(p.x + o[0])) * NK + DEATH] *= 0.3; } remember(w, s.x, s.y, FAITH, 0.5, 3, 'holy', `the ${c.name} burned the hall of ${p.name}`); c.coh = Math.min(1, c.coh + 0.2); return;
     }
     hurt(w, s, 0.14 * p.str * warded(w, s)); flee(w, s, s.pop * 0.05);

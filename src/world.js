@@ -25,7 +25,7 @@ const F = () => new Float32Array(N), U = () => new Uint8Array(N);
 export function makeWorld(seed, opts) {
   const rnd = rng(seed ^ 0x9e3779b9);
   const w = {
-    sync: !!(opts && opts.sync),      // tests set this: background work finishes at once, so runs repeat exactly
+    sync: !!(opts && opts.sync),      // kept for old callers; background work is now sliced by step count everywhere, so every run repeats exactly
     seed, rnd, rs: seed | 1, tickN: 0, year: 0, phase: 0, aerosol: 0, iceFrac: 0,
     params: { sun: 0, tilt: 23.5, spin: 1, sea: 0, seaDial: 0, mood: 1 }, seaAuto: 0, ice0: 0, landIce: 0, greenhouse: 0, stats: {}, found: {}, storms: [], swarms: [], movers: [], krakens: [], fx: [], herds: [], packs: [], sets: [], cults: [], ruins: [], dragons: [], links: new Map(), nextId: 1, ownD: F(),
     h: F(), tect: null, plate: U(), filled: F(), flow: F(), down: new Int32Array(N), water: U(), river: U(), fresh: U(), dSea: U(),
@@ -91,21 +91,27 @@ export function tick(w) {
     if (y % 20 === 6) { erode(w, 0.001); w.need.water = true; }
     if (!w.job && (w.need.climate || y % 40 === 3)) w.job = { k: 'climate', g: climateSteps(w) }; else if (!w.job && w.need.water) w.job = { k: 'water', g: hydroSteps(w) };
   }
-  if (w.census) { const t0 = performance.now(); for (;;) { if (w.census.next().done) { w.census = null; break; } if (!w.sync && performance.now() - t0 > 3) break; } }
-  if (w.job) runJob(w, w.sync ? 1e9 : w.census ? 3 : 5);
+  // Background work is cut into a fixed number of steps per tick, never by the clock, so the same
+  // seed gives the same world in the browser, in tests and when Claude replays a saved game.
+  if (w.census) for (let k = 0; k < 2; k++) if (w.census.next().done) { w.census = null; break; }
+  if (w.job && (w.tickN & 1)) runJob(w, 1);   // every other tick, so a census step and a climate step rarely share one
 }
+// Finish everything in flight (before a save, so the saved world and the running one stay identical).
+export function settle(w) { if (w.census) { for (const _ of w.census); w.census = null; } while (w.job) runJob(w, 1e9); }
 
 // Ask for a fresh climate without stopping the world: the work is done a little at a time.
 export function queueClimate(w) { w.need.climate = true; w.job = { k: 'climate', g: climateSteps(w) }; }   // a newer request cancels an older one
-// The page calls this while the game is paused, so the sky still settles after an edit.
-export function background(w, ms) { if (w.job) runJob(w, ms); }
-// Climate and rivers are refreshed in the background, a few milliseconds per tick.
-function runJob(w, ms) {
-  const j = w.job, t0 = performance.now();
-  for (;;) {
-    const a = performance.now(), r = j.g.next(), d = performance.now() - a; j.n = (j.n || 0) + 1; if (w.dbg && d > (w.dbg.max || 0)) { w.dbg.max = d; w.dbg.at = j.k + '#' + j.n; }
-    if (!r.done) { if (performance.now() - t0 > ms) return; continue; }
-    if (j.k === 'climate') { derive(w); w.need.climate = false; w.job = { k: 'water', g: hydroSteps(w) }; if (w.sync) return runJob(w, ms); return; }
+// The page calls this while the game is paused, so the sky still settles after an edit. The steps
+// it takes are logged with the tick, so a replay takes exactly the same ones.
+export function background(w, steps) { if (!w.job) return; let n = 0; while (w.job && n < steps) { runJob(w, 1); n++; } if (n && w.actions) { const L = w.actions[w.actions.length - 1]; if (L && L.t === '_bg' && L.k === w.tickN) L.n += n; else logAct(w, { t: '_bg', n }); } }
+export function logAct(w, a) { if (!w.actions) return; a.k = w.tickN; w.actions.push(a); }
+// Climate and rivers are refreshed in the background, one step per tick.
+function runJob(w, steps) {
+  const j = w.job;
+  for (let k = 0; k < steps; k++) {
+    const r = j.g.next(); j.n = (j.n || 0) + 1;
+    if (!r.done) continue;
+    if (j.k === 'climate') { derive(w); w.need.climate = false; w.job = { k: 'water', g: hydroSteps(w) }; return; }
     derive(w); w.need.water = false; w.stamp.land++; landChanged(w); w.job = null; return;
   }
 }

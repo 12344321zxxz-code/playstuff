@@ -127,3 +127,24 @@ button[aria-pressed="true"],button[aria-selected="true"]{background:var(--accent
   .gb{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
   #log,#almanac,#roster{max-height:320px}
 }
+
+/* world report */
+.reportbox { position: fixed; z-index: 50; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, calc(100vw - 32px)); height: min(70vh, 640px); display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--panel, #1b1d22); color: var(--ink, #eee); border: 1px solid var(--line, #444); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+.reportbox[hidden] { display: none; }
+.reportbox .rb-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.reportbox .rb-head span { opacity: .7; font-size: 12px; }
+.reportbox textarea { flex: 1; min-height: 0; resize: none; font: 11px/1.35 ui-monospace, Menlo, Consolas, monospace; background: rgba(0,0,0,.25); color: inherit; border: 1px solid var(--line, #444); border-radius: 6px; padding: 8px; white-space: pre; overflow: auto; }
+.reportbox .rb-btns { display: flex; gap: 8px; justify-content: flex-end; }
+#log li { position: relative; }
+#log li .why { position: absolute; right: 4px; top: 4px; font-size: 10px; padding: 1px 6px; border-radius: 9px; opacity: .75; }
+#log li .why:hover { opacity: 1; }
+.banner { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; max-width: min(640px, calc(100% - 32px)); padding: 8px 12px; border-radius: 8px; background: rgba(16,18,22,.86); color: #f3efe4; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+.banner[hidden] { display: none; }
+.banner .bgo { flex: none; }
+.watching { background: none; border: none; color: inherit; opacity: .75; font-size: 12px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; padding: 0 6px; }
+.watching:disabled { cursor: default; }
+.card.keep { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; padding-bottom: 8px; }
+.keeprow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.keeprow .lab { margin-right: auto; }
+.keeprow button { padding: 3px 10px; font-size: 13px; }
+.card.keep .watching { text-align: left; max-width: none; padding: 0; min-height: 1.2em; }

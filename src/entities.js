@@ -13,7 +13,12 @@ import { COLORS, TIER, ART, ORES, colorOf, near } from './people.js';
 import { hook, palette } from './main.js';
 import { TENET } from './faith.js';
 
-for (let k = 0; k < 32; k++) { const c = COLORS[k % COLORS.length]; palette[k * 3] = parseInt(c.slice(1, 3), 16) / 255; palette[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; palette[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; }
+const setPal = (k, c) => { palette[k * 3] = parseInt(c.slice(1, 3), 16) / 255; palette[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; palette[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; };
+for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]);
+// a realm of the dead borrows a colour slot but is drawn grey while it lasts
+let palKey = '';
+const deadPal = (w) => { let key = ''; for (const c of w.cults) if (c.alive && c.power) key += c.slot + ','; if (key === palKey) return; palKey = key; for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]); for (const c of w.cults) if (c.alive && c.power) { setPal(c.slot, c.color); setPal(c.slot + 24 < 32 ? c.slot + 24 : c.slot, c.color); } };
+hook('tick', (w) => { if ((w.tickN & 7) === 0) deadPal(w); }); hook('newWorld', (w) => { palKey = '?'; deadPal(w); });
 
 const A = [0, 0], B = [0, 0];
 const ORE_COL = ['', '#d9843b', '#cfd6dc', '#7b4a3a', '#ffd23a', '#ffffff', '#2a2a2e', '#7aff5a'];
@@ -67,6 +72,12 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
     if (st.nomad) { if (z < 2.4 && st.pop < 60) continue; blit(ctx, 'camp', x, y, k, col); continue; }
     if (z < 1.8 && st.tier < 2) { ctx.fillStyle = col; ctx.fillRect(Math.round(x - cam.dpr), Math.round(y - 2 * cam.dpr), 2 * cam.dpr, 2 * cam.dpr); continue; }
     if (st.walls && st.tier >= 2 && z >= 3) blit(ctx, 'walls', x, y + k, k, col);
+    if (st.undead) {   // a town of the dead: the old houses, grey, with a cold light over them
+      if (z >= 2.4) { ctx.fillStyle = 'rgba(150,255,190,0.3)'; const q = (st.capital ? 9 : 6) * k; ctx.fillRect(Math.round(x - q), Math.round(y - q * 1.5), q * 2, q * 1.7); }
+      const hgt = blit(ctx, st.capital ? 'city' : st.tier >= 2 ? 'town' : 'ruin', x, y, k, '#6f766c');
+      if (st.capital && z >= 1.4) names.push(st, x, y + 2 * cam.dpr);
+      continue;
+    }
     const era = c.tech, look = st.tier >= 3 ? (era >= 10 ? 'cityS' : era >= 8 ? 'cityM' : era >= 6 ? 'cityI' : era >= 4 ? 'cityC' : 'city') : st.tier === 2 ? (era >= 8 ? 'townM' : era >= 6 ? 'townI' : era >= 4 ? 'townC' : 'town') : st.pop > 60 ? 'village' : 'hut';
     const hgt = blit(ctx, st.machine ? 'cityM' : look, x, y, k, st.machine ? '#4affd0' : col);
     // smoke from the stacks, lights in the windows at night-time zoom

@@ -6,6 +6,7 @@
 // plague, the ley lines carry it to the wellsprings, and the dead walk in numbers the world has
 // never seen. The smoke dims the sun for years. Whoever is left forgets the engines and the wires,
 // and in the quiet the old powers come back. Then someone digs in a ruin and finds a bomb that works.
+import { record } from './ledger.js';
 import { W, H, N, DISC, wx, wrapDx, clamp } from './core.js';
 import { ev, discover, once } from './story.js';
 import { near, endSet, flee, infect, collapse } from './people.js';
@@ -21,7 +22,7 @@ const big = (n) => (n >= 1000 ? Math.round(n / 100) / 10 + ' thousand' : String(
 export function doomYear(w) {
   const rnd = w.rnd; let armed = 0, tension = 0;
   const nuclear = w.cults.filter((c) => c.alive && c.arts.bomb);
-  for (const c of w.cults) {
+  for (const c of w.cults) { if (c.power) continue;
     if (!c.alive) continue;
     // a neighbour with the bomb is a reason to want one
     c.threat = nuclear.some((o) => o !== c && (c.nb[o.id] || 0) > 0.2) ? 1 : 0;
@@ -68,6 +69,7 @@ export const sootTick = (w) => { if (w.soot > w.aerosol) w.aerosol = w.soot; };
 
 // A launch: the attacker sends what it has at the enemy's largest cities. Their allies may answer.
 function strike(w, c, f, why) {
+  record(w, 'launch', [c.id, f.id], { note: why || 'retaliation', x: c.big ? c.big.x : null, y: c.big ? c.big.y : null });
   const n = Math.max(1, Math.min(c.bombs, why === 'alarm' ? 2 : 1 + Math.floor(c.bombs / 4)));
   const targets = w.sets.filter((s) => !s.dead && s.cult === f.id && !s.nomad).sort((a, b) => b.pop - a.pop).slice(0, n); if (!targets.length) return;
   c.bombs -= targets.length; const b = c.big; c.fired = w.year; f.struck = w.year;
@@ -155,6 +157,7 @@ function falloutYear(w) {
 // After the exchange: whoever fired or was struck is thrown back to iron and stone; if enough
 // bombs fell, the whole world goes down with them. And in the quiet, the old powers come back.
 function aftermath(w, n) {
+  record(w, 'fall', w.cults.filter((c) => c.alive && (w.year - (c.fired || -99) < 20 || w.year - (c.struck || -99) < 20)).map((c) => c.id), { note: `${n} bombs in 15 years`, terms: { bombs: n } });
   const rnd = w.rnd, big = n >= 15;
   for (const c of w.cults) {
     if (!c.alive) continue; const inIt = w.year - (c.fired || -99) < 20 || w.year - (c.struck || -99) < 20;

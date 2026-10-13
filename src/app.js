@@ -3,6 +3,7 @@ import { startSoon } from './main.js';
 import './entities.js';
 import './hands.js';
 import './book.js';
+import './keep.js';
 
 const hot = window.claude && window.claude.hot;
 let seed = null;

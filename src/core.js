@@ -14,13 +14,16 @@ export const latOf = (y) => (0.5 - (y + 0.5) / H) * LATS;   // degrees, +north
 export const wrapDx = (dx) => (dx > W / 2 ? dx - W : dx < -W / 2 ? dx + W : dx);
 export const dist2 = (x0, y0, x1, y1) => { const dx = wrapDx(x1 - x0), dy = y1 - y0; return dx * dx + dy * dy; };
 
+// The generator keeps its state on itself (f.s), so a world can be saved and resumed exactly.
 export function rng(a) {
-  return function () {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  const f = function () {
+    let s = (f.s + 0x6d2b79f5) | 0; f.s = s;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  f.s = a | 0;
+  return f;
 }
 export function hash3(x, y, z, s) {
   let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(z, 1274126177) ^ Math.imul(s, 1442695041);
