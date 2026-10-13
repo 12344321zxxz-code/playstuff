@@ -154,7 +154,7 @@ function wellsYear(w) {
     if (q.cap == null) q.cap = 28 + Math.round(30 * w.rnd());   // some wells are deep, some shallow
     const sum = new Float32Array(NK); let tot = 0;
     for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) { sum[k] += mem[b + k]; tot += mem[b + k]; } }
-    let bk = 0; for (let k = 1; k < NK; k++) if (sum[k] > sum[bk]) bk = k; q.kind = bk; q.fill = tot;
+    let bk = 0; for (let k = 1; k < FROST; k++) if (sum[k] > sum[bk]) bk = k; q.kind = bk;   // no winter wells: that magic is cut q.fill = tot;
     if (!q.name && tot > 4) q.name = WNAME[KINDS[bk].key][(w.rnd() * 3) | 0];
     if (tot > q.cap * 1.6 && (w.storms2.length >= 4 || w.year - (q.at || -99) <= 25)) { for (const o of DISC[2]) { const yy = q.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(q.x + o[0])) * NK; for (let k = 0; k < NK; k++) mem[b + k] *= 0.8; } }   // too full to hold: it seeps away into the ground
     if (tot > q.cap * 0.35 && w.storms2.length < 4 && w.year - (q.at || -99) > 25) { q.at = w.year;
@@ -203,12 +203,12 @@ export function stanceYear(w, c) {
   return null;
 }
 
-// Magic changes the weather, and not just under its feet: winter memory chills a whole region,
-// fire memory warms it. The effect is spread wide (a coarse, blurred map) and added to the climate.
+// Magic changes the weather, and not just under its feet: fire memory warms a whole region (winter
+// magic is cut; real cold comes from the climate, ash and soot). The effect is spread wide (a coarse, blurred map) and added to the climate.
 const CSZ = 8, CWB = W / CSZ, CHB = H / CSZ, _cb = new Float32Array(CWB * CHB), _cb2 = new Float32Array(CWB * CHB);
 export function magicClimate(w) {
   const { mem } = w; _cb.fill(0);
-  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) { const b = (y * W + x) * NK; _cb[((y / CSZ) | 0) * CWB + ((x / CSZ) | 0)] += (-Math.min(1.2, mem[b + FROST]) * 16 + Math.min(1, mem[b + FIRE]) * 10 + Math.min(1, mem[b + FAITH]) * 2) / 16; }
+  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) { const b = (y * W + x) * NK; _cb[((y / CSZ) | 0) * CWB + ((x / CSZ) | 0)] += (Math.min(1, mem[b + FIRE]) * 10 + Math.min(1, mem[b + FAITH]) * 2) / 16; }
   for (let pass = 0; pass < 3; pass++) { for (let y = 0; y < CHB; y++) for (let x = 0; x < CWB; x++) { let s = 0, n = 0; for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= CHB) continue; for (let dx = -1; dx <= 1; dx++) { s += _cb[yy * CWB + ((x + dx + CWB) % CWB)]; n++; } } _cb2[y * CWB + x] = s / n; } _cb.set(_cb2); }
   const tb = w.tBias || (w.tBias = new Float32Array(N)), user = w.tUser; let change = 0;
   for (let y = 0; y < H; y++) { const cy = Math.min(CHB - 1, (y / CSZ) | 0); for (let x = 0; x < W; x++) { const i = y * W + x, v = _cb[cy * CWB + ((x / CSZ) | 0)] * 2.2 + (user ? user[i] : 0); change += Math.abs(v - tb[i]); tb[i] = v; } }

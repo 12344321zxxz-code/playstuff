@@ -17,6 +17,7 @@ export function record(w, kind, who, o) {
     if (o.x != null) { e.x = Math.round(o.x); e.y2 = Math.round(o.y); }
     if (o.note) e.note = o.note;
     if (o.cause) e.cause = o.cause;
+    if (o.d) e.d = o.d;
   }
   // link back to the most recent earlier turning points that share an actor (within 300 years)
   const links = []; for (let i = h.length - 1; i >= 0 && links.length < 3; i--) { const p = h[i]; if (w.year - p.y > 300) break; if (p.who.some((v) => ids.includes(v))) links.push(p.id); }
@@ -32,11 +33,11 @@ export const lastFor = (w, who, kind) => { const h = w.hist || []; for (let i = 
 export function topTerms(terms, n = 3) {
   return Object.entries(terms || {}).filter(([k, v]) => k !== 'base' && Math.abs(v) >= 0.005).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, n);
 }
-const SAY = { size: 'too many towns to hold', age: 'an old realm grown soft', hunger: 'hunger', full: 'crowded towns', ruler: 'its ruler', wins: 'victories', faith: 'faith', laws: 'written law', peace: 'a peaceful faith', loss: 'lost wars', plague: 'plague', tin: 'lost trade' };
+const SAY = { size: 'too many towns to hold', age: 'an old realm grown soft', elites: 'more would-be lords than posts', strife: 'feuding factions', living: 'a hard life for common folk', frontier: 'room to grow', hunger: 'hunger', full: 'crowded towns', ruler: 'its ruler', wins: 'victories', faith: 'faith', laws: 'written law', peace: 'a peaceful faith', loss: 'lost wars', plague: 'plague', tin: 'lost trade' };
 export const sayTerm = (k, v) => (SAY[k] || k) + (v < 0 ? '' : ' (holding it together)');
 
 // The why chips: a turning point and what led to it, in plain words, newest first.
-const KSAY = { collapse: 'falls apart', breakaway: 'loses provinces to a breakaway', defect: 'loses towns to a neighbour', war: 'goes to war', peace: 'makes peace', gone: 'dies out', 'power-rise': 'a power rises', 'power-fall': 'a power falls', launch: 'launches the bomb', fall: 'the world falls' };
+const KSAY = { collapse: 'falls apart', breakaway: 'loses provinces to a breakaway', defect: 'loses towns to a neighbour', war: 'goes to war', peace: 'makes peace', gone: 'dies out', 'power-rise': 'a power rises', 'power-fall': 'a power falls', launch: 'launches the bomb', fall: 'the world falls', factions: 'splits into factions', civilwar: 'falls into civil war', revolt: 'faces a rising of the poor' };
 export function explain(w, id) {
   const by = new Map((w.hist || []).map((e) => [e.id, e])), out = [], seen = new Set();
   const nm = (v) => (typeof v === 'number' ? (w.cults[v] ? 'the ' + w.cults[v].name : '?') : String(v).replace(/^[pmdk]:/, ''));

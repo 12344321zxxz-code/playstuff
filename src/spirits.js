@@ -26,7 +26,7 @@ const KIND = {
   saint: { mem: FAITH, name: (s) => `the Saint of ${s.place}`, rise: (s) => `Pilgrims say the sick are healed at ${s.place}. Some of them are.`, gone: (p) => `Nobody is healed at ${p.place} any more.` },
 };
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
-const SUB = { frozen: 'winter', nuked: 'burned', battle: 'host', plague: 'shamblers', sacked: 'lich', famine: 'hunger', drowned: 'drowned', holy: 'saint' };
+const SUB = { nuked: 'burned', battle: 'host', plague: 'shamblers', sacked: 'lich', famine: 'hunger', drowned: 'drowned', holy: 'saint' };
 const FADE = 0.22, RISE = 0.45;
 export const SPIRIT_KINDS = KIND;
 
@@ -93,7 +93,6 @@ export function breach(w, q, k) {
   const x = q.x, y = q.y, nm = q.name || 'the wellspring';
   if (k === DEATH) rise(w, 'lich', x, y, `${nm} broke open`, { great: true, place: nm.replace(/^the /, '') });
   else if (k === WILD) rise(w, 'fey', x, y, `${nm} broke open`, { great: true, place: nm.replace(/^the /, '') });
-  else if (k === FROST) rise(w, 'winter', x, y, `${nm} froze solid`, { place: nm.replace(/^the /, '') });
   else if (k === FAITH) rise(w, 'saint', x, y, `${nm} shone`, { place: nm.replace(/^the /, '') });
   else if (k === FIRE) { const d = addDragon(w, x, y); if (d) { ev(w, `${cap(nm)} boils over, and out of it climbs ${d.name}, wet and new and already enormous.`, d.x, d.y, null, 0); discover(w, 'dragon', d.x, d.y); } }
   else if (k === DEEP) { for (const o of DISC[14]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(x + o[0]); if (w.water[i] === 1 && w.params.sea - w.h[i] > 0.2) { const kr = addKraken(w, i % W, (i / W) | 0); if (kr) ev(w, `${cap(nm)} empties into the sea, and the sea fills with something. Sailors name it ${kr.name}.`, kr.x, kr.y, null, 0); break; } } }
@@ -184,7 +183,7 @@ export function stormPass(w, st) {
   const i = st.y * W + st.x, rnd = w.rnd;
   if (st.kind === WILD) { for (const o of DISC[3]) { const yy = st.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(st.x + o[0]); if (w.water[j]) continue; w.t[j] = Math.min(1, w.t[j] + 0.2); w.graze[j] = Math.min(2, w.graze[j] + 0.3); if (w.farm[j]) w.farm[j] = 0; } }
   else if (st.kind === FIRE) { if (rnd() < 0.4 && !w.water[i]) ignite(w, i); }
-  else if (st.kind === FROST) { for (const o of DISC[4]) { const yy = st.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(st.x + o[0]); w.mem[j * NK + FROST] = Math.min(1.2, w.mem[j * NK + FROST] + 0.12); w.t[j] *= 0.95; } }
+  else if (false && st.kind === FROST) { for (const o of DISC[4]) { const yy = st.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(st.x + o[0]); w.mem[j * NK + FROST] = Math.min(1.2, w.mem[j * NK + FROST] + 0.12); w.t[j] *= 0.95; } }
   else if (st.kind === FAITH) { for (const o of DISC[3]) { const yy = st.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(st.x + o[0]); w.soil[j] = Math.min(1.3, w.soil[j] + 0.05); w.wetBias[j] = Math.min(2, w.wetBias[j] + 0.1); } }
   const s = near(w, st.x, st.y, 4, null, false); if (!s || st.hit === s.id) return; st.hit = s.id; const c = w.cults[s.cult];
   if (st.kind === DEATH) { hurt(w, s, 0.1); if (rnd() < 0.04) rise(w, 'shamblers', s.x, s.y, s.name || 'the camps', { place: s.name || 'the ' + c.name }); }

@@ -28,7 +28,7 @@ export function powersOf(w) {
 export function realmLine(w, c) {
   const P = c.press || {}, t = topTerms(P, 3).map(([k, v]) => `${k}${v > 0 ? '+' : ''}${r2(v)}`).join(' ');
   const war = c.war ? ` war:${w.cults[c.war.foe].name}(${w.year - c.war.since}y)` : '';
-  return `${c.name}#${c.id} pop ${kfmt(c.pop)} towns ${c.count} era ${c.tech} coh ${r2(c.coh)}→${r2(c.cohT)} [${t}]${war}${c.carry != null ? ` carriers ${kfmt(c.carry)}→tier ${c.hold}` : ''}${c.leaving ? ' LEAVING' : ''}`;
+  return `${c.name}#${c.id} pop ${kfmt(c.pop)} towns ${c.count} era ${c.tech} coh ${r2(c.coh)}→${r2(c.cohT)} [${t}]${war}${c.carry != null ? ` carriers ${kfmt(c.carry)}→tier ${c.hold}` : ''}${c.hub ? ` hub ${c.hub.st} π${r2(c.hub.pi)} X${r2(c.hub.X)} L${r2(c.hub.L)} A${r2(c.hub.A)} ${c.hub.form}` : ''}${c.leaving ? ' LEAVING' : ''}`;
 }
 
 export function digest(w, opts) {
