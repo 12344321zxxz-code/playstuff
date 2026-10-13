@@ -96,6 +96,7 @@ export function canLearn(c, k, easy) {
   if (k === 'craft') return false;   // the craft comes from towers, not from study
   if (c.tech + (easy ? 1 : 0) < T.tier) return false;
   if (c.banned && c.banned[k] && !easy) return false;
+  if (T.tier >= 7 && c.dark) return false;   // in a dark age after the bombs, nobody can rebuild the machines
   for (const r of T.req) if (!a[r]) return false;
   return T.can ? !!T.can(c, c.env, easy) : true;
 }

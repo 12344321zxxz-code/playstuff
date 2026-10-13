@@ -58,7 +58,10 @@ export function doomYear(w) {
   deadAge(w);
   // when the bombs fall by the dozen, the machines go with the cities
   const recent = (w.recent || []).filter((y) => w.year - y < 15); w.recent = recent;
-  if (recent.length >= 8 && w.year - (w.fellAt || -999) > 100) { w.fellAt = w.year; aftermath(w, recent.length);
+  // a world that loses most of its people loses what they knew, bombed or not
+  const ppl = w.stats.people || 0; if (!(w.darkUntil > w.year)) { if (w.fellAll || w.wasDark) w.peakPop = 0; w.fellAll = w.wasDark = false; w.peakPop = Math.max(w.peakPop || 0, ppl); } else w.wasDark = true;
+  if (w.darkUntil > w.year && !w.fellAll && w.peakPop > 50000 && ppl < 0.3 * w.peakPop) { w.fellAll = true; aftermath(w, 99); }
+  if (recent.length >= 8 && w.year - (w.fellAt || -999) > 100) { w.fellAt = w.year; if (recent.length >= 15) w.fellAll = true; aftermath(w, recent.length);
     ev(w, 'No one is left who knows how the machines worked. The wires are cold, the engines rust in the fields, and the books are used to light fires through the long winter.', null, null, null, 2); discover(w, 'machinesfall', null, null); }
 }
 export const sootTick = (w) => { if (w.soot > w.aerosol) w.aerosol = w.soot; };
