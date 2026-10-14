@@ -158,6 +158,11 @@ button[aria-pressed="true"],button[aria-selected="true"]{background:var(--accent
 .pp .strip{grid-column:2 / -1;width:120px;height:18px;opacity:.9}
 .records{margin:6px 0 10px}.records .rec{margin:2px 0;font-size:.9em}
 .threads{display:flex;flex-direction:column;gap:3px;margin-top:6px}
-.thread{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;font:inherit;font-size:.88em;text-align:left;background:none;border:1px solid var(--line);border-radius:6px;padding:4px 6px;color:inherit;cursor:pointer}
+.thread{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;font:inherit;font-size:.88em;text-align:left;background:none;border:1px solid var(--line);border-radius:6px;padding:4px 6px;color:inherit}
+.thread .tq{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.thread .pin{background:none;border:0;padding:0 2px;font:inherit;color:inherit;cursor:pointer}
+.story{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:6px 2px;font:inherit;color:inherit;cursor:pointer}
+.story .y{font-variant-numeric:tabular-nums;font-size:.85em;opacity:.7}
+.story .se{grid-column:2 / -1;font-style:italic}
 .thread canvas{width:60px;height:14px}
 .thread.ended{opacity:.65;font-style:italic;cursor:default}

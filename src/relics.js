@@ -52,6 +52,16 @@ export function relicsYear(w) {
       ev(w, `${r.name} leaves ${t.name} in the baggage of the ${c.name}.${from && from.alive ? ` The ${from.name} will want it back.` : ''}`, t.x, t.y, c.color, 0);
     } else if (holder && holder.big && holder.big.id !== r.at) r.at = holder.big.id;   // it lives in the holder's capital
   }
+  // regathering: whoever holds the fallen realm's old capital or crown has a claim on its old lands
+  for (const c of w.cults) c.claimHeld = null;
+  for (const cl of w.claims || []) {
+    if (cl.done || w.year - cl.year > 400) continue; const cap = byId.get(cl.cap); if (!cap) continue; const hc = w.cults[cap.cult]; if (!hc || hc.power) continue;
+    let mine = 0, alive = 0; for (const id of cl.towns) { const s = byId.get(id); if (!s) continue; alive++; if (s.cult === hc.id) mine++; }
+    if (alive < 4) { cl.done = true; continue; } const share = mine / alive; cl.holder = hc.id; cl.share = share;
+    if (share >= 0.3) hc.claimHeld = cl;
+    if (share >= 0.6 && w.year - cl.year > 30) { cl.done = true; hc.coh = Math.min(1, hc.coh + 0.1); record(w, 'regather', [hc.id, cl.cult], { x: cap.x, y: cap.y, note: `${cl.name} regathered after ${w.year - cl.year} years` });
+      ev(w, `From ${cap.name}, the ${hc.name} have gathered most of ${cl.name.replace(/^the /, 'the old ')} back under one rule, ${w.year - cl.year} years after it fell apart.`, cap.x, cap.y, hc.color, 0); discover(w, 'regather', cap.x, cap.y); }
+  }
   // records the Almanac keeps
   for (const c of w.cults) {
     if (!c.alive) continue; const age = w.year - c.born;
@@ -77,3 +87,9 @@ export const RECORDS = [
   ['plague', 'The deadliest plague', (r) => `the ${r.name}, about ${r.n.toLocaleString()} dead`],
   ['crown', 'The most stolen crown', (r) => `${r.name}, changed hands ${r.n} times`],
 ];
+
+// a claim on a foe's towns: the war goal of a realm that holds the old capital
+export function claimGoal(w, c, foe) {
+  const cl = c.claimHeld; if (!cl) return null; let n = 0; for (const s of w.sets) if (!s.dead && s.cult === foe.id && cl.towns.includes(s.id)) n++;
+  return n >= 2 ? cl : null;
+}

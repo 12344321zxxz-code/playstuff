@@ -62,6 +62,7 @@ export const PAGES = [
     ['darkage', 'Dark age', 'A people forgot what their grandparents knew.'],
     ['forgot', 'Too few to remember', 'A people became too few, or too cut off, to keep an art alive.'],
     ['deadtown', 'A town of the dead', 'The dead took a living town and kept it.'],
+    ['regather', 'The realm regathered', 'A successor holding the old capital brought most of a fallen realm back under one rule.'],
     ['crown', 'A crown', 'An empire made the one thing whoever holds it rules by.'],
     ['crownfound', 'The crown under the floor', 'A lost crown was dug out of the ruins of the city that lost it.'],
     ['seizure', 'The temple lands taken', 'A crown out of land for its lords took the temples\' instead.'],

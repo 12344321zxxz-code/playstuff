@@ -10,7 +10,7 @@
 //   st: 'grow' | 'press' (too many lords, pushing outward) | 'factions' | 'civil'
 // It never touches towns itself: it returns named pressures for cohesion, odds for war and
 // colonising, and calls back into people.js (schism / collapse) through the hooks passed in.
-import { record } from './ledger.js';
+import { record, triggerOf } from './ledger.js';
 
 // tunables, exported so tools/exp.mjs patches can A/B them. on:false = the old age clock instead.
 export const HUB = { on: true, K: 0.2, elitesW: 0.45, sizeDiv: [220, 130, 80], ageDiv: 0 };
@@ -49,19 +49,28 @@ export function hubYear(w, c, hooks) {
   if (!HUB.on) return { elites: 0, strife: 0, living: 0, frontier: 0 };
   const rnd = w.rnd, A = c.arts, b = c.big; let h = c.hub || (c.hub = makeHub(c, w));
   const settled = c.env.sed >= 4 && c.env.sed >= c.env.nomads;
+  if (settled && h.since0 == null) h.since0 = w.year;   /* when this realm, as a settled state, began */
   // government form changes slowly: at most once in 30 years
   const nf = formFor(c); if (nf !== h.form && w.year - h.formAt >= 30) { h.form = nf; h.formAt = w.year; }
   const F = FORMS[h.form];
   h.P = postsOf(c);
   const fed = 1 - Math.min(1, (c.hungry || 0) / Math.max(1, c.count));
   h.X = clamp(F.x + 0.2 * Math.max(0, h.pi - 1) + (c.tribute || 0) + (c.q ? 0.03 * c.q.build : 0) + 0.04 * (c.temple || 0) - (w.year < h.eased ? 0.05 : 0), 0.05, 0.6);
-  h.L = fed * (1 - h.X) / (1 - 0.12);
+  // living standard: what the common people keep, and how this year's surplus compares with what they are used to.
+  // Every loss is tagged by source so the ledger can name it; the 40-year baseline adapts, so realms recover.
+  const loss = { plague: 0.5 * Math.min(1, c.plagued || 0), fey: c.lostShare || 0, tribute: c.tribute || 0, hunger: 1 - fed, war: c.war && c.war.lost ? Math.min(0.4, 0.05 * c.war.lost) : 0, fallout: c.poisoned || 0 };
+  const S = (0.25 + (c.surplus || 0)) * fed * (1 - loss.fey) * (1 - loss.plague) * (1 - loss.war) * (1 - loss.fallout);
+  h.S40 = h.S40 == null ? S : h.S40 + (S - h.S40) / 40;
+  const ratio = Math.max(0.6, Math.min(1.3, Math.sqrt(S / Math.max(1e-6, h.S40))));
+  h.L = fed * (1 - h.X) / (1 - 0.12) * ratio;
+  let lt = 'hunger', lv = 0; for (const k in loss) if (loss[k] > lv) { lv = loss[k]; lt = k; } h.lossTag = lv > 0.05 ? lt : null;
   // elite income follows surplus and take with a lag of about 40 years
   const raw = (c.pop / 100) * (0.25 + (c.surplus || 0)) * Math.max(0.02, h.X - (c.tribute || 0)) * fed * (1 - (c.lostShare || 0)) + (c.tributeIn || 0);   /* tribute leaves for the overlord; what comes in from colonies feeds this realm's lords */
-  h.inc = h.inc == null ? raw : h.inc + (raw - h.inc) / 40;
+  const tr = c.treasure > 0.01 ? c.treasure * 0.05 : 0; if (tr) c.treasure -= tr;   /* a released hoard drains into the court over a generation */
+  h.inc = h.inc == null ? raw : h.inc + (raw + tr - h.inc) / 50;   /* elites follow income with a lag of two generations */
   const cap = Math.max(1, h.inc / HUB.K);
   const noise = 1 + 0.15 * (2 * rnd() - 1);
-  h.E += h.E * 0.02 * noise * (1 - h.E / cap);           // lords multiply while their income allows
+  h.E += h.E * 0.016 * noise * (1 - h.E / cap);           // lords multiply while their income allows
   if (c.war && c.war.lost) h.E *= 1 - 0.004 * Math.min(5, c.war.lost);   // and die in lost battles
   if (!settled) h.E += (0.8 * h.P - h.E) * 0.2;   /* bands and herders have chiefs, not a class of lords: no overproduction until they settle */
   h.E = Math.max(0.5, h.E); h.pi = h.E / h.P;
@@ -70,7 +79,7 @@ export function hubYear(w, c, hooks) {
   h.A += (aT - h.A) * 0.08;
   // counters with hysteresis
   h.hiPi = h.pi > 1.5 ? h.hiPi + 1 : 0; h.loPi = h.pi < 1.2 ? h.loPi + 1 : 0; h.lowL = h.L < 0.7 ? h.lowL + 1 : 0;
-  const why = (note, extra) => Object.assign({ terms: c.press, note, x: b ? b.x : 0, y: b ? b.y : 0, d: { pi: +h.pi.toFixed(2), A: +h.A.toFixed(2), L: +h.L.toFixed(2), X: +h.X.toFixed(2) } }, extra);
+  const why = (note, extra) => Object.assign({ terms: c.press, trig: (() => { const t = triggerOf(c, w.year); return t === 'living' && h.lossTag ? h.lossTag : t; })(), age: w.year - (c.hub && c.hub.since0 != null ? c.hub.since0 : c.born), note, x: b ? b.x : 0, y: b ? b.y : 0, d: { pi: +h.pi.toFixed(2), A: +h.A.toFixed(2), L: +h.L.toFixed(2), X: +h.X.toFixed(2) } }, extra);
   if (settled && b) {
     if (h.st === 'grow' && h.pi > 1.1 && w.year - h.since >= 10) { h.st = 'press'; h.since = w.year; }
     else if (h.st === 'press' && h.pi < 0.95 && w.year - h.since >= 10) { h.st = 'grow'; h.since = w.year; }
@@ -80,7 +89,7 @@ export function hubYear(w, c, hooks) {
       h.st = 'civil'; h.since = w.year; h.until = w.year + 8 + ((rnd() * 15) | 0);
       const kill = 0.3 + 0.3 * rnd(); h.E *= 1 - kill;
       const id = record(w, 'civilwar', [c.id], why(`the lords fight for ${h.pi.toFixed(1)}× too few posts; ${Math.round(kill * 100)}% of the great houses die`));
-      c._why = { terms: c.press, note: 'civil war', cause: id, x: b.x, y: b.y };
+      c._why = { terms: c.press, note: 'civil war', trig: 'strife', age: w.year - (c.hub && c.hub.since0 != null ? c.hub.since0 : c.born), cause: id, x: b.x, y: b.y };
       if (h.A < 0.2 && c.count >= 10 && w.year - (c.fellAt || -999) > 100) hooks.collapse(w, c); else hooks.civilWar(w, c);
       c._why = null;
     } else if (h.st === 'civil' && w.year >= h.until) { h.st = 'grow'; h.since = w.year; h.hiPi = 0; }

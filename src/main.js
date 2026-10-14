@@ -367,4 +367,4 @@ export function adopt(world) {
 }
 // Making a world takes a second or two; say so first.
 export function startSoon(data) { $('making').hidden = false; setTimeout(() => { try { start(data); } finally { $('making').hidden = true; } }, 30); }
-window.__f = { S, cam, start, setTool: (id) => setTool(TOOLS.find((t) => t.id === id)), setLens, setSpeed, tick };
+window.__f = { S, cam, start, setTool: (id) => setTool(TOOLS.find((t) => t.id === id)), setLens, setSpeed, tick, vitals: () => { for (const fn of hooks.vitals) fn(S.w, []); } };   /* tests can run the notebook and threads between ticks */

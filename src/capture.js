@@ -72,7 +72,7 @@ export function captureYear(w) {
       if (rnd() < p) {
         const gun = c.arts.gunpowder ? 3 : 1, rebels = strength(c, c.pop) * gun * (1 + Math.min(1, ov.hw / 300)), power = dragonPower(d), roll = rnd();
         const pw = rebels / (rebels + power), id = record(w, 'rising', [c.id], { p: pw, roll, note: `${ov.house} against ${d.name}`, x: b.x, y: b.y, terms: { rebels, dragon: power } });
-        if (roll < pw) { dragonDies(w, d); holySite(w, b.x, b.y, 'slayer', 0.9); d.king = null; free(w, c, `${ov.house} kills ${d.name}`, id);
+        if (roll < pw) { c.treasure = (c.treasure || 0) + d.hoard; dragonDies(w, d); holySite(w, b.x, b.y, 'slayer', 0.9); d.king = null; free(w, c, `${ov.house} kills ${d.name}`, id);
           ev(w, `${ov.house} raises the ${c.name}${gun > 1 ? ' with guns' : ''} against ${d.name}. The dragon falls in the hills above ${b.name}, and the house that collected its gold wears its crown.`, b.x, b.y, c.color, 2); discover(w, 'dragonslain', b.x, b.y); }
         else { ov.hw *= 0.4; ov.take = Math.min(0.4, ov.take + 0.05); ov.risings++; c.coh = Math.max(0.05, c.coh - 0.15);
           ev(w, `The ${c.name} rise against ${d.name}, and the dragon burns the rising out of the land. ${ov.house} pays double this year.`, b.x, b.y, c.color, 1); }
@@ -99,8 +99,8 @@ export function captureYear(w) {
     if (!o.alive || o.power || o.over || !o.big || !o.arts.sailing || !(o.arts.gunpowder || o.arts.navigation) || o.war) continue;
     const pushed = o.hub && (o.hub.st === 'press' || o.hub.st === 'factions'); if (rnd() > (pushed ? 0.04 : 0.008)) continue;
     colonise(w, o);
-    independence(w, o);
   }
+  for (const o of w.cults) if (o.alive && !o.power && o.big && (o.arts.sailing || o.arts.navigation)) independence(w, o);   /* colonies break away on their own clock, likelier when the crown is at war or divided */
 }
 
 // gain over cost: land and how weak or empty it is, against distance and resistance, over the sea
@@ -152,10 +152,10 @@ function settle(w, o, x, y, natives) {
 }
 // settler colonies far from the crown break away when the take runs high or the tongue has drifted
 function independence(w, o) {
-  if (w.cults.filter((c) => c.alive && !c.power).length >= 20) return;   /* the people cap holds */
   const away = w.sets.filter((s) => !s.dead && s.cult === o.id && !s.nomad && overseas(w, o, s)); if (away.length < 4) return;
   const drift = away.filter((s) => tongueGap(w, s.lang, o.langId) > 0).length / away.length, X = o.hub ? o.hub.X : 0.15;
-  if (w.rnd() > 0.01 + 0.06 * Math.max(0, X - 0.2) + 0.03 * drift) return;
+  const divided = o.hub && (o.hub.st === 'factions' || o.hub.st === 'civil') ? 0.03 : 0, warring = o.war ? 0.02 : 0;
+  if (w.rnd() > 0.002 + 0.06 * Math.max(0, X - 0.2) + 0.02 * drift + divided + warring) return;
   const byMass = new Map(); for (const s of away) { const m = w.mass[s.y * W + s.x]; (byMass.get(m) || byMass.set(m, []).get(m)).push(s); }
   let grp = null; for (const g of byMass.values()) if (!grp || g.length > grp.length) grp = g; if (grp.length < 4) return;
   const nc = newCult(w, o); let big = grp[0]; for (const s of grp) { s.cult = nc.id; if (s.pop > big.pop) big = s; } nc.count = grp.length; nc.coh = 0.95;

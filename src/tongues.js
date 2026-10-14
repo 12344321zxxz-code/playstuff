@@ -68,7 +68,7 @@ export const soundOf = (w, s, c) => (s && s.lang != null && w.langs[s.lang] ? w.
 export function tongueGap(w, a, b) {
   if (a == null || b == null) return 0; if (a === b) return 0; const L = w.langs, A = L[a], B = L[b]; if (!A || !B) return 0; if (A.root !== B.root) return Infinity;
   const up = new Map(); for (let x = A, d = 0; x; x = x.parent != null ? L[x.parent] : null, d++) up.set(x.id, d);
-  for (let x = B, d = 0; x; x = x.parent != null ? L[x.parent] : null, d++) if (up.has(x.id)) return up.get(x.id) + d;
+  for (let x = B, d = 0; x; x = x.parent != null ? L[x.parent] : null, d++) if (up.has(x.id)) return up.get(x.id) + d + (w.year - Math.max(A.born, B.born)) / 600;   /* tongues drift further apart the longer they are apart */
   return Infinity;
 }
 export const cultureOf = (w, c) => { const C = w.culs && c.culId != null ? w.culs[c.culId] : null; return C ? C.q : null; };

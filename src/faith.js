@@ -73,6 +73,7 @@ export function carry(w, from, to, how) {
   let p = how === 'conquest' ? (f.tenet === 'war' ? 0.75 : 0.4) : how === 'ship' ? (f.tenet === 'sea' ? 0.14 : 0.06) : how === 'refugees' ? 0.12 : f.tenet === 'peace' ? 0.08 : 0.045;
   if (g) { const ct = w.cults[to.cult], state = ct.faith === g.id; p *= state ? 0.35 : 0.8; if (g.tenet === 'ancestors') p *= 0.6; } else p *= 2;
   if (f.docs && f.docs.spread) p *= 2;
+  { const tc = w.cults[to.cult], h = tc && tc.hub; if (h && ['collapse', 'plague', 'deadking', 'dragonking'].includes(f.origin)) p *= 1 + 2 * Math.max(0, 1 - h.L) + Math.max(0, h.pi - 1); }   /* a faith born of a crisis spreads with the crisis */
   if (f.lang != null && !f.cosmo && w.langs && to.lang != null && w.langs[to.lang] && w.langs[to.lang].root !== f.lang) p *= 0.25;   /* faiths travel within a language family */
   if (w.rnd() < p) { convert(w, to, f); if (!g && once(w, 'faith-' + f.id + '-' + to.cult) && w.cults[to.cult].faith == null && to.tier >= 2) ev(w, `${f.name} reaches ${to.name}, carried by ${how === 'ship' ? 'sailors' : how === 'conquest' ? 'conquerors' : how === 'refugees' ? 'people fleeing' : 'traders'}.`, to.x, to.y, f.color, 1); }
 }
@@ -100,6 +101,7 @@ export function faithYear(w) {
     if (f.towns === 0 && f.born < w.year) { f.alive = false; if (w.year - f.born > 60) ev(w, `Nobody prays to ${f.name} any more.`, f.x, f.y, f.color, 1); continue; }
   }
   templesYear(w);
+  courtsConvert(w);
   for (const c of w.cults) if (c.alive && c.power === 'dead' && c.big && rnd() < 0.01) holySite(w, c.big.x, c.big.y, 'deadking', 0.5);   /* oaths against the dead */
   maps(w);
 }
@@ -170,4 +172,22 @@ export function witness(w, tool, x, y) {
   const need = kind === 'sky' ? 60 : kind === 'rain' ? 25 : 1; if (a.n < need) return;
   if (kind === 'rain') { let dry = false; near(w, Math.round(x), Math.round(y), 20, null, true, (s) => { const c = w.cults[s.cult]; if (w.year - (c.lastDry || -99) < 15) dry = true; }); if (!dry) return; }
   a.n = 0; a.at = w.year; const f = holySite(w, x, y, kind, kind === 'stay' ? 0.8 : 0.35); if (f) discover(w, 'myth', f.x, f.y);
+}
+
+// A court can convert from the top: a divided court or a new house takes up the faith of its strongest
+// neighbour or of a minority in its capital when that faith brings it allies and clergy posts.
+function courtsConvert(w) {
+  const rnd = w.rnd;
+  for (const c of w.cults) {
+    if (!c.alive || c.power || !c.big || !c.hub || c.count < 4) continue;
+    const newHouse = c.house && w.year - c.house.since < 5, torn = c.hub.st === 'factions' || c.hub.st === 'civil';
+    if (!(newHouse || torn) || rnd() > 0.03) continue;
+    let pick = null, pv = 0;
+    for (const k in c.nb) { const o = w.cults[k]; if (!o || !o.alive || o.power || o.faith == null || o.faith === c.faith || !w.faiths[o.faith].alive) continue; const v = o.pop * (1 + c.nb[k]); if (v > pv) { pv = v; pick = o.faith; } }
+    if (c.big.faith != null && c.big.faith !== c.faith && w.faiths[c.big.faith].alive && rnd() < 0.5) pick = c.big.faith;
+    if (pick == null || pick === c.faith) continue;
+    const was = c.faith, f = w.faiths[pick]; c.faith = pick; convert(w, c.big, f); c.temple = Math.max(c.temple || 0, 0.3);
+    record(w, 'convert', [c.id], { x: c.big.x, y: c.big.y, note: `${was != null ? w.faiths[was].name + ' → ' : ''}${f.name}`, trig: newHouse ? 'new house' : 'factions' });
+    ev(w, `The court of the ${c.name} takes up ${f.name}. The priests of ${was != null ? w.faiths[was].name : 'the old ways'} are told to find other work, and the new temples need clergy.`, c.big.x, c.big.y, f.color, c.count >= 10 ? 0 : 1);
+  }
 }
