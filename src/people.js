@@ -29,7 +29,7 @@ import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock, plantWild } from '
 export const TIER = ['band', 'village', 'town', 'city'];
 export const COLORS = ['#d7263d', '#8e44d6', '#f46d1b', '#f2efe4', '#22201e', '#e040a8', '#ffd400', '#00c2a8', '#7a3b1d', '#ff8fa3', '#3d5afe', '#9bd636', '#00a1e4', '#b56576', '#6d597a', '#e9c46a', '#577590', '#f94144', '#43aa8b', '#bc6c25', '#a2d2ff', '#cdb4db', '#606c38', '#fb8500'];
 export const ORES = ['', 'copper', 'tin', 'iron', 'gold', 'salt', 'coal', 'uranium'];
-const MAXS = 520, MAXC = 20, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
+const MAXS = 520, MAXB = 420, MAXC = 20, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
 const placeName = (w, c) => word(w, c.lang, w.rnd() < 0.6 ? 2 : 3);
 function cultName(w, L) { let s = word(w, L, w.rnd() < 0.5 ? 1 : 2); const suf = ['i', 'an', 'ari', 'u', 'esh', 'or', 'im', 'a'][(w.rnd() * 8) | 0]; if (/[aeiou]$/.test(s)) s = s.slice(0, -1); return s + suf; }
 const EPITHET = { great: ['the Great', 'the Conqueror', 'the Lion'], builder: ['the Builder', 'the Mason'], law: ['the Just', 'the Lawgiver', 'the Wise'], mad: ['the Mad', 'the Cruel', 'the Unready'] };
@@ -56,7 +56,7 @@ function crown(w, c, quiet) {
 export function addSet(w, cult, x, y, pop, nomad) {
   const c = w.cults[cult]; x = wx(x);
   const s = { id: w.nextId++, cult, x, y, px: x, py: y, mt: 0, pop, nomad, tier: nomad ? 0 : 1, maxTier: nomad ? 0 : 1, age: 0, R: 2, links: 0, trade: 0, name: nomad ? null : placeName(w, c), lastFam: -99, lastSack: -99, src: [1, 0, 0, 0, 0], way: 'forage', note: 'grow', ores: 0, wonder: 0, plague: 0, immune: 0, dead: false, walls: false, tower: false, port: false, busy: 0, burned: 0, wa: 1, faith: c.faith };
-  w.sets.push(s); c.count++; return s;
+  w.sets.push(s); c.count++; if (nomad) w.nBand = (w.nBand || 0) + 1; else w.nTown = (w.nTown || 0) + 1; return s;
 }
 function learn(w, c, k, from) {
   if (c.arts[k]) return false; c.arts[k] = w.year; const b = c.big, first = once(w, 'art-' + k);
@@ -93,7 +93,7 @@ function meet(w, c, o, p) {
 
 /* ---------- finding things ---------- */
 const BK = 16, GW = W / BK, GH = H / BK;
-function buildGrid(w) { const g = (w.sgrid = w.sgrid || []); for (let k = 0; k < GW * GH; k++) (g[k] || (g[k] = [])).length = 0; for (const s of w.sets) if (!s.dead) g[((s.y / BK) | 0) * GW + ((s.x / BK) | 0)].push(s); }
+function buildGrid(w) { let nt = 0, nb = 0; for (const s of w.sets) if (!s.dead) { if (s.nomad) nb++; else nt++; } w.nTown = nt; w.nBand = nb; const g = (w.sgrid = w.sgrid || []); for (let k = 0; k < GW * GH; k++) (g[k] || (g[k] = [])).length = 0; for (const s of w.sets) if (!s.dead) g[((s.y / BK) | 0) * GW + ((s.x / BK) | 0)].push(s); }
 export function near(w, x, y, d, skip, sedOnly, each, notCult) {
   const g = w.sgrid, r = Math.ceil(d / BK), bx = (x / BK) | 0, by = (y / BK) | 0, d2 = d * d; let best = null, bd = d2;
   for (let gy = by - r; gy <= by + r; gy++) { if (gy < 0 || gy >= GH) continue; for (let gx = bx - r; gx <= bx + r; gx++) { const b = g[gy * GW + ((gx % GW) + GW) % GW];
@@ -164,14 +164,14 @@ export function flee(w, s, n, sick) {
 arrive.refugees = (w, m) => {
   const c = w.cults[m.cult];
   if (m.to && !m.to.dead) { m.to.pop += m.n * 0.9; if (m.sick != null) infect(w, m.to, m.sick); carry(w, m, m.to, 'refugees'); return; }
-  const x = wx(Math.round(m.x)), y = clamp(Math.round(m.y), 2, H - 3); if (w.water[y * W + x] || w.sets.length >= MAXS * 0.85 || !c.alive || c.env.nomads >= 6) return;
+  const x = wx(Math.round(m.x)), y = clamp(Math.round(m.y), 2, H - 3); if (w.water[y * W + x] || (w.nBand || 0) >= MAXB * 0.85 || !c.alive || c.env.nomads >= 6) return;
   // refugees of a settled, knowing people settle down again or join their kin; only tribes take to wandering
   if (c.tech >= 3) { const kin = near(w, x, y, 40, null, true, null); if (kin && kin.cult === m.cult) { kin.pop += m.n * 0.8; return; } if (m.n >= 25 && !near(w, x, y, 5, null, true)) { const v = addSet(w, m.cult, x, y, m.n * 0.9, false); v.faith = m.faith; } return; }
   const b = addSet(w, m.cult, x, y, m.n * 0.9, true); b.faith = m.faith; tagFrom(w, b, m); c.env.nomads++;
 };
 arrive.settlers = (w, m) => {
   const c = w.cults[m.cult], x = wx(Math.round(m.tx)), y = Math.round(m.ty), i = y * W + x, home = m.from;
-  if (w.water[i] || w.ice[i] || w.lava[i] || near(w, x, y, 5.5, null, true) || w.sets.length >= MAXS || !c.alive) { if (home && !home.dead) home.pop += m.n; return; }
+  if (w.water[i] || w.ice[i] || w.lava[i] || near(w, x, y, 5.5, null, true) || (w.nTown || 0) >= MAXS || !c.alive) { if (home && !home.dead) home.pop += m.n; return; }
   let cult = m.cult;
   if (m.split && aliveN(w) < MAXC) { const nc = newCult(w, c); cult = nc.id; ev(w, `Settlers from ${home ? home.name : 'the ' + c.name} cross ${m.wetN > 1 ? 'the water' : 'the hills'} and call themselves the ${nc.name}.`, x, y, nc.color, m.ocean ? 0 : 1); }
   const v = addSet(w, cult, x, y, m.n, false), ru = ruinAt(w, x, y); if (home) { v.faith = home.faith; tagFrom(w, v, home); }
@@ -468,12 +468,12 @@ function nomadStep(w, s, c, seaN, fishGap) {
   const rnd = w.rnd, herder = !!c.grazer, A = c.arts, src = s.src;
   // a settled people past the iron age has no wandering bands: they settle where they stand or go to town
   const sedL = c.sedLast || 0;   /* last census's count: this one is still being taken */
-  if (((c.tech >= 4 && sedL >= 3) || (c.tech >= 5 && sedL >= 1)) && rnd() < 0.6) { const t = near(w, s.x, s.y, 60, s, true, null); if (t && t.cult === s.cult) { t.pop += s.pop; s.dead = true; w.anyDead = true; return; } if (!near(w, s.x, s.y, 5, s, true) && w.magic[s.y * W + s.x] < 0.7) { s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3); return; } if (t) t.pop += s.pop * 0.7; s.dead = true; w.anyDead = true; return; }
+  if (((c.tech >= 4 && sedL >= 3) || (c.tech >= 5 && sedL >= 1)) && rnd() < 0.6) { const t = near(w, s.x, s.y, 60, s, true, null); if (t && t.cult === s.cult) { t.pop += s.pop; s.dead = true; w.anyDead = true; return; } if ((w.nTown || 0) < MAXS && !near(w, s.x, s.y, 5, s, true) && w.magic[s.y * W + s.x] < 0.7) { w.nTown++; s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3); return; } if (t) t.pop += s.pop * 0.7; s.dead = true; w.anyDead = true; return; }
   const herding = herder && src[4] >= src[2] && src[4] > src[0] * 0.8;
   if (s.age > 3 && (A.farming || (!herding && c.know > 1200 && src[2] > src[0] + src[1]))) {
     let sk = 0, cnt = 0; for (const o of DISC[2]) { const y = s.y + o[1]; if (y < 1 || y >= H - 1) continue; const i = y * W + wx(s.x + o[0]); if (w.water[i]) continue; sk += (A.farming ? cropYield(w, c, i) : 0) + (w.fresh[i] <= 1 ? 0.3 : 0); cnt++; }
     if (cnt >= 6 && ((A.farming && sk / cnt > (herder ? 0.8 : 0.4)) || (!herder && seaN >= 4 && fishGap > 0.8)) && !near(w, s.x, s.y, 6, s, true) && w.magic[s.y * W + s.x] < 0.7) {
-      s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y;
+      if ((w.nTown || 0) >= MAXS) return; s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; w.nTown++;
       const ru = ruinAt(w, s.x, s.y);
       if (ru) { s.name = 'New ' + ru.name.replace(/^New /, ''); discover(w, 'reborn', s.x, s.y); } else s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3);
       if (!c.flags.village) { c.flags.village = 1; const fishy = !(A.farming && sk / cnt > 0.4); ev(w, `The ${c.name} put down roots at ${s.name}${fishy ? ', a fishing camp that stayed' : ', their first village'}.`, s.x, s.y, c.color, once(w, 'village') ? 0 : 1); discover(w, 'village', s.x, s.y); }
@@ -485,7 +485,7 @@ function nomadStep(w, s, c, seaN, fishGap) {
     for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2) continue; const i = y * W + x; if (w.water[i] || w.h[i] - w.params.sea > 0.42 || w.ice[i]) continue;
       let sc = siteScore(w, x, y, A.farming, herding, c) * (0.9 + 0.2 * rnd()); if (near(w, x, y, 4, s)) sc *= 0.4; if (sc > best) { best = sc; bx = x; by = y; } }
     s.x = bx; s.y = by; }
-  if (!(c.tech >= 4 && (c.sedLast || 0) >= 3) && !(c.tech >= 5) && (s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : 26) : 10) && w.sets.length < MAXS) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
+  if (!(c.tech >= 4 && (c.sedLast || 0) >= 3) && !(c.tech >= 5) && (s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : 26) : 10) && (w.nBand || 0) < MAXB) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
   if (A.farming && !herding && s.age > 20 && rnd() < 0.08) { const b = near(w, s.x, s.y, 14, s, true); if (b) { b.pop += s.pop * 0.8; s.dead = true; w.anyDead = true; return; } if (s.age > 60) { s.dead = true; w.anyDead = true; return; } }
   const war = c.war;
   if (herder && s.pop > 70 && w.year >= s.busy && rnd() < (A.riding ? 0.07 : 0.02) * (war ? (war.horde ? 6 : 3) : 1)) raid(w, s, c);
@@ -500,7 +500,7 @@ function townStep(w, s, c) {
   if (A.masonry && s.tier >= 2) s.walls = true;
   if (!s.tower && c.tech >= 2 && s.tier >= 2 && c.stance !== 'forget' && c.stance !== 'fear' && w.magic[s.y * W + s.x] > (c.stance === 'use' ? 0.35 : 0.55) && rnd() < (c.stance === 'use' ? 0.05 : 0.02)) { s.tower = true; if (!A.craft) c.arts.craft = w.year; ev(w, `A tower goes up at ${s.name}, where the air hums. Nobody admits to building it.`, s.x, s.y, c.color); discover(w, 'tower', s.x, s.y); }
   if (s.tower && s.wa < 0.7 && rnd() < 0.2) { for (const o of DISC[7]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); w.wetBias[i] = Math.min(2.5, w.wetBias[i] + 0.25 * (1 - o[2] / 8)); } w.need.climate = true; if (discover(w, 'rainmaker', s.x, s.y)) ev(w, `In the third dry year, the tower at ${s.name} calls the rain. It comes.`, s.x, s.y, c.color); }
-  if (s.pop > 95 && s.age > 14 && w.sets.length < MAXS && rnd() < 0.036 * hubPush(c)) colonize(w, s, c);
+  if (s.pop > 95 && s.age > 14 && (w.nTown || 0) < MAXS && rnd() < 0.036 * hubPush(c)) colonize(w, s, c);
   else if (c.grazer && s.pop > 130 && rnd() < 0.008) pasture(w, s, c);
   const war = c.war;
   if (s.pop > 60 && w.year >= s.busy && rnd() < 0.03 * (c.ruler.trait === 'great' ? 2 : 1) * (war ? (A.bureaucracy ? 5 : 3.2) : 1)) raid(w, s, c);
@@ -538,7 +538,7 @@ function pasture(w, s, c) {
   for (let q = 0; q < 14; q++) { const a = rnd() * 6.2832, d = 6 + rnd() * 13, x = wx(Math.round(s.x + Math.cos(a) * d)), y = Math.round(s.y + Math.sin(a) * d * 0.8); if (y < 3 || y >= H - 3) continue; const i = y * W + x;
     if (w.water[i] || cropYield(w, c, i) > 0.3 || w.ice[i] || w.h[i] - sea > 0.4 || w.owner[i] >= 0 || w.g[i] <= bg || near(w, x, y, 5, null, false)) continue; bg = w.g[i]; bi = i; }
   if (c.tech >= 3) return;   // past the iron age, herders become ranchers; nobody walks off to live in the saddle
-  if (bi < 0 || w.sets.length >= MAXS || Math.max(c.env.nomads, c.nomadsWas || 0) >= 12) return; let cult = s.cult; s.pop -= 30;
+  if (bi < 0 || (w.nBand || 0) >= MAXB || Math.max(c.env.nomads, c.nomadsWas || 0) >= 12) return; let cult = s.cult; s.pop -= 30;
   if (c.env.nomads === 0 && aliveN(w) < MAXC && rnd() < 0.7) { const nc = newCult(w, c); cult = nc.id; nc.way = 'herd'; ev(w, `Herders of the ${c.name} take their animals out onto the open grass and do not come back. They call themselves the ${nc.name}.`, bi % W, (bi / W) | 0, nc.color, once(w, 'pastoral') ? 0 : 1); }
   else { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; }
   const b = addSet(w, cult, bi % W, (bi / W) | 0, 30, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN;
@@ -617,7 +617,7 @@ export function initPeople(w, n) {
   buildGrid(w);
 }
 export function addBand(w, x, y) {
-  x = wx(Math.round(x)); y = clamp(Math.round(y), 2, H - 3); if (w.water[y * W + x] || w.sets.length >= MAXS) return null;
+  x = wx(Math.round(x)); y = clamp(Math.round(y), 2, H - 3); if (w.water[y * W + x] || (w.nBand || 0) >= MAXB) return null;
   if (!w.cults.some((q) => q.alive) && w.arrived) w.arrived[w.mass[y * W + x]] = [-1000];   // the first people anywhere: their land is the cradle
   const c = newCult(w, null); addSet(w, c.id, x, y, 28, true); buildGrid(w);
   ev(w, `A new people, the ${c.name}, wake ${whereAbouts(w, x, y)}.`, x, y, c.color); return c;

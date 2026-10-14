@@ -36,10 +36,10 @@ export function digest(w, opts) {
   const o = opts || {}, L = [], live = alive(w), tiers = [0, 0, 0, 0, 0]; for (const s of w.sets) tiers[Math.min(4, s.tier | 0)]++;
   const eras = {}; for (const c of live) eras[c.tech] = (eras[c.tech] || 0) + 1;
   L.push(`# Formicarium seed ${w.seed} year ${w.year}`);
-  L.push(`world pop ${kfmt(w.stats.people || 0)} (peak ${kfmt(w.peakPop || 0)}) peoples ${live.length}/20 towns ${w.sets.length}/520 [bands/villages/towns/cities ${tiers.slice(0, 4).join('/')}] wars ${live.filter((c) => c.war && c.war.mine).length} nukes ${w.nukes || 0}${w.darkUntil > w.year ? ` DARK AGE until ${w.darkUntil}` : ''}`);
+  L.push(`world pop ${kfmt(w.stats.people || 0)} (peak ${kfmt(w.peakPop || 0)}) peoples ${live.length}/20 towns ${w.nTown || 0}/520 bands ${w.nBand || 0}/420 [bands/villages/towns/cities ${tiers.slice(0, 4).join('/')}] wars ${live.filter((c) => c.war && c.war.mine).length} nukes ${w.nukes || 0}${w.darkUntil > w.year ? ` DARK AGE until ${w.darkUntil}` : ''}`);
   L.push(`eras: ${Object.entries(eras).sort((a, b) => b[0] - a[0]).map(([e, n]) => `${n}×${ERA[e]}`).join(', ')}`);
   L.push(`magic ${w.stats.magic || 0} soot ${r2(w.soot || 0)} ice ${Math.round((w.landIce || 0) * 100)}% greenhouse ${r2(w.greenhouse || 0)}`);
-  const warn = []; if (!Number.isFinite(w.stats.people)) warn.push('NaN population'); if (live.length >= 20) warn.push('people cap hit'); if (w.sets.length >= 510) warn.push('town cap hit');
+  const warn = []; if (!Number.isFinite(w.stats.people)) warn.push('NaN population'); if (live.length >= 20) warn.push('people cap hit'); if ((w.nTown || 0) >= 510) warn.push('town cap hit'); if ((w.nBand || 0) >= 410) warn.push('band cap hit');
   const recent = (w.hist || []).filter((e) => e.k === 'collapse' && w.year - e.y < 50).length; if (recent >= 4) warn.push(`${recent} collapses in 50 years`);
   if (warn.length) L.push('WARN: ' + warn.join('; '));
   L.push('', '## realms (largest first)');

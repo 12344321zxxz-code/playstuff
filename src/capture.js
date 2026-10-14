@@ -131,6 +131,7 @@ function colonise(w, o) {
     if (w.water[i] || w.mass[i] === mine || w.gCap[i] < 0.3 || w.ice[i] || near(w, x, y, 14, null, true)) continue; settle(w, o, x, y, null); return; }
 }
 function fort(w, o, x, y, natives) {
+  if ((w.nTown || 0) >= 520) return;
   // a trading fort on the coast: colonists die of the fevers inland
   for (let q = 0; q < 30; q++) { const a = w.rnd() * 6.283, r = 4 + w.rnd() * 12, xx = wx(Math.round(x + Math.cos(a) * r)), yy = Math.round(y + Math.sin(a) * r); const i = yy * W + xx; if (w.water[i] || near(w, xx, yy, 5, null, true)) continue;
     let coast = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (w.water[(yy + dy) * W + wx(xx + dx)] === 1) coast = true; if (!coast) continue;
