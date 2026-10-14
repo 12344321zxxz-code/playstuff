@@ -48,7 +48,7 @@ export function captureYear(w) {
     if (!best || strength(best, best.pop) > 0.3 * dragonPower(d)) continue;
     d.king = best.id; take(w, best, { kind: 'dragon', d: d.name }); (d.pacts || (d.pacts = new Set())).add(best.id);
     const b = best.big; record(w, 'capture', [best.id], { note: `${d.name} takes the ${best.name}`, x: b.x, y: b.y, terms: { theirs: strength(best, best.pop), its: dragonPower(d) } });
-    ev(w, `${d.name} lands in the square of ${b.name} and does not leave. The ${best.name} have a king now, and ${best.over.house} will collect what it asks.`, b.x, b.y, best.color, 2); discover(w, 'dragonking', b.x, b.y);
+    holySite(w, b.x, b.y, 'dragonking', 0.3); ev(w, `${d.name} lands in the square of ${b.name} and does not leave. The ${best.name} have a king now, and ${best.over.house} will collect what it asks.`, b.x, b.y, best.color, 2); discover(w, 'dragonking', b.x, b.y);
   }
   for (const c of w.cults) {
     if (!c.alive || c.power) { if (c.over) c.over = null; continue; }

@@ -1,4 +1,5 @@
 // The page: camera, input, tools, panels. The world itself lives in world.js and friends.
+import { witness } from './faith.js';
 import { tongueColor, familyOf } from './tongues.js';
 import { W, H, N, TPY, CW, CH, TAU, clamp, idx, wrapDx, wx } from './core.js';
 import { tensions, makeWatch, watchRate } from './watch.js';
@@ -92,7 +93,7 @@ function applyTool(p, first) {
     case 'fire': ok = burn(w, p.x, p.y, Math.min(r, 2)); break;
     default: if (t.apply) ok = t.apply(w, p, first, r, st, S.opt[t.id] || 0);
   }
-  S.dirty = true; if (!ok && first) hint(t.miss || 'Nothing happens there.');
+  S.dirty = true; if (!ok && first) hint(t.miss || 'Nothing happens there.'); if (ok) witness(w, t.id, p.x, p.y);   /* big acts can become myth */
   if (w.edited || w.need.climate) S.touched = true;
 }
 function finishEdit() {

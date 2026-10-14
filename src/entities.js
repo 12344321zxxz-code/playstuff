@@ -13,7 +13,7 @@ import { SPECIES } from './fauna.js';
 import { blit, pixScale } from './pixels.js';
 import { COLORS, TIER, ART, ORES, colorOf, near } from './people.js';
 import { hook, palette } from './main.js';
-import { TENET } from './faith.js';
+import { TENET, MAGIC } from './faith.js';
 
 const setPal = (k, c) => { palette[k * 3] = parseInt(c.slice(1, 3), 16) / 255; palette[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; palette[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; };
 for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]);
@@ -240,7 +240,7 @@ export function cultLines(w, c) {
   if (lk.germs > 0.6 && c.germ > 0.4) L.push('Living close to their herds has given them every sickness, and made them hard to kill with any of them.'); else if (c.germ < 0.12 && w.year > 150) L.push('They have never lived with herds and their sicknesses. A stranger\'s cough could empty their towns.');
   const st = STANCES[c.stance || 'revere']; L.push(`${st.name}: they ${st.say}.${c.pacts ? ' They have made bargains with the old powers.' : ''}`);
   L.push(`${c.ruler.name} leads them. ${c.coh > 0.7 ? 'They hold together well.' : c.coh > 0.45 ? 'There are quarrels, but they hold.' : c.coh > 0.25 ? 'They are pulling apart.' : 'They are one people in name only.'}`);
-  if (c.faith != null) { const f = w.faiths[c.faith]; L.push(`They pray to ${f.name}, whose teaching ${TENET[f.tenet]}.${c.faithShare < 0.6 ? ' Not all of them.' : ''}`); }
+  if (c.faith != null) { const f = w.faiths[c.faith]; const ds = Object.keys(f.docs || {}).filter((k) => k !== f.tenet).map((k) => TENET[k]); L.push(`They pray to ${f.name}, whose teaching ${TENET[f.tenet]}${ds.length ? ' and ' + ds.join(' and ') : ''}. It tells them to ${MAGIC[f.magic] || 'keep the old places'}.${c.faithShare < 0.6 ? ' Not all of them pray.' : ''}${c.faithHold != null && c.faithHold < 0.4 ? ' Faith sits lightly on them now.' : c.faithHold > 0.85 ? ' Faith rules their lives.' : ''}${c.temple > 0.5 ? ' The temples own much of the land.' : ''}`); }
   if (c.war) { const f = w.cults[c.war.foe]; L.push(`At war with the ${f.name} since year ${c.war.since}.`); }
   if (c.parent) L.push(`They split from the ${c.parent} in year ${c.born}.`);
   return L;

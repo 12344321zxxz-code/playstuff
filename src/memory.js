@@ -187,11 +187,12 @@ export function stanceYear(w, c) {
   if (!c.big || (w.year + c.id) % 6) return; const A = c.arts, i = c.big.y * W + c.big.x, here = w.magic[i];
   let towers = 0; for (const s of w.sets) if (s.cult === c.id && s.tower) towers++;
   const sc = {
-    revere: (c.tenet === 'ancestors' || c.tenet === 'grove' ? 2 : 0) + (c.tech <= 2 ? 1.3 : 0) + here * 2.5 + (c.pacts ? 1.5 : 0) + (c.way === 'farm' ? 0 : 0.8),
+    revere: (!!(c.docs && c.docs.ancestors) || !!(c.docs && c.docs.grove) ? 2 : 0) + (c.tech <= 2 ? 1.3 : 0) + here * 2.5 + (c.pacts ? 1.5 : 0) + (c.way === 'farm' ? 0 : 0.8),
     use: towers * 1.4 + (c.tech >= 2 && here > 0.25 ? 1.2 : 0),
     fear: (c.hurt || 0) * 0.9,
     forget: Math.max(0, c.tech - 1) * 0.5 + (A.iron ? 0.6 : 0) + (A.writing ? 0.7 : 0) + (A.engines ? 2.5 : 0) - here * 2,
   };
+  const fm = c.faith != null && w.faiths[c.faith] ? w.faiths[c.faith].magic : null; if (fm && sc[fm] != null) sc[fm] += 2.5 * (c.faithShare || 0) * (c.faithHold == null ? 1 : c.faithHold);   /* faith decides the stance toward magic */
   const cur = c.stance || 'revere'; sc[cur] += 0.7; let best = cur; for (const k in sc) if (sc[k] > sc[best]) best = k;
   c.hurt = (c.hurt || 0) * 0.9;
   if (best !== cur) {

@@ -16,7 +16,7 @@ import { wetAt } from './weather.js';
 import { catchFish } from './sea.js';
 import { send, arrive } from './movers.js';
 export { send };
-import { holySite, carry, convert, faithYear, sameFaith, tenetOf } from './faith.js';
+import { holySite, carry, convert, faithYear, sameFaith, tenetOf, docsOf } from './faith.js';
 import { pickGoods, deliver, importedMetals, leagued, G as GD } from './trade.js';
 import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst, carriersFor } from './tech.js';
 export { ART, TECH, techOf };
@@ -251,7 +251,7 @@ export function* peopleSteps(w) {
     if (w.ice[i0] && !s.nomad) { flee(w, s, s.pop * 0.5); endSet(w, s, 'frozen'); continue; }
     if (fireT[i0]) s.pop *= 0.9;
     if (w.fallout[i0] > 0.05) { s.pop *= 1 - 0.16 * Math.min(1, w.fallout[i0]); if (w.fallout[i0] > 0.5 && !s.nomad && rnd() < 0.2) flee(w, s, s.pop * 0.1); }
-    const herder = !!c.grazer, wa = Math.max(wetAt(w, s.x, s.y), w.mem[i0 * 6 + 4] > 0.4 ? 0.95 : 0), irrR = A.irrigation ? 3 : 1, grove = c.tenet === 'grove', maxH = A.terraces ? 0.5 : 0.32, farmR = A.engines ? 6.2 : s.tier >= 3 ? 5.2 : 4.2; s.wa = wa;
+    const herder = !!c.grazer, wa = Math.max(wetAt(w, s.x, s.y), w.mem[i0 * 6 + 4] > 0.4 ? 0.95 : 0), irrR = A.irrigation ? 3 : 1, grove = !!(c.docs && c.docs.grove), maxH = A.terraces ? 0.5 : 0.32, farmR = A.engines ? 6.2 : s.tier >= 3 ? 5.2 : 4.2; s.wa = wa;
     let domS = null, wildF = 0, seaN = 0, freshF = 0, rain = 0, irrg = 0, farms = 0, blight = 0, bestI = -1, bestK = 0.34, huntLeft = Math.min(s.pop, 150) * 0.012, tameAt = -1, hunt = 0, past = 0, ores = 0, cropS = 0, landN = 0, soilS = 0;
     for (const o of DISC[s.R]) {
       const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]);
@@ -280,7 +280,7 @@ export function* peopleSteps(w) {
     s.ores = ores; c._metals |= ores; s.port = seaN >= 3 && !s.nomad;
     const L = c._L || (c._L = livestock(c)), yieldF = 15 * (1 + (A.plough ? 0.3 : 0.08) * L.plough) * (A.pottery ? 1.03 : 1) * (A.mills ? 1.15 : 1) * (A.genetics ? 1.3 : 1) * (A.automation ? 1.15 : 1) * (A.aqueducts && s.tier >= 3 ? 1.15 : 1) * (A.dikes ? 1.05 : 1) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * (A.engines ? 1.5 : 1);
     const fW = wildF * (s.nomad ? 3.2 : 1.1) * (0.55 + 0.45 * Math.min(wa, 1.3)) * sun, fH = hunt * 6;
-    const fFr = Math.min(freshF * (A.boats ? 2.2 : 1.5), s.pop * 0.9 + 10), want = seaN ? Math.max(0, Math.min(s.pop * 0.95 + 12 - fFr, seaN * (A.sailing ? 4.5 : A.boats ? 3 : 1.1) * (c.tenet === 'sea' ? 1.3 : 1))) : 0;
+    const fFr = Math.min(freshF * (A.boats ? 2.2 : 1.5), s.pop * 0.9 + 10), want = seaN ? Math.max(0, Math.min(s.pop * 0.95 + 12 - fFr, seaN * (A.sailing ? 4.5 : A.boats ? 3 : 1.1) * (!!(c.docs && c.docs.sea) ? 1.3 : 1))) : 0;
     const fSea = want > 0 ? catchFish(w, s.x, s.y, s.R + (A.sailing ? 10 : A.boats ? 4 : 1), want) : 0, fF = fFr + fSea, fishGap = want > 8 ? fSea / want : 1;
     const fA = (rain * clamp(wa, 0.2, 1.3) + irrg * (A.irrigation ? 1.15 : 1) * (0.72 + 0.28 * Math.min(wa, 1.2)) * (wa > 1.5 ? 0.8 : 1)) * yieldF * sun;
     const fP = herder ? past * (s.nomad ? 3.4 : 2) * (c.tame.horse ? 1.15 : 1) * (0.5 + 0.5 * Math.min(wa, 1.3)) * sun : 0;
@@ -366,7 +366,7 @@ function cultYear(w, c) {
   if (way !== c.way && (c._ways[c.way] == null || mx > 1.25 * c._ways[c.way]) && w.year - (c.wayAt || -99) >= 25) { c.way = way; c.wayAt = w.year; if (b && c.count >= 3) { if (way === 'herd' && A.riding) { if (discover(w, 'riders', b.x, b.y)) ev(w, `The ${c.name} live in the saddle now.`, b.x, b.y, c.color); } else if (way === 'herd') discover(w, 'herders', b.x, b.y); else if (way === 'fish' && A.boats) discover(w, 'sea', b.x, b.y); } }
   c.nomadsWas = c.env.nomads; c.sedLast = c.env.sed;
   if (b) { c.homeT = w.tMean[b.y * W + b.x]; c.homeM = w.mi[b.y * W + b.x]; }
-  c.tenet = tenetOf(w, c); c.zeal = c.tenet === 'war';
+  c.tenet = tenetOf(w, c); c.docs = docsOf(w, c); c.zeal = !!(c.docs && c.docs.war);
   c.kind = kindOf(c); c._ownMetals = c._metals; c.metals = c._metals | importedMetals(w, c); c.gold = !!(c.metals & 16);
   if (c.env.nomads > c.count * 0.5 && c.know > TECH[3] * 0.95) c.know = TECH[3] * 0.95;   // wanderers stop at about the iron age until they settle
   // Knowledge needs carriers: this people's own numbers plus half of those it is in close contact
@@ -388,11 +388,11 @@ function cultYear(w, c) {
   if (w.year >= c.ruler.until) crown(w, c);
   // cohesion: young, small and pressed peoples hold together; big, old, easy ones come apart
   // the pressures are kept by name, so the ledger and the probe can say what is pulling a realm apart
-  const Q = c.q = cultureOf(w, c); c.kq = Q ? 1 + 0.15 * Q.trade + 0.1 * Q.open - 0.12 * Q.pious : 1;
+  const Q = c.q = cultureOf(w, c); c.kq = (Q ? 1 + 0.15 * Q.trade + 0.1 * Q.open - 0.12 * Q.pious : 1) * (c.docs && c.docs.world ? 0.9 : 1);
   { let bf = 0; for (const k in c.nb) { const o = w.cults[k]; if (o && o.alive && !o.power && c.nb[k] > 0.5 && tongueGap(w, o.langId, c.langId) === Infinity) { bf = 1; break; } } c.borderFoe = bf; }   // a border against strangers holds a people together
   const HB = hubYear(w, c, HOOKS); if (!c.alive) return;
   const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / HUB.sizeDiv[A.bureaucracy ? 0 : A.writing ? 1 : 2], age: HUB.ageDiv ? -(w.year - c.born) / HUB.ageDiv : 0, elites: HB.elites, strife: HB.strife, living: HB.living, frontier: HB.frontier, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
-    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: (c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) * (1 + (Q ? Q.pious : 0)), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, ways: Q ? 0.05 * Q.build - 0.04 * Q.open : 0, peace: c.tenet === 'peace' ? 0.04 : 0 };
+    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: ((c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) + (c.docs && c.docs.world ? 0.04 : 0)) * (1 + (Q ? Q.pious : 0)) * (c.faithHold == null ? 1 : 0.4 + 0.6 * c.faithHold), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, ways: Q ? 0.05 * Q.build - 0.04 * Q.open : 0, peace: !!(c.docs && c.docs.peace) ? 0.04 : 0 };
   let tsum = 0; for (const k in P) tsum += P[k]; const target = clamp(tsum, 0.05, 1); c.cohT = target;
   c.coh += (target - c.coh) * 0.035; c.wins *= 0.97;
   if (c._dry >= Math.max(2, c.count * 0.3) && w.year - c.lastDry > 30 && b) { c.lastDry = w.year; ev(w, c.count >= 8 ? `The rains fail across the lands of the ${c.name}. ${b.name ? b.name + ' counts its grain' : 'The herds grow thin'}.` : `The rains fail for the ${c.name}.`, b.x, b.y, c.color, c.count >= 8 ? 0 : 1); if (c.count >= 8) discover(w, 'drought', b.x, b.y); }
@@ -411,7 +411,7 @@ function cultYear(w, c) {
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
     const deter = foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1;
     const kin = foe && foe._tp && (foe._tg[c.langId] || 0) > 0.25 * foe._tp && tongueGap(w, foe.langId, c.langId) > 0;   // "reunite the old tongue"
-    if (foe && rnd() < deter * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * ((horde ? 0.3 : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (c.tenet === 'peace' ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; startWar(w, c, foe, horde, holy); c._kin = false; }
+    if (foe && rnd() < deter * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * ((horde ? 0.3 : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (!!(c.docs && c.docs.peace) ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; startWar(w, c, foe, horde, holy); c._kin = false; }
   }
 }
 function startWar(w, c, f, horde, holy) {
@@ -460,9 +460,9 @@ export function collapse(w, c) {
     if (w.rnd() < 0.3) { let to = null; near(w, s.x, s.y, 22, s, true, (u, q) => { if (u.cult !== c.id && (!to || q < to.q)) to = { u, q }; }); if (to) { s.cult = to.u.cult; s.trade = 0; went++; const h = w.cults[to.u.cult]; if (!heirs.includes(h)) heirs.push(h); } } }
   const who = heirs.length ? ` ${went === 1 ? 'One' : went} of ${b.name ? 'its places' : 'their camps'} ${went === 1 ? 'goes' : 'go'} over to the ${heirs.slice(0, 2).map((h) => h.name).join(' and the ')}${heirs.length > 2 ? ' and others' : ''}.` : '';
   ev(w, b.name ? `${realmTitle(c).replace(/^the /, 'The ').replace(/^The (?!.*realm)/, 'The realm of the ')} comes apart.${who} ${b.name} holds what is left.` : `The ${c.name} fall to fighting among themselves.${who}`, b.x, b.y, c.color, n0 >= 30 || once(w, 'collapse') ? 2 : 0);
-  const keep = c.tenet === 'ancestors';
+  const keep = !!(c.docs && c.docs.ancestors);
   if (old >= 2 && w.rnd() < (keep ? 0.3 : 0.7)) { c.know = TECH[old - 1] * (keep ? 0.85 : 0.55); c.tech = techOf(c.know); const lose = ['engines', 'sailing', 'writing', 'irrigation', 'roads'].find((k) => c.arts[k]); if (lose) { delete c.arts[lose]; ev(w, `The ${c.name} forget ${ART[lose].say}.`, b.x, b.y, c.color); } discover(w, 'darkage', b.x, b.y); }
-  c.coh = 0.85; c.born = w.year; c.flags.empire = 0; hubReset(w, c, 0.6); c.realmN = (c.realmN || 1) + 1; endWar(w, c, true);
+  c.coh = 0.85; c.born = w.year; c.flags.empire = 0; hubReset(w, c, 0.6); if (n0 >= 12) holySite(w, b.x, b.y, 'collapse', 0.25); c.realmN = (c.realmN || 1) + 1; endWar(w, c, true);
 }
 
 function nomadStep(w, s, c, seaN, fishGap) {
@@ -553,7 +553,7 @@ function raid(w, s, c) {
   if (!o) return; const oc = w.cults[o.cult], foe = war && war.foe === oc.id;
   const wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet > 1 && !A.boats) return; if (wet > 5 && !A.sailing) return;
   if (s.nomad && w.wall && wallBetween(w, s.x, s.y, o.x, o.y) && rnd() < 0.75) return;   // the wall holds
-  if (oc.power) { if (w.rnd() < 0.5) return; } else if (!foe && (oc.war || (c.tenet === 'peace' && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8, goods: pickGoods(w, s, o) }); else meet(w, c, oc, 0.15); return; }
+  if (oc.power) { if (w.rnd() < 0.5) return; } else if (!foe && (oc.war || (!!(c.docs && c.docs.peace) && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8, goods: pickGoods(w, s, o) }); else meet(w, c, oc, 0.15); return; }
   if (!oc.power) meet(w, c, oc, 0.1);
   const men = Math.max(6, s.pop * (s.nomad ? 0.3 : A.bureaucracy ? 0.2 : 0.14)); s.pop -= men; s.busy = w.year + (A.bureaucracy ? 2 : 3);
   if (wet > 5 && foe && once(w, 'invasion-' + c.id + '-' + oc.id)) ev(w, `A fleet of the ${c.name} crosses the sea to make war on the ${oc.name}.`, s.x, s.y, c.color, 0);
