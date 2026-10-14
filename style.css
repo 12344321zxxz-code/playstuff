@@ -155,3 +155,9 @@ button[aria-pressed="true"],button[aria-selected="true"]{background:var(--accent
 .tg .nm{font-weight:600}
 .tg.dead .nm{font-weight:400;text-decoration:line-through;opacity:.6}
 .tg .num{font-variant-numeric:tabular-nums;font-size:.85em}
+.pp .strip{grid-column:2 / -1;width:120px;height:18px;opacity:.9}
+.records{margin:6px 0 10px}.records .rec{margin:2px 0;font-size:.9em}
+.threads{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.thread{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;font:inherit;font-size:.88em;text-align:left;background:none;border:1px solid var(--line);border-radius:6px;padding:4px 6px;color:inherit;cursor:pointer}
+.thread canvas{width:60px;height:14px}
+.thread.ended{opacity:.65;font-style:italic;cursor:default}

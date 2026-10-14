@@ -5,6 +5,7 @@ import { PAGES, pageCount } from './story.js';
 import { describeSet, cultLines } from './entities.js';
 import { explain } from './ledger.js';
 import { tongueColor } from './tongues.js';
+import { RECORDS } from './relics.js';
 
 const $ = (id) => document.getElementById(id);
 let log = [], shown = '', almDirty = true, tab = 'chron', rosterKey = '';
@@ -32,15 +33,26 @@ function roster() {
   for (const c of live) {
     const b = el('button', 'pp'); b.type = 'button'; const chip = el('span', 'chip'); chip.style.background = c.color;
     b.append(chip, el('span', 'nm', c.name + (c.realmN >= 2 ? ' ' + ['', '', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][Math.min(10, c.realmN)] : '')), el('span', 'num', short(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (c.faith != null ? ' · ' + w.faiths[c.faith].name : '') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
+    if (c.series && c.series.length > 2) { b.appendChild(strip(c)); b.title = `${c.house ? c.house.name + ' rules. ' : ''}${c.parent ? 'Descended from the ' + c.parent + '. ' : ''}Line: people over time; red: more would-be lords than posts; faint: coming apart.`; }
     b.addEventListener('click', () => { const s = c.big; if (!s) return; flyTo(s.x + 0.5, s.y + 0.5, 6); const info = describeSet(w, s); state.sel = info.follow; showInfo(info); });
     box.appendChild(b);
   }
   const gone = w.cults.filter((c) => !c.alive && c.peak > 300);
   if (gone.length) box.appendChild(el('p', 'gone', `Gone: ${gone.slice(-12).map((c) => c.name).join(', ')}${gone.length > 12 ? ' and ' + (gone.length - 12) + ' before them' : ''}.`));
 }
+// the rise-and-fall strip: population over the realm's life, red where its lords outnumbered its posts,
+// faded where it was coming apart
+function strip(c) {
+  const cv = document.createElement('canvas'), Wd = 120, Hd = 18; cv.width = Wd; cv.height = Hd; cv.className = 'strip'; const g = cv.getContext('2d'), S = c.series, n = S.length;
+  let mx = 1; for (const p of S) if (p[1] > mx) mx = p[1]; const X = (k) => (k / (n - 1)) * (Wd - 2) + 1, Y = (v) => Hd - 2 - (v / mx) * (Hd - 4);
+  for (let k = 0; k < n; k++) if (S[k][3] > 1.2) { g.fillStyle = `rgba(220,60,40,${Math.min(0.5, (S[k][3] - 1.2) * 0.5)})`; g.fillRect(X(k) - 1, 0, Wd / n + 1, Hd); }
+  for (let k = 1; k < n; k++) { g.strokeStyle = c.color; g.globalAlpha = 0.3 + 0.7 * S[k][2]; g.lineWidth = 2; g.beginPath(); g.moveTo(X(k - 1), Y(S[k - 1][1])); g.lineTo(X(k), Y(S[k][1])); g.stroke(); }
+  return cv;
+}
 function almanac() {
   if (!almDirty) return; almDirty = false; const w = state.w, box = $('almanac'); box.textContent = ''; const n = Object.keys(w.found).length;
   box.appendChild(el('p', 'muted', `${n} of ${pageCount()} pages filled. A page fills the first time this world produces the thing. Nothing here tells you how.`));
+  const rec = w.feats || {}, rows = RECORDS.filter(([k]) => rec[k]); if (rows.length) { const d = el('div', 'records'); d.appendChild(el('div', 'alm-h', 'Records')); for (const [k, title, say] of rows) { const r = el('p', 'rec'); r.append(el('b', null, title + ': '), document.createTextNode(say(rec[k]))); d.appendChild(r); } box.appendChild(d); }
   for (const [name, pages] of PAGES) {
     const h = el('div', 'alm-h'); h.append(el('span', 'gl', name), el('span', 'num muted', pages.filter((p) => w.found[p[0]]).length + '/' + pages.length)); box.appendChild(h);
     const grid = el('div', 'alm');

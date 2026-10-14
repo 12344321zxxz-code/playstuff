@@ -12,7 +12,7 @@ await page.waitForFunction(() => window.__f, null, { timeout: 30000 });
 await page.evaluate(() => { window.__f.start({ seed: 7 }); document.querySelectorAll('#welcome,.welcome,#making').forEach((e) => (e.hidden = true)); });
 await page.evaluate((y) => { const f = window.__f; for (let k = 0; k < y * 8; k++) f.tick(f.S.w); f.S.dirty = true; f.setSpeed(0); }, +process.argv[2] || 1000);
 await page.evaluate(() => { const f = window.__f; f.setLens(17); f.cam.x = 256; f.cam.y = 128; f.cam.z = f.cam.fit || 2.5; f.S.dirty = true; });
-await page.click('#tab-tg'); await page.waitForTimeout(1500);
+await page.click(process.argv[3] || '#tab-tg'); await page.evaluate(() => window.__f.setSpeed(1)); await page.waitForTimeout(4000); await page.evaluate(() => window.__f.setSpeed(0));
 await page.screenshot({ path: out + '/tongues.png' });
 console.log(errs.join('\n') || 'no errors');
 await browser.close();

@@ -14,6 +14,7 @@ export function tensions(w) {
     if (c.count >= 10 && c.coh < 0.3) out.push({ k: 'falling', s: 0.3 - c.coh + c.count / 200, text: `The ${c.name} are coming apart`, x: c.big.x, y: c.big.y, who: c.id });
     if (c.war && c.war.mine) { const f = w.cults[c.war.foe]; if (f && c.count >= 15 && f.count >= 15) out.push({ k: 'greatwar', s: 0.15 + (c.count + f.count) / 400, text: `The ${c.name} and the ${f.name} are at war`, x: c.big.x, y: c.big.y, who: c.id }); }
     if (c.hub && c.count >= 8 && (c.hub.st === 'factions' || c.hub.st === 'civil')) out.push({ k: 'strife', s: (c.hub.st === 'civil' ? 0.3 : 0.12) + c.count / 300, text: c.hub.st === 'civil' ? `The great houses of the ${c.name} are at war with each other` : `The ${c.name} have more lords than lordships`, x: c.big.x, y: c.big.y, who: c.id });
+    if (c.over && c.over.kind === 'dragon' && c.over.take > 0.22) out.push({ k: 'hunger', s: 0.1 + c.over.take, text: `${c.over.d} grows hungry`, x: c.big.x, y: c.big.y, who: c.id });
     if (c.leaving) out.push({ k: 'exodus', s: 0.3, text: `The ${c.name} are leaving the world`, x: c.big.x, y: c.big.y, who: c.id });
   }
   // a well between nearly full and breaking point (one far past it is stuck, a slice-5 fix, not a story)

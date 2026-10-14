@@ -17,6 +17,7 @@ import { record } from './ledger.js';
 import { ev, discover, once } from './story.js';
 import { holySite } from './faith.js';
 import { dragonDies } from './fantasy.js';
+import { newHouse } from './relics.js';
 import { tagFrom, word, tongueGap } from './tongues.js';
 import { W, wx, wrapDx } from './core.js';
 
@@ -29,7 +30,7 @@ function take(w, c, o) {
   c.tribute = c.over.take;
 }
 function free(w, c, how, cause) {
-  const ov = c.over; if (!ov) return; c.over = null; c.tribute = 0; c.overPush = 1;
+  const ov = c.over; if (!ov) return; if (/kills|throws off/.test(how)) newHouse(w, c, ov.house);   /* the collecting house takes the throne */ c.over = null; c.tribute = 0; c.overPush = 1;
   if (ov.kind === 'realm') { const o = w.cults[ov.id]; if (o) o.colonies = (o.colonies || []).filter((id) => id !== c.id); }
   const b = c.big; c.coh = Math.min(1, c.coh + 0.3);
   record(w, 'free', [c.id], { note: how, x: b ? b.x : 0, y: b ? b.y : 0, cause });
