@@ -6,6 +6,7 @@
 // plague, the ley lines carry it to the wellsprings, and the dead walk in numbers the world has
 // never seen. The smoke dims the sun for years. Whoever is left forgets the engines and the wires,
 // and in the quiet the old powers come back. Then someone digs in a ruin and finds a bomb that works.
+import { nukeDeep } from './greatpowers.js';
 import { record } from './ledger.js';
 import { W, H, N, DISC, wx, wrapDx, clamp } from './core.js';
 import { ev, discover, once } from './story.js';
@@ -95,6 +96,7 @@ arrive.missile = (w, m) => nuke(w, Math.round(m.tx), Math.round(m.ty), w.cults[m
 
 // One bomb.
 export function nuke(w, x, y, by) {
+  nukeDeep(w, x, y, by);
   x = wx(x); y = clamp(y, 2, H - 3); const sea = w.params.sea; w.nukes++;
   const hit = near(w, x, y, 1.5, null, false), name = hit && hit.name ? hit.name : null; let dead = 0;
   near(w, x, y, 11, null, false, (s, q) => { const d = Math.sqrt(q); const k = d < 5 ? 1 : 0.7 * (1 - (d - 5) / 6); dead += s.pop * k; s.pop *= 1 - k; const c = w.cults[s.cult]; c.hurt = (c.hurt || 0) + 4; if (s === c.big) c.lostCapAt = w.year; if (s.pop < 20) endSet(w, s, 'nuked', by ? by.name : null); else flee(w, s, s.pop * 0.3); });

@@ -81,7 +81,8 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
       continue;
     }
     const era = c.tech, look = st.tier >= 3 ? (era >= 10 ? 'cityS' : era >= 8 ? 'cityM' : era >= 6 ? 'cityI' : era >= 4 ? 'cityC' : 'city') : st.tier === 2 ? (era >= 8 ? 'townM' : era >= 6 ? 'townI' : era >= 4 ? 'townC' : 'town') : st.pop > 60 ? 'village' : 'hut';
-    const hgt = blit(ctx, st.machine ? 'cityM' : look, x, y, k, st.machine ? '#4affd0' : col);
+    const hgt = blit(ctx, st.machine ? 'cityM' : look, x, y, k, st.machine ? '#4affd0' : st.lost === 'fey' ? '#7fbf6a' : col);
+    if (st.lost === 'fey' && z >= 3) { ctx.fillStyle = 'rgba(140,230,120,0.22)'; const q = 7 * k; ctx.fillRect(Math.round(x - q), Math.round(y - q * 1.6), q * 2, q * 1.8); }   /* a changeling village: green and quiet */
     // smoke from the stacks, lights in the windows at night-time zoom
     if (era >= 6 && era < 10 && st.tier >= 2 && z >= 3 && !still) { const t = performance.now() * 0.001 + st.id; for (let q = 0; q < 3; q++) { const u = (t * 0.5 + q / 3) % 1; ctx.fillStyle = `rgba(90,90,96,${0.7 * (1 - u)})`; ctx.fillRect(Math.round(x - 2 * k + u * 4 * k), Math.round(y - hgt - u * 9 * k), Math.round(k * (1 + u * 2)), Math.round(k * (1 + u * 2))); } }
     if (era >= 7 && st.tier >= 2 && z < 3.5) { ctx.fillStyle = 'rgba(255,220,120,0.85)'; const q = Math.max(1, Math.round(cam.dpr)); for (let n = 0; n < (st.tier >= 3 ? 9 : 4); n++) { const a = n * 2.4 + st.id, r = (1 + (n % 3)) * z * cam.dpr * 0.7; ctx.fillRect(Math.round(x + Math.cos(a) * r), Math.round(y - 2 * cam.dpr + Math.sin(a) * r * 0.6), q, q); } }
@@ -121,6 +122,8 @@ function drawSea(ctx, w, cam, z, now) {
     if (up) { const bob = still ? 0 : Math.round(Math.sin(now * 0.004) * k); blit(ctx, 'kraken', p[0], p[1] + bob, k); }
     else { ctx.fillStyle = 'rgba(180,200,220,0.5)'; ctx.fillRect(Math.round(p[0] - 4 * k), Math.round(p[1]), 8 * k, k); }
     if (z >= 7) label(ctx, kr.name, p[0], p[1] + 2 * cam.dpr, Math.round(11 * cam.dpr), '#d9c2ee', true, 50); }
+  const g = w.great; if (g && seen(g.x, g.y, 20)) { const p = at(cam, g.x + 0.5, g.y + 1), kk = k * 3, bob = still ? 0 : Math.round(Math.sin(now * 0.002) * kk); blit(ctx, 'kraken', p[0], p[1] + bob, kk);
+    ctx.strokeStyle = 'rgba(120,60,150,0.5)'; ctx.lineWidth = Math.max(1, cam.dpr); ctx.beginPath(); ctx.arc(p[0], p[1], 90 * z * cam.dpr, 0, 6.2832); ctx.stroke(); label(ctx, g.name, p[0], p[1] + 6 * cam.dpr, Math.round(13 * cam.dpr), '#e3c8ff', true, 200); }
 }
 // the other world: wellsprings, the things that rose from memory, and ley storms on the move
 const SPR_OF = { winter: 'winter', burned: 'shamblers', host: 'host', shamblers: 'shamblers', lich: 'lich', hunger: 'hunger', drowned: 'drowned', fey: 'fey', saint: 'saint' };
@@ -248,6 +251,8 @@ const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fis
   const bar = s.src.map((v, k) => [v / tot, FOOD[k][0], FOOD[k][1]]);
   if (s.nomad) L.push(`${big(s.pop)} people on the move.`); else L.push(`A ${TIER[s.tier]} of ${big(s.pop)} people, ${s.age} years old.`);
   L.push(s.plague > 0 ? NOTE.plague : NOTE[s.note] || NOTE.grow);
+  if (s.lost === 'fey') L.push('The fey have it. Its people still work the fields, but they send nothing and no one to their rulers.'); else if (s.lost === 'machine') L.push(`It has gone dark: it runs on ${s.machine} now and answers to no one else.`); else if (s.dep > 0.2) L.push(`It depends on the dark towns for ${Math.round(Math.min(1, s.dep) * 100)}% of what it needs.`);
+  if (s.deepCult) L.push(`Its people go down to the water at night. They worship ${s.deepCult}.${s.callOdds ? ` The cult's odds of calling something up this year: about 1 in ${Math.round(1 / s.callOdds).toLocaleString()}.` : ''}`);
   if (s.faith != null && s.faith !== c.faith) L.push(`Its people pray to ${w.faiths[s.faith].name}, not the god of their rulers.`);
   if (!s.nomad) { const ex = []; if (s.walls) ex.push('stone walls'); if (s.links) ex.push(s.links === 1 ? 'a road' : s.links + ' roads'); if (s.port && c.arts.boats) ex.push('a harbour'); if (s.wonder) ex.push('a wonder'); if (s.tower) ex.push('a tower nobody built'); if (ex.length) L.push(`It has ${list(ex)}.`);
     const o = []; for (let k = 1; k <= 7; k++) if (s.ores & (1 << k)) o.push(ORES[k]); if (o.length) L.push(`${cap(list(o))} in its ground.`);
@@ -271,6 +276,7 @@ function looker(w, x, y, i, r) {
   for (const m of w.machines || []) if (wrapDx(m.x - x) ** 2 + (m.y - y) ** 2 <= Math.max(9, bd * 2)) return { title: cap(m.name), color: '#4affd0', lines: ['A mind its makers built and lost. It holds a country of dark towns, eats the old magic out of the ground, and fights the old powers where they meet.', `It woke in year ${m.born}.`, 'Only many peoples together, or time, will end it.'] };
   for (const q of w.works || []) if (wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 <= Math.max(4, bd)) { const c = w.cults[q.cult]; return { title: WORK_SAY[q.kind][0], color: c ? c.color : null, lines: [WORK_SAY[q.kind][1], `Built by the ${c ? c.name : 'old ones'} in year ${q.year}.`] }; }
   for (const q of w.wells) if (wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 <= Math.max(4, bd)) return { title: q.name ? cap(q.name) : 'A wellspring', color: KINDS[q.kind || 0].col, lines: ['The ley lines run here, carrying what the world remembers.', `It is ${q.fill > 10 ? 'nearly full' : q.fill > 4 ? 'filling' : 'low'}, mostly with ${KINDS[q.kind || 0].name}.`, q.spilt ? `It has spilled over ${q.spilt === 1 ? 'once' : q.spilt + ' times'}.` : 'When it is full it will spill a storm back up the lines.'] };
+  if (w.great && wrapDx(w.great.x - x) ** 2 + (w.great.y - y) ** 2 <= 64) { const g = w.great; return { title: cap(g.name), color: '#6a3f86', lines: [`Called up from the deep in year ${g.born} by the cult of ${g.port}. It will sleep again in about ${Math.max(0, 1000 - (w.year - g.born))} years.`, `Within its reach ships go down a third of the time; steam halves that, modern navies cut it to a fifth. It has taken ${g.sunk} ${g.sunk === 1 ? 'ship' : 'ships'}.`, `${g.hp} more ${g.hp === 1 ? 'bomb' : 'bombs'} would kill it, and its death would raise the sea everywhere.`] }; }
   for (const k of w.krakens) if (wrapDx(k.x - x) ** 2 + (k.y - y) ** 2 <= Math.max(9, bd)) return { title: cap(k.name), color: '#6a3f86', lines: [`Something very large, in this water since year ${k.born}.`, k.sunk ? `It has taken ${k.sunk} ${k.sunk === 1 ? 'ship' : 'ships'}.` : 'No ship has come close enough yet.'] };
   for (const m of w.movers) if (!m.done && wrapDx(m.x - x) ** 2 + (m.y - y) ** 2 <= bd * 1.5) { const c = w.cults[m.cult], t = MOVE[m.kind](w, m, c); return { title: t[0], color: c.color, lines: [t[1]], follow: { pos: () => (m.done ? null : [m.x, m.y, 1.4]) } }; }
   for (const sw of w.swarms) if (wrapDx(sw.x - x) ** 2 + (sw.y - y) ** 2 <= 12) return { title: 'Locusts', lines: ['A swarm on the wind. It eats grass and grain down to the dirt and moves on.'] };

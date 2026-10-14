@@ -57,7 +57,7 @@ export function hubYear(w, c, hooks) {
   h.X = clamp(F.x + 0.2 * Math.max(0, h.pi - 1) + (c.tribute || 0) + (c.q ? 0.03 * c.q.build : 0) - (w.year < h.eased ? 0.05 : 0), 0.05, 0.6);
   h.L = fed * (1 - h.X) / (1 - 0.12);
   // elite income follows surplus and take with a lag of about 40 years
-  const raw = (c.pop / 100) * (0.25 + (c.surplus || 0)) * Math.max(0.02, h.X - (c.tribute || 0)) * fed + (c.tributeIn || 0);   /* tribute leaves for the overlord; what comes in from colonies feeds this realm's lords */
+  const raw = (c.pop / 100) * (0.25 + (c.surplus || 0)) * Math.max(0.02, h.X - (c.tribute || 0)) * fed * (1 - (c.lostShare || 0)) + (c.tributeIn || 0);   /* tribute leaves for the overlord; what comes in from colonies feeds this realm's lords */
   h.inc = h.inc == null ? raw : h.inc + (raw - h.inc) / 40;
   const cap = Math.max(1, h.inc / HUB.K);
   const noise = 1 + 0.15 * (2 * rnd() - 1);

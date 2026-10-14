@@ -5,6 +5,7 @@
 // wears down with size and ease; and what falls leaves ruins the next people build on.
 import { hubYear, hubPush, hubReset, HUB } from './hub.js';
 import { captureYear } from './capture.js';
+import { powersYear as greatPowersYear } from './greatpowers.js';
 import { word, makeSound, rootTags, tagFrom, soundOf, tonguesYear, tongueGap, cultureOf } from './tongues.js';
 import { record } from './ledger.js';
 import { POWER, POWER_TOWN } from './registry.js';
@@ -318,7 +319,7 @@ export function* peopleSteps(w) {
     if (c.count === 0) { if (!w.sets.some((s) => s.cult === c.id) && !w.movers.some((m) => m.cult === c.id && (m.kind === 'refugees' || m.kind === 'settlers'))) { c.alive = false; record(w, 'gone', [c.id], { note: 'the last of them' }); endWar(w, c, true); ev(w, `The ${c.name} are gone from the world.`, null, null, c.color, c.peak > 2000 ? 2 : c.peak > 300 ? 0 : 1); if (c.peak > 300) discover(w, 'gone', null, null); } continue; }
     alive++; if (c.power) { POWER[c.power](w, c); continue; } cultYear(w, c);
   }
-  ruinsYear(w); plaguesYear(w); faithYear(w); tonguesYear(w); captureYear(w);
+  ruinsYear(w); plaguesYear(w); faithYear(w); tonguesYear(w); captureYear(w); greatPowersYear(w);
   w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop
   if (smoke > 0) { w.greenhouse = Math.min(7, w.greenhouse + smoke * 1.1e-7); if (!w.found.smoke) { const c = w.cults.find((q) => q.alive && q.arts.engines); if (c && c.big) discover(w, 'smoke', c.big.x, c.big.y); } }
   w.stats.people = Math.round(total); w.stats.places = w.sets.length; w.stats.peoples = alive;
@@ -391,7 +392,7 @@ function cultYear(w, c) {
   { let bf = 0; for (const k in c.nb) { const o = w.cults[k]; if (o && o.alive && !o.power && c.nb[k] > 0.5 && tongueGap(w, o.langId, c.langId) === Infinity) { bf = 1; break; } } c.borderFoe = bf; }   // a border against strangers holds a people together
   const HB = hubYear(w, c, HOOKS); if (!c.alive) return;
   const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / HUB.sizeDiv[A.bureaucracy ? 0 : A.writing ? 1 : 2], age: HUB.ageDiv ? -(w.year - c.born) / HUB.ageDiv : 0, elites: HB.elites, strife: HB.strife, living: HB.living, frontier: HB.frontier, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
-    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: (c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) * (1 + (Q ? Q.pious : 0)), tongues: -0.3 * (c.foreignShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, ways: Q ? 0.05 * Q.build - 0.04 * Q.open : 0, peace: c.tenet === 'peace' ? 0.04 : 0 };
+    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: (c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) * (1 + (Q ? Q.pious : 0)), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, ways: Q ? 0.05 * Q.build - 0.04 * Q.open : 0, peace: c.tenet === 'peace' ? 0.04 : 0 };
   let tsum = 0; for (const k in P) tsum += P[k]; const target = clamp(tsum, 0.05, 1); c.cohT = target;
   c.coh += (target - c.coh) * 0.035; c.wins *= 0.97;
   if (c._dry >= Math.max(2, c.count * 0.3) && w.year - c.lastDry > 30 && b) { c.lastDry = w.year; ev(w, c.count >= 8 ? `The rains fail across the lands of the ${c.name}. ${b.name ? b.name + ' counts its grain' : 'The herds grow thin'}.` : `The rains fail for the ${c.name}.`, b.x, b.y, c.color, c.count >= 8 ? 0 : 1); if (c.count >= 8) discover(w, 'drought', b.x, b.y); }
@@ -546,6 +547,7 @@ function pasture(w, s, c) {
 
 // someone goes looking at the neighbours: half the time to trade, the rest with spears
 function raid(w, s, c) {
+  if (s.lost) return;   /* a changeling village or a dark town sends no soldiers */
   const rnd = w.rnd, A = c.arts, war = c.war, reach = s.R + 5 + (A.riding ? 8 : 0) + (s.nomad ? 4 : 0) + (A.boats ? 3 : 0) + (war && A.sailing ? (A.navigation ? 50 : 30) : 0) + (war && A.railways ? 20 : 0); let o = null, bd = 1e9;
   near(w, s.x, s.y, reach + 9, s, false, (u, q) => { if (u.cult === s.cult || (u.nomad && !s.nomad && !(war && u.cult === war.foe))) return; const lim = (reach + u.R) ** 2, pref = war && u.cult === war.foe ? 0.35 : 1; if (q < lim && q * pref < bd) { bd = q * pref; o = u; } });
   if (!o) return; const oc = w.cults[o.cult], foe = war && war.foe === oc.id;

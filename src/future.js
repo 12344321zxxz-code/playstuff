@@ -39,11 +39,11 @@ function wakeMachine(w, c) {
 }
 function machineYear(w, m) {
   const age = w.year - m.born, old = age > m.span * 0.8;
-  m.R = Math.max(3, Math.min(34, m.R + (old ? -1 : 0.5))); m.str = old ? m.str * 0.96 : Math.min(5, m.str + 0.02);
+  m.R = Math.max(3, Math.min(8, m.R + (old ? -1 : 0.5)));   /* its own city only: it spreads along trade (greatpowers.js), not by area */ m.str = old ? m.str * 0.96 : Math.min(5, m.str + 0.02);
   // it eats memory: inside its country the old powers have nothing to stand on
   for (const o of DISC[Math.min(20, Math.round(m.R))]) { const yy = m.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(m.x + o[0])) * NK; for (let k = 0; k < NK; k++) w.mem[b + k] *= 0.85; }
   // towns inside its country are taken: they stop being anyone's, and slowly empty
-  let took = 0; near(w, m.x, m.y, m.R, null, false, (s) => { s.pop *= 0.96; if (!s.machine && w.rnd() < 0.2) { s.machine = m.name; took++; } if (s.pop < 40) endSet(w, s, 'machine'); });
+  let took = 0; near(w, m.x, m.y, m.R, null, false, (s) => { if (!s.machine && w.rnd() < 0.2) { s.machine = m.name; s.lost = 'machine'; took++; } });
   if (took && w.year - m.last > 25) { m.last = w.year; ev(w, `${cap(m.name)} spreads. ${took === 1 ? 'Another town goes' : took + ' more towns go'} dark and then light up again, in its colours.`, m.x, m.y, null, 0); }
   // it wars with the old powers where their countries touch; both are worn down
   for (const p of w.spirits) if (p.R && wrapDx(p.x - m.x) ** 2 + (p.y - m.y) ** 2 < (p.R + m.R) ** 2) { p.str *= 0.9; m.str *= 0.95; if (w.rnd() < 0.05) ev(w, `Where the country of ${m.name} meets ${p.name}, the dead and the machines fight a war no living thing would survive.`, (m.x + p.x) / 2, (m.y + p.y) / 2, null, 1); discover(w, 'mindvsdead', m.x, m.y); }

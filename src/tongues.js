@@ -83,7 +83,7 @@ export function customsGap(w, a, b) {
 export function tonguesYear(w) {
   init(w); const rnd = w.rnd, sea = w.params.sea;
   for (const L of w.langs) { L.towns = 0; L.pop = 0; } for (const C of w.culs) { C.towns = 0; C.pop = 0; C._p = { coast: 0, horse: 0, build: 0, trade: 0, war: 0, plague: 0, n: 0 }; }
-  for (const c of w.cults) { if (!c.alive || c.power) continue; if (c.langId == null) rootTags(w, c, null); c._tg = {}; c._tp = 0; c._foreign = 0; c._odd = 0; }
+  for (const c of w.cults) { if (!c.alive || c.power) continue; if (c.langId == null) rootTags(w, c, null); c._tg = {}; c._tp = 0; c._foreign = 0; c._odd = 0; c._lost = 0; }
   // shift and imitation, town by town
   for (const s of w.sets) {
     if (s.dead) continue; const c = w.cults[s.cult]; if (!c || c.power) continue;
@@ -100,7 +100,7 @@ export function tonguesYear(w) {
     }
     const L = w.langs[s.lang], C = w.culs[s.cul];
     if (L) { L.towns++; L.pop += s.pop; } c._tg[s.lang] = (c._tg[s.lang] || 0) + s.pop; c._tp += s.pop;
-    if (tongueGap(w, s.lang, c.langId) > 3) c._foreign += s.pop; c._odd += s.pop * customsGap(w, s.cul, c.culId);
+    if (s.lost) c._lost += s.pop; if (tongueGap(w, s.lang, c.langId) > 3) c._foreign += s.pop; c._odd += s.pop * customsGap(w, s.cul, c.culId);
     if (C) { C.towns++; C.pop += s.pop; const P = C._p; P.n++; if (s.port || s.coast) P.coast++; if (c.way === 'herd' && A.riding) P.horse++; if (s.walls || s.wonder) P.build++; if (s.market || s.trade > 0.5) P.trade++; if (c.war) P.war++; if (s.plague > 0) P.plague++; }
   }
   for (const L of w.langs) if (L.alive && L.towns === 0 && w.year - L.born > 5) { L.alive = false; L.died = w.year; }
@@ -108,7 +108,7 @@ export function tonguesYear(w) {
   // the court: what share of the realm speaks its tongue; a small court adopts its subjects' speech
   for (const c of w.cults) {
     if (!c.alive || c.power || !c._tp) continue;
-    c.courtShare = (c._tg[c.langId] || 0) / c._tp; c.foreignShare = c._foreign / c._tp; c.oddShare = c._odd / c._tp;
+    c.courtShare = (c._tg[c.langId] || 0) / c._tp; c.lostShare = c._lost / c._tp; c.foreignShare = c._foreign / c._tp; c.oddShare = c._odd / c._tp;
     let maj = c.langId, mv = 0; for (const k in c._tg) if (c._tg[k] > mv) { mv = c._tg[k]; maj = +k; }
     if (c.courtShare < 0.25 && maj !== c.langId && c.env.sed >= 4) {
       c.minor = (c.minor || 0) + 1;
