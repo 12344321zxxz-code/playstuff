@@ -8,7 +8,7 @@ import { pirateNear } from './trade.js';
 
 export const arrive = {};          // kind -> what happens when they get there; filled in by people.js
 const MAXM = 300;
-const LOST = { settlers: ['Settlers', 'go'], army: ['A war band', 'goes'], trade: ['A trading ship', 'goes'], refugees: ['People fleeing', 'go'], home: ['A war band', 'goes'] };
+const LOST = { tribute: ['A tribute caravan', 'goes'], settlers: ['Settlers', 'go'], army: ['A war band', 'goes'], trade: ['A trading ship', 'goes'], refugees: ['People fleeing', 'go'], home: ['A war band', 'goes'] };
 
 export function send(w, m) {
   if (w.movers.length >= MAXM && (m.kind === 'trade' || m.kind === 'home')) return null;

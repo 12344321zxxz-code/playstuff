@@ -4,6 +4,7 @@
 // no riders without horses. Knowledge piles up with numbers and travels with trade; cohesion
 // wears down with size and ease; and what falls leaves ruins the next people build on.
 import { hubYear, hubPush, hubReset, HUB } from './hub.js';
+import { captureYear } from './capture.js';
 import { word, makeSound, rootTags, tagFrom, soundOf, tonguesYear, tongueGap, cultureOf } from './tongues.js';
 import { record } from './ledger.js';
 import { POWER, POWER_TOWN } from './registry.js';
@@ -124,8 +125,9 @@ export function infect(w, s, from, harsh) {
 }
 function plaguesYear(w) {
   for (const st of w.plagues) { if (st.over) continue;
-    if (!st.name && st.bad && st.towns >= 40) { st.name = POX[(w.poxN = (w.poxN || 0) + 1) % POX.length]; ev(w, `The sickness that began at ${st.at} has reached ${st.towns} towns and is still walking the roads. People call it the ${st.name}.`, st.x, st.y, null, 2); discover(w, 'plague', st.x, st.y); }
-    if (st.now === 0) { st.over = true; if (st.name) { const part = st.pop0 > 0 ? st.killed / st.pop0 : 0; ev(w, `The ${st.name} burns out after ${w.year - st.born} years. ${part > 0.4 ? 'Half the world is dead' : part > 0.25 ? 'One in three is dead' : part > 0.14 ? 'One in five is dead' : 'One in ten is dead'}. Fields go back to forest; the living inherit more than they can use.`, st.x, st.y, null, part > 0.14 ? 2 : 0); holySite(w, st.x, st.y, 'plague', part > 0.14 ? 0.8 : 0.4); remember(w, st.x, st.y, DEATH, 0.35 + part, 4, 'plague', `the ${st.name}`, { place: st.at }); } }
+    if (!st.name && st.towns >= 5) { st.name = st.at.replace(/^the camps of the /, '').replace(/^New /, '') + ' ' + ['fever', 'cough', 'flux', 'pox', 'sweat', 'ague'][(st.id * 7) % 6]; record(w, 'plague', [], { note: st.name, x: st.x, y: st.y }); }   /* an outbreak of five towns gets a name; the great ones get the old names below */
+    if (!st.great && st.bad && st.towns >= 40) { st.great = true; st.name = POX[(w.poxN = (w.poxN || 0) + 1) % POX.length]; ev(w, `The sickness that began at ${st.at} has reached ${st.towns} towns and is still walking the roads. People call it the ${st.name}.`, st.x, st.y, null, 2); discover(w, 'plague', st.x, st.y); }
+    if (st.now === 0) { st.over = true; if (st.great) { const part = st.pop0 > 0 ? st.killed / st.pop0 : 0; ev(w, `The ${st.name} burns out after ${w.year - st.born} years. ${part > 0.4 ? 'Half the world is dead' : part > 0.25 ? 'One in three is dead' : part > 0.14 ? 'One in five is dead' : 'One in ten is dead'}. Fields go back to forest; the living inherit more than they can use.`, st.x, st.y, null, part > 0.14 ? 2 : 0); holySite(w, st.x, st.y, 'plague', part > 0.14 ? 0.8 : 0.4); remember(w, st.x, st.y, DEATH, 0.35 + part, 4, 'plague', `the ${st.name}`, { place: st.at }); } }
     st.now = 0; }
   // old strains stay in the list; a settlement's pid is an index into it
 }
@@ -316,7 +318,7 @@ export function* peopleSteps(w) {
     if (c.count === 0) { if (!w.sets.some((s) => s.cult === c.id) && !w.movers.some((m) => m.cult === c.id && (m.kind === 'refugees' || m.kind === 'settlers'))) { c.alive = false; record(w, 'gone', [c.id], { note: 'the last of them' }); endWar(w, c, true); ev(w, `The ${c.name} are gone from the world.`, null, null, c.color, c.peak > 2000 ? 2 : c.peak > 300 ? 0 : 1); if (c.peak > 300) discover(w, 'gone', null, null); } continue; }
     alive++; if (c.power) { POWER[c.power](w, c); continue; } cultYear(w, c);
   }
-  ruinsYear(w); plaguesYear(w); faithYear(w); tonguesYear(w);
+  ruinsYear(w); plaguesYear(w); faithYear(w); tonguesYear(w); captureYear(w);
   w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop
   if (smoke > 0) { w.greenhouse = Math.min(7, w.greenhouse + smoke * 1.1e-7); if (!w.found.smoke) { const c = w.cults.find((q) => q.alive && q.arts.engines); if (c && c.big) discover(w, 'smoke', c.big.x, c.big.y); } }
   w.stats.people = Math.round(total); w.stats.places = w.sets.length; w.stats.peoples = alive;
@@ -361,7 +363,7 @@ function cultYear(w, c) {
   let way = 'forage', mx = 0; for (const k in c._ways) if (c._ways[k] > mx) { mx = c._ways[k]; way = k; }
   // a way of life changes only when the new one clearly wins, and not twice in a generation
   if (way !== c.way && (c._ways[c.way] == null || mx > 1.25 * c._ways[c.way]) && w.year - (c.wayAt || -99) >= 25) { c.way = way; c.wayAt = w.year; if (b && c.count >= 3) { if (way === 'herd' && A.riding) { if (discover(w, 'riders', b.x, b.y)) ev(w, `The ${c.name} live in the saddle now.`, b.x, b.y, c.color); } else if (way === 'herd') discover(w, 'herders', b.x, b.y); else if (way === 'fish' && A.boats) discover(w, 'sea', b.x, b.y); } }
-  c.nomadsWas = c.env.nomads;
+  c.nomadsWas = c.env.nomads; c.sedLast = c.env.sed;
   if (b) { c.homeT = w.tMean[b.y * W + b.x]; c.homeM = w.mi[b.y * W + b.x]; }
   c.tenet = tenetOf(w, c); c.zeal = c.tenet === 'war';
   c.kind = kindOf(c); c._ownMetals = c._metals; c.metals = c._metals | importedMetals(w, c); c.gold = !!(c.metals & 16);
@@ -408,7 +410,7 @@ function cultYear(w, c) {
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
     const deter = foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1;
     const kin = foe && foe._tp && (foe._tg[c.langId] || 0) > 0.25 * foe._tp && tongueGap(w, foe.langId, c.langId) > 0;   // "reunite the old tongue"
-    if (foe && rnd() < deter * hubPush(c) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * ((horde ? 0.3 : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (c.tenet === 'peace' ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; startWar(w, c, foe, horde, holy); c._kin = false; }
+    if (foe && rnd() < deter * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * ((horde ? 0.3 : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (c.tenet === 'peace' ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; startWar(w, c, foe, horde, holy); c._kin = false; }
   }
 }
 function startWar(w, c, f, horde, holy) {
@@ -465,7 +467,8 @@ export function collapse(w, c) {
 function nomadStep(w, s, c, seaN, fishGap) {
   const rnd = w.rnd, herder = !!c.grazer, A = c.arts, src = s.src;
   // a settled people past the iron age has no wandering bands: they settle where they stand or go to town
-  if (((c.tech >= 4 && c.env.sed > c.env.nomads) || (c.tech >= 5 && c.env.sed >= 1)) && rnd() < 0.25) { const t = near(w, s.x, s.y, 60, s, true, null); if (t && t.cult === s.cult) { t.pop += s.pop; s.dead = true; w.anyDead = true; return; } if (!near(w, s.x, s.y, 5, s, true) && w.magic[s.y * W + s.x] < 0.7) { s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3); return; } if (t) t.pop += s.pop * 0.7; s.dead = true; w.anyDead = true; return; }
+  const sedL = c.sedLast || 0;   /* last census's count: this one is still being taken */
+  if (((c.tech >= 4 && sedL >= 3) || (c.tech >= 5 && sedL >= 1)) && rnd() < 0.6) { const t = near(w, s.x, s.y, 60, s, true, null); if (t && t.cult === s.cult) { t.pop += s.pop; s.dead = true; w.anyDead = true; return; } if (!near(w, s.x, s.y, 5, s, true) && w.magic[s.y * W + s.x] < 0.7) { s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3); return; } if (t) t.pop += s.pop * 0.7; s.dead = true; w.anyDead = true; return; }
   const herding = herder && src[4] >= src[2] && src[4] > src[0] * 0.8;
   if (s.age > 3 && (A.farming || (!herding && c.know > 1200 && src[2] > src[0] + src[1]))) {
     let sk = 0, cnt = 0; for (const o of DISC[2]) { const y = s.y + o[1]; if (y < 1 || y >= H - 1) continue; const i = y * W + wx(s.x + o[0]); if (w.water[i]) continue; sk += (A.farming ? cropYield(w, c, i) : 0) + (w.fresh[i] <= 1 ? 0.3 : 0); cnt++; }
@@ -482,7 +485,7 @@ function nomadStep(w, s, c, seaN, fishGap) {
     for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2) continue; const i = y * W + x; if (w.water[i] || w.h[i] - w.params.sea > 0.42 || w.ice[i]) continue;
       let sc = siteScore(w, x, y, A.farming, herding, c) * (0.9 + 0.2 * rnd()); if (near(w, x, y, 4, s)) sc *= 0.4; if (sc > best) { best = sc; bx = x; by = y; } }
     s.x = bx; s.y = by; }
-  if (!(c.tech >= 4 && c.env.sed > c.env.nomads) && !(c.tech >= 5) && (s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : 26) : 10) && w.sets.length < MAXS) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
+  if (!(c.tech >= 4 && (c.sedLast || 0) >= 3) && !(c.tech >= 5) && (s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : 26) : 10) && w.sets.length < MAXS) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
   if (A.farming && !herding && s.age > 20 && rnd() < 0.08) { const b = near(w, s.x, s.y, 14, s, true); if (b) { b.pop += s.pop * 0.8; s.dead = true; w.anyDead = true; return; } if (s.age > 60) { s.dead = true; w.anyDead = true; return; } }
   const war = c.war;
   if (herder && s.pop > 70 && w.year >= s.busy && rnd() < (A.riding ? 0.07 : 0.02) * (war ? (war.horde ? 6 : 3) : 1)) raid(w, s, c);

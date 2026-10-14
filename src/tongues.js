@@ -154,7 +154,7 @@ function drift(w) {
       s.apart = out ? (s.apart || 0) + 5 : Math.max(0, (s.apart || 0) - 10);
       if (s.apart >= 150) far.push(s);
     }
-    if (far.length >= 2) for (const g of groups(w, far, 1.3)) if (g.ts.length >= 3 && g.pop > 800) fork(w, L, g);
+    if (far.length >= 2) for (const g of groups(w, far, 1.3)) if (g.ts.length >= 3 && (g.pop > 800 || g.ts.every((s) => s.nomad || s.tier <= 1))) fork(w, L, g);   /* wandering bands drift apart too */
   }
 }
 function fork(w, L, g) {
@@ -182,6 +182,11 @@ export function confound(w, c) {
 // colour by family (hue) with each branch its own shade
 export function tongueColor(w, id) {
   const L = w.langs && w.langs[id]; if (!L) return '#888';
-  const hue = (L.root * 137.508) % 360, sh = ((L.id * 2654435761) >>> 0) % 1000 / 1000;
-  return `hsl(${hue.toFixed(0)},${(55 + 25 * sh).toFixed(0)}%,${(38 + Math.min(4, L.depth) * 8 + 10 * sh).toFixed(0)}%)`;
+  const F = w.langs[familyOf(w, id)], hue = (L.root * 137.508 + (F.depth ? 25 + ((F.id * 97) % 90) : 0)) % 360, sh = ((L.id * 2654435761) >>> 0) % 1000 / 1000;
+  return `hsl(${hue.toFixed(0)},${(55 + 25 * sh).toFixed(0)}%,${(38 + Math.min(3, L.depth - F.depth) * 9 + 10 * sh).toFixed(0)}%)`;
 }
+
+// A family is every tongue that split off within the last 600 years from one ancestor (Romance from
+// Latin); branches that parted longer ago than that are separate families of one origin (Romance and
+// Germanic under Indo-European). Early in a world every tongue is still in its origin's family.
+export function familyOf(w, id) { let L = w.langs[id]; while (L && L.parent != null && w.year - L.born < 600) L = w.langs[L.parent]; return L ? L.id : id; }

@@ -36,7 +36,7 @@ export function postsOf(c) {
   const e = c.env, A = c.arts, f = FORMS[c.hub ? c.hub.form : 'chiefs'];
   const base = 0.4 * Math.max(0, e.sed - e.towns) + 1 * Math.max(0, e.towns - e.cities) + 2 * e.cities + 0.15 * e.nomads;
   const offices = 1 + (A.writing ? 0.2 : 0) + (A.laws ? 0.1 : 0) + (A.bureaucracy ? 0.3 : 0) + (A.schools ? 0.15 : 0);
-  return Math.max(1, (base + 1.5 * Math.min(6, c.wins || 0)) * offices * f.pm);
+  return Math.max(1, (base + 1.5 * Math.min(6, c.wins || 0) + (c.colonyPosts || 0)) * offices * f.pm);   /* colonies are offices for the overlord's lords */
 }
 
 export function makeHub(c, w, pi0) {
@@ -57,12 +57,13 @@ export function hubYear(w, c, hooks) {
   h.X = clamp(F.x + 0.2 * Math.max(0, h.pi - 1) + (c.tribute || 0) + (c.q ? 0.03 * c.q.build : 0) - (w.year < h.eased ? 0.05 : 0), 0.05, 0.6);
   h.L = fed * (1 - h.X) / (1 - 0.12);
   // elite income follows surplus and take with a lag of about 40 years
-  const raw = (c.pop / 100) * (0.25 + (c.surplus || 0)) * h.X * fed;
+  const raw = (c.pop / 100) * (0.25 + (c.surplus || 0)) * Math.max(0.02, h.X - (c.tribute || 0)) * fed + (c.tributeIn || 0);   /* tribute leaves for the overlord; what comes in from colonies feeds this realm's lords */
   h.inc = h.inc == null ? raw : h.inc + (raw - h.inc) / 40;
   const cap = Math.max(1, h.inc / HUB.K);
   const noise = 1 + 0.15 * (2 * rnd() - 1);
   h.E += h.E * 0.02 * noise * (1 - h.E / cap);           // lords multiply while their income allows
   if (c.war && c.war.lost) h.E *= 1 - 0.004 * Math.min(5, c.war.lost);   // and die in lost battles
+  if (!settled) h.E += (0.8 * h.P - h.E) * 0.2;   /* bands and herders have chiefs, not a class of lords: no overproduction until they settle */
   h.E = Math.max(0.5, h.E); h.pi = h.E / h.P;
   // authority: a fed, lawful, united realm with lords it can place is strong; a crowded court is not
   const aT = clamp(0.25 + 0.35 * h.L + (A.laws ? 0.06 : 0) + (A.bureaucracy ? 0.08 : 0) + 0.2 * (c.coh - 0.5) - 0.4 * Math.max(0, h.pi - 1.1) - (h.st === 'civil' ? 0.25 : 0), 0, 1);

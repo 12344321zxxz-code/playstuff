@@ -37,7 +37,7 @@ const SAY = { size: 'too many towns to hold', age: 'an old realm grown soft', el
 export const sayTerm = (k, v) => (SAY[k] || k) + (v < 0 ? '' : ' (holding it together)');
 
 // The why chips: a turning point and what led to it, in plain words, newest first.
-const KSAY = { collapse: 'falls apart', breakaway: 'loses provinces to a breakaway', defect: 'loses towns to a neighbour', war: 'goes to war', peace: 'makes peace', gone: 'dies out', 'power-rise': 'a power rises', 'power-fall': 'a power falls', launch: 'launches the bomb', fall: 'the world falls', factions: 'splits into factions', civilwar: 'falls into civil war', revolt: 'faces a rising of the poor', tongue: 'a daughter tongue is born', adopt: 'the court takes up its subjects\' tongue' };
+const KSAY = { collapse: 'falls apart', breakaway: 'loses provinces to a breakaway', defect: 'loses towns to a neighbour', war: 'goes to war', peace: 'makes peace', gone: 'dies out', 'power-rise': 'a power rises', 'power-fall': 'a power falls', launch: 'launches the bomb', fall: 'the world falls', factions: 'splits into factions', civilwar: 'falls into civil war', revolt: 'faces a rising of the poor', tongue: 'a daughter tongue is born', capture: 'is taken over', rising: 'rises against its overlord', free: 'is free again', fort: 'builds a fort over the sea', settle: 'sends settlers over the sea', independence: 'loses its colonies', plague: 'a sickness gets a name', adopt: 'the court takes up its subjects\' tongue' };
 export function explain(w, id) {
   const by = new Map((w.hist || []).map((e) => [e.id, e])), out = [], seen = new Set();
   const nm = (v) => (typeof v === 'number' ? (w.cults[v] ? 'the ' + w.cults[v].name : '?') : String(v).replace(/^[pmdk]:/, ''));

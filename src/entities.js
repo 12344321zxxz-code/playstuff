@@ -1,6 +1,7 @@
 // Everything on the map that is not terrain: animals, peoples, roads, ruins, dragons, storms and
 // the brief flashes when something big happens. Drawn on the 2D overlay, on top of the shader.
-import { tongueColor } from './tongues.js';
+import { tongueColor, quirksOf } from './tongues.js';
+import { overlordOf } from './capture.js';
 import { KINDS, STANCES, memAt, kindAt } from './memory.js';
 import { GOODS } from './trade.js';
 import { ERA, blockedReasons } from './tech.js';
@@ -99,12 +100,12 @@ function drawMovers(ctx, w, cam, z, frac) {
   if (z < 2.2) return; const k = pixScale(z, cam.dpr, 0.85);
   for (const m of w.movers) {
     if (m.done) continue; const x = m.px + wrapDx(m.x - m.px) * frac + 0.5, y = m.py + (m.y - m.py) * frac + 0.8; if (!seen(x, y, 2)) continue; const p = at(cam, x, y);
-    const c = w.cults[m.cult], col = m.kind === 'trade' && m.goods >= 0 ? GOODS[m.goods].col : c.color, flip = wrapDx(m.x - m.px) < 0;
+    const c = w.cults[m.cult], col = m.kind === 'tribute' ? '#f2c94c' : m.kind === 'trade' && m.goods >= 0 ? GOODS[m.goods].col : c.color, flip = wrapDx(m.x - m.px) < 0;
     if (m.dead || (c && c.power === 'dead' && m.kind === 'army')) { blit(ctx, 'shamblers', p[0], p[1], k, '#9fb59a', flip); continue; }
     if (m.kind === 'missile') { const t = (wrapDx(m.tx - m.x) < 0); blit(ctx, 'missile', p[0], p[1] - 6 * k, k, null, t); continue; }
     const era = c.tech;
     if (m.wet && !m.path) { blit(ctx, m.kind === 'trade' || m.kind === 'army' ? (era >= 8 ? 'liner' : era >= 6 ? 'steamer' : 'ship') : 'boat', p[0], p[1], k, col, flip); if (m.kind === 'army') { ctx.fillStyle = '#e03a1f'; ctx.fillRect(Math.round(p[0] - k), Math.round(p[1] - 8 * k), 2 * k, k); } continue; }
-    blit(ctx, m.kind === 'army' || m.kind === 'home' ? (era >= 8 ? 'tanks' : era >= 6 ? 'rifles' : era >= 4 && c.arts.stirrups ? 'knights' : 'army') : m.kind === 'trade' ? (era >= 8 ? 'truck' : era >= 6 && c.arts.railways && m.path ? 'train' : 'caravan') : m.kind === 'settlers' ? 'settlers' : 'refugees', p[0], p[1], k, col, flip);
+    blit(ctx, m.kind === 'army' || m.kind === 'home' ? (era >= 8 ? 'tanks' : era >= 6 ? 'rifles' : era >= 4 && c.arts.stirrups ? 'knights' : 'army') : m.kind === 'trade' || m.kind === 'tribute' ? (era >= 8 ? 'truck' : era >= 6 && c.arts.railways && m.path ? 'train' : 'caravan') : m.kind === 'settlers' ? 'settlers' : 'refugees', p[0], p[1], k, col, flip);
   }
 }
 function drawSwarms(ctx, w, cam, z, now, frac) {
@@ -223,6 +224,10 @@ const cap = (t) => t[0].toUpperCase() + t.slice(1);
 export function cultLines(w, c) {
   const L = [];
   L.push(`${c.kind[0].toUpperCase() + c.kind.slice(1)}. ${big(c.pop)} people in ${c.count} ${c.count === 1 ? 'place' : 'places'}.`);
+  if (c.langId != null && w.langs) { const qs = quirksOf(w, c); L.push(`They speak ${w.langs[c.langId].name}${w.langs[c.langId].root !== c.langId ? ', of the ' + w.langs[w.langs[c.langId].root].name + ' family' : ''}${c.foreignShare > 0.15 ? `; ${Math.round(c.foreignShare * 100)}% of their subjects speak a stranger's tongue` : ''}.${qs.length ? ' ' + qs[0][0].toUpperCase() + qs.join(', ').slice(1) + '.' : ''}`); }
+  if (c.over) L.push(`They pay tribute to ${overlordOf(w, c)}, collected by ${c.over.house} (${Math.round(c.over.take * 100)}% of the harvest).`);
+  if (c.colonies && c.colonies.length) L.push(`They take tribute from ${c.colonies.map((id) => 'the ' + w.cults[id].name).join(', ')}.`);
+  if (c.hub && c.hub.st !== 'grow') L.push(c.hub.st === 'civil' ? 'Their great houses are at war with each other.' : c.hub.st === 'factions' ? 'There are far more would-be lords than lordships; the court is split into factions.' : 'More would-be lords than lordships: the court wants new land.');
   const keys = Object.keys(c.arts).filter((k) => ART[k]).sort((a, b) => c.arts[b] - c.arts[a]);
   L.push(`They live in the age of ${ERA[Math.min(10, c.tech)]}. ${keys.length ? `They know ${keys.length} things; lately ${list(keys.slice(0, 4).map((k) => ART[k].say))}.` : 'They know fire, stone and each other.'}`);
   const why = blockedReasons(c); if (why.length) L.push(cap(list(why.slice(0, 2))) + '.');

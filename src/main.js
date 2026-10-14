@@ -1,5 +1,5 @@
 // The page: camera, input, tools, panels. The world itself lives in world.js and friends.
-import { tongueColor } from './tongues.js';
+import { tongueColor, familyOf } from './tongues.js';
 import { W, H, N, TPY, CW, CH, TAU, clamp, idx, wrapDx, wx } from './core.js';
 import { tensions, makeWatch, watchRate } from './watch.js';
 import { makeWorld, tick, refreshWater, queueClimate, background, movePlates } from './world.js';
@@ -187,8 +187,8 @@ function legend() {
   if (S.lens === 7) { keyList('What the land remembers', KINDS.filter((k) => k.key !== 'frost').map((k) => [k.col, k.name[0].toUpperCase() + k.name.slice(1)]).concat(Object.values(STANCES).map((q) => [q.col, 'Borders: ' + q.name.toLowerCase()])), 'Pale lines: ley lines, which carry memory to the wells.'); return; }
   if (S.lens === 12) { keyList('Wild plants worth sowing', PLANTS.map((q) => [q.col, q.wild[0].toUpperCase() + q.wild.slice(1)]).concat([['#3d3b39', 'Nothing a people could farm']]), 'Brighter: better harvests. Crops travel along the same climate.'); return; }
   if (S.lens === 16) { keyList('Fallout', [['#bfff33', 'Poisoned ground: crops fail, animals die, people sicken'], ['#3a3836', 'Clean']], 'It fades over a few generations. The death it leaves behind lasts longer.'); return; }
-  if (S.lens === 17) { const fam = new Map(); for (const L of w.langs || []) if (L.alive) { const f = fam.get(L.root) || { n: 0, pop: 0 }; f.n++; f.pop += L.pop; fam.set(L.root, f); }
-    keyList('Language families', [...fam].sort((a, b) => b[1].pop - a[1].pop).slice(0, 8).map(([r, f]) => [tongueColor(w, r), `${w.langs[r].name} · ${f.n} ${f.n === 1 ? 'tongue' : 'tongues'}`]), 'Each dot is a town. Shades of one colour are tongues of one family. Conquest changes who rules a town, not what it speaks.'); return; }
+  if (S.lens === 17) { const fam = new Map(); for (const L of w.langs || []) if (L.alive) { const k = familyOf(w, L.id), f = fam.get(k) || { n: 0, pop: 0 }; f.n++; f.pop += L.pop; fam.set(k, f); }
+    keyList('Language families', [...fam].sort((a, b) => b[1].pop - a[1].pop).slice(0, 9).map(([r, f]) => { const F = w.langs[r]; return [tongueColor(w, r), `${F.name}${F.depth ? ' (from ' + w.langs[F.root].name + ')' : ''} · ${f.n} ${f.n === 1 ? 'tongue' : 'tongues'}`]; }), 'Each dot is a town. A family is one branch of an origin tongue; families from the same origin share a hue. Shades are tongues within a family. Conquest changes who rules a town, not what it speaks.'); return; }
   if (S.lens === 15) { keyList('The age each people lives in', ERA.map((e, k) => [ERA_COL[k], e[0].toUpperCase() + e.slice(1)])); return; }
   if (S.lens === 14) { keyList('Trade routes', GOODS.map((g) => [g.col, g.name[0].toUpperCase() + g.name.slice(1)]), 'Line colour: what a route mostly carries. Thicker: busier. Dashed: by sea. Gold squares: markets.'); return; }
   if (S.lens === 13) { const alive = new Set(); for (const m in w.massKinds) for (const s of w.massKinds[m]) alive.add(s); keyList('Wild beasts', SPECIES.map((q, k) => [q, k]).filter(([, k]) => alive.has(k)).map(([q]) => [q.lc, q.name[0].toUpperCase() + q.name.slice(1) + (q.tame ? ' (can be tamed)' : '')]), 'Solid: a people could tame it. Checked: it will never be tamed.'); return; }

@@ -23,7 +23,7 @@ export function magicYear(w) {
 }
 export function magicTick(w) { leyStormsTick(w, stormPass); }
 // a dragon that dies leaves its fire in the ground, and in a few lifetimes another hatches there
-function dragonDies(w, d) { d.dead = true; remember(w, d.lx, d.ly, FIRE, 0.9, 4, 'dragonfall', `${d.name} died`, { place: d.name }); }
+export function dragonDies(w, d) { d.dead = true; remember(w, d.lx, d.ly, FIRE, 0.9, 4, 'dragonfall', `${d.name} died`, { place: d.name }); }
 
 const DNAME = ['Vharog', 'Sesketh', 'Old Ember', 'Mordrath', 'Ithiss', 'Karazun', 'The Red Mother', 'Ashmaw', 'Ulgoroth', 'Nyx', 'Brandscale', 'Tharn'];
 export function addDragon(w, x, y) {
@@ -77,7 +77,7 @@ export function dragonsTick(w) {
       const loot = s.pop * 0.18; s.pop -= loot; flee(w, s, loot * 0.5); s.burned++; if (s.burned === 3) holySite(w, s.x, s.y, 'dragon', 0.6); d.hoard += loot / 40 + (c.gold ? 4 : 0); for (const o of DISC[2]) { const yy = s.y + o[1]; if (yy < 1 || yy >= H - 1) continue; if (rnd() < 0.5) ignite(w, yy * W + wx(s.x + o[0])); }
       if (s.pop < 40 && s.tier >= 1) { endSet(w, s, 'dragon'); } else if (s.burned === 1) ev(w, `${d.name} falls on ${s.name} out of a clear sky.`, s.x, s.y, null, s.tier < 2 ? 1 : 0); else if (s.burned % 4 === 0) ev(w, `${s.name} has burned ${s.burned} times now. Its people rebuild in stone and keep watching the sky.`, s.x, s.y, colorOf(c), 1);
       if (d.hoard > 22 && discover(w, 'hoard', d.lx, d.ly)) ev(w, `The hoard of ${d.name} is the richest thing in the world, and everyone knows where it is.`, d.lx, d.ly, null); }
-    d.st = 'home'; d.tx = d.lx; d.ty = d.ly;
+    d.st = 'home'; d.tx = d.lx; d.ty = d.ly; if (d.repact != null && d.pacts) { d.pacts.add(d.repact); d.repact = null; }
   }
   if (w.dragons.some((d) => d.dead)) w.dragons = w.dragons.filter((d) => !d.dead);
 }

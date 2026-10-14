@@ -128,7 +128,7 @@ function meltdown(w, c) {
 // A plague made on purpose, and how it escapes.
 function breedPlague(w, c, foe) {
   const at = foe && foe.big ? foe.big : c.big; if (!infect(w, at, null, true)) return;
-  const st = w.plagues[at.pid]; st.v = 0.4; st.catchy = 0.95; st.engineered = true; st.name = ['Grey Fever', 'Glass Lung', 'Quiet Sickness'][(w.rnd() * 3) | 0];
+  const st = w.plagues[at.pid]; st.v = 0.4; st.catchy = 0.95; st.engineered = true; st.great = true; st.name = ['Grey Fever', 'Glass Lung', 'Quiet Sickness'][(w.rnd() * 3) | 0];
   ev(w, foe ? `The ${c.name} let loose a sickness of their own making among the ${foe.name}. They are sure they can keep it there.` : `Something gets out of a laboratory of the ${c.name}. They call it the ${st.name}. No one is hardened to it, because it has never existed before.`, at.x, at.y, c.color, 2); discover(w, 'germwar', at.x, at.y);
 }
 // When the world remembers enough death at once, the dead stop keeping to their limits.
