@@ -106,7 +106,8 @@ function drawMovers(ctx, w, cam, z, frac) {
     if (m.dead || (c && c.power === 'dead' && m.kind === 'army')) { blit(ctx, 'shamblers', p[0], p[1], k, '#9fb59a', flip); continue; }
     if (m.kind === 'missile') { const t = (wrapDx(m.tx - m.x) < 0); blit(ctx, 'missile', p[0], p[1] - 6 * k, k, null, t); continue; }
     const era = c.tech;
-    if (m.wet && !m.path) { blit(ctx, m.kind === 'trade' || m.kind === 'army' ? (era >= 8 ? 'liner' : era >= 6 ? 'steamer' : 'ship') : 'boat', p[0], p[1], k, col, flip); if (m.kind === 'army') { ctx.fillStyle = '#e03a1f'; ctx.fillRect(Math.round(p[0] - k), Math.round(p[1] - 8 * k), 2 * k, k); } continue; }
+    if (m.kind === 'army' && m.path && m.n0 && z >= 3) { const a = Math.max(0, (m.pi || 0) - 60); ctx.strokeStyle = c.color; ctx.globalAlpha = 0.45; ctx.lineWidth = Math.max(1, Math.min(6, Math.sqrt(m.n) / 4) * cam.dpr); ctx.setLineDash([]); pathLine(ctx, cam, m.path, a, (m.pi || 0) + 1); ctx.globalAlpha = 1; }   /* the march so far, as thick as the army still is */
+    if (m.wet) { blit(ctx, m.kind === 'trade' || m.kind === 'army' ? (era >= 8 ? 'liner' : era >= 6 ? 'steamer' : 'ship') : 'boat', p[0], p[1], k, col, flip); if (m.kind === 'army') { ctx.fillStyle = '#e03a1f'; ctx.fillRect(Math.round(p[0] - k), Math.round(p[1] - 8 * k), 2 * k, k); } continue; }
     blit(ctx, m.kind === 'army' || m.kind === 'home' ? (era >= 8 ? 'tanks' : era >= 6 ? 'rifles' : era >= 4 && c.arts.stirrups ? 'knights' : 'army') : m.kind === 'trade' || m.kind === 'tribute' ? (era >= 8 ? 'truck' : era >= 6 && c.arts.railways && m.path ? 'train' : 'caravan') : m.kind === 'settlers' ? 'settlers' : 'refugees', p[0], p[1], k, col, flip);
   }
 }
@@ -294,6 +295,7 @@ function drawFx(ctx, w, cam, s, now) {
     else if (f.k === 'ring') { const R = f.R * u * s; ctx.beginPath(); ctx.arc(A[0], A[1], R, 0, TAU); ctx.lineWidth = (2 + 5 * (1 - u)) * cam.dpr; ctx.strokeStyle = `rgba(215,245,255,${0.85 * (1 - u)})`; ctx.stroke(); }
     else if (f.k === 'shake') { shake = Math.max(shake, 1 - u); ctx.beginPath(); ctx.arc(A[0], A[1], 11 * s * u, 0, TAU); ctx.lineWidth = 2 * cam.dpr; ctx.strokeStyle = `rgba(60,40,30,${0.7 * (1 - u)})`; ctx.stroke(); }
     else if (f.k === 'clash') { const R = (0.6 + 1.6 * u) * s; ctx.lineWidth = 2.2 * cam.dpr; ctx.strokeStyle = `rgba(255,70,40,${1 - u})`; ctx.beginPath(); for (let q = 0; q < 6; q++) { const a = (q / 6) * TAU + 0.4; ctx.moveTo(A[0] + Math.cos(a) * R * 0.3, A[1] + Math.sin(a) * R * 0.3); ctx.lineTo(A[0] + Math.cos(a) * R, A[1] + Math.sin(a) * R); } ctx.stroke(); }
+    else if (f.k === 'wisp') { const dx = wrapDx(f.tx - f.x), dy = f.ty - f.y; for (let q = 0; q < 7; q++) { const t = Math.min(1, u * 1.2 - q * 0.05); if (t < 0) continue; toScreen(cam, f.x + dx * t + 0.5 + Math.sin(q * 2.1 + u * 9) * 0.6, f.y + dy * t + 0.5 + Math.cos(q * 1.7 + u * 7) * 0.6, B); ctx.fillStyle = `rgba(200,225,205,${0.7 * (1 - u)})`; ctx.fillRect(Math.round(B[0]) - 1, Math.round(B[1]) - 1, Math.max(2, s * 0.35), Math.max(2, s * 0.35)); } }   /* the dead of a battle drifting to the nearest dead town */
     else if (f.k === 'spark') { const R = (1 + 5 * u) * s; ctx.lineWidth = 2.4 * cam.dpr; ctx.strokeStyle = `rgba(255,224,90,${1 - u})`; ctx.beginPath(); for (let q = 0; q < 8; q++) { const a = (q / 8) * TAU; ctx.moveTo(A[0] + Math.cos(a) * R * 0.45, A[1] + Math.sin(a) * R * 0.45); ctx.lineTo(A[0] + Math.cos(a) * R, A[1] + Math.sin(a) * R); } ctx.stroke(); }
   }
   if (w.fx.some((f) => f.done)) w.fx = w.fx.filter((f) => !f.done);

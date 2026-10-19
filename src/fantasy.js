@@ -52,7 +52,7 @@ function dragonsYear(w) {
     if (d.st !== 'wake') continue;
     // choose: plunder a town, or eat
     let town = null, tb = 0;
-    if (rnd() < 0.3 + Math.min(0.4, d.age / 400)) near(w, d.lx, d.ly, 50, null, true, (s) => { if (d.pacts && d.pacts.has(s.cult)) { d.hoard += 0.02; return; } const v = s.pop * (w.cults[s.cult].gold ? 2 : 1); if (s.pop > 150 && v > tb) { tb = v; town = s; } });
+    if (rnd() < 0.3 + Math.min(0.4, d.age / 400)) near(w, d.lx, d.ly, 50, null, true, (s) => { if (d.pacts && d.pacts.has(s.cult)) { d.hoard += 0.02; return; } const ov = w.cults[s.cult].over; if (ov && ov.kind === 'dragon' && ov.d !== d.name) return;   /* another dragon's kingdom is left alone */ const v = s.pop * (w.cults[s.cult].gold ? 2 : 1); if (s.pop > 150 && v > tb) { tb = v; town = s; } });
     if (town) { d.st = 'fly'; d.target = { kind: 'town', s: town }; d.tx = town.x; d.ty = town.y; continue; }
     let herd = -1, hb = 0.3; for (let q = 0; q < 60; q++) { const a = rnd() * 6.283, r = rnd() * 40, x = wx(Math.round(d.lx + Math.cos(a) * r)), y = Math.round(d.ly + Math.sin(a) * r); if (y < 1 || y >= H - 1) continue; const i = y * W + x; if (w.graze[i] > hb) { hb = w.graze[i]; herd = i; } }
     if (herd >= 0) { d.st = 'fly'; d.target = { kind: 'herd', i: herd }; d.tx = herd % W; d.ty = (herd / W) | 0; } else { d.hunger++; if (d.hunger > 14) { dragonDies(w, d); ev(w, `${d.name} has not been seen in years. The peaks are quiet.`, d.lx, d.ly, null); } }

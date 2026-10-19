@@ -18,6 +18,7 @@ import { ev, discover, once } from './story.js';
 import { holySite } from './faith.js';
 import { dragonDies } from './fantasy.js';
 import { newHouse } from './relics.js';
+import { legCells } from './travel.js';
 import { tagFrom, word, tongueGap } from './tongues.js';
 import { W, wx, wrapDx } from './core.js';
 
@@ -79,7 +80,7 @@ export function captureYear(w) {
       const need = 1 + d.age / 150, got = ov.take * c.pop / 800;
       if (got < need) { ov.take = Math.min(0.4, ov.take + 0.01); c.overPush = 2.5; } else { ov.take = Math.max(0.12, ov.take - 0.003); c.overPush = 1; d.hoard += 0.2; }
       c.tribute = ov.take; d.hunger = 0;
-      if (rnd() < 0.3) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 1 && s !== b && (!from || rnd() < 0.2)) from = s; if (from) send(w, { kind: 'tribute', cult: c.id, x: from.x, y: from.y, tx: d.lx, ty: d.ly, n: 8, gold: ov.take * 3, dragon: d.name, land: 0.8 }); }
+      if (rnd() < 0.3) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 1 && s !== b && (!from || rnd() < 0.2)) from = s; if (from) { const cells = legCells(w, from, b); send(w, { kind: 'tribute', cult: c.id, x: from.x, y: from.y, tx: d.lx, ty: d.ly, n: 8, gold: ov.take * 3, dragon: d.name, land: 0.8, path: cells && cells.length > 1 ? cells : null, step: 2 }); }   /* the tribute goes up the ways to the capital */ }
       // a town that will not pay is burned
       if (L < 0.8 && rnd() < 0.12 && d.st === 'wake') { let far = null, fd = 0; for (const s of w.sets) { if (s.cult !== c.id || s.nomad || s === b) continue; const q = wrapDx(s.x - b.x) ** 2 + (s.y - b.y) ** 2; if (q > fd) { fd = q; far = s; } }
         if (far) { d.pacts.delete(c.id); d.st = 'fly'; d.target = { kind: 'town', s: far }; d.tx = far.x; d.ty = far.y; d.repact = c.id; if (once(w, 'refuse-' + c.id + '-' + Math.floor(w.year / 60))) ev(w, `${far.name} will not pay ${ov.d}. Everyone knows what happens next.`, far.x, far.y, c.color, 1); } }
