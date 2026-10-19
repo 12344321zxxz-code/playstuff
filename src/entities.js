@@ -4,6 +4,7 @@ import { tongueColor, tongueHsl, familyOf, quirksOf } from './tongues.js';
 import { overlordOf } from './capture.js';
 import { KINDS, STANCES, memAt, kindAt } from './memory.js';
 import { GOODS } from './trade.js';
+import { travelState } from './travel.js';
 import { ERA, blockedReasons } from './tech.js';
 import { SPIRIT_KINDS } from './spirits.js';
 import { PLANTS, luckOf } from './origins.js';
@@ -210,15 +211,46 @@ function tongueCard(w, x, y) {
     `Spoken in ${L.towns} ${L.towns === 1 ? 'town' : 'towns'} by about ${big(L.pop)} people${rl.length ? `, under ${list(rl)}` : ''}.`,
     court && court.id !== L.id ? `${t.name || 'This place'} is ruled by the ${c.name}, whose court speaks ${court.name}. (Hatched.)` : c ? `It is the court tongue of the ${c.name}.` : ''].filter(Boolean) };
 }
+// a polyline through world cells; breaks where the map wraps
+function pathLine(ctx, cam, cells, from, to) {
+  let px = null, py = 0, on = false; const lim = cam.w * 0.5; from = from || 0; to = to == null ? cells.length : to;
+  ctx.beginPath();
+  for (let k = from; k < to; k++) { const i = cells[k], p = at(cam, (i % W) + 0.5, ((i / W) | 0) + 0.5), x = p[0], y = p[1];
+    if (px === null || Math.abs(x - px) > lim) { ctx.moveTo(x, y); on = false; } else { ctx.lineTo(x, y); on = true; } px = x; py = y; }
+  ctx.stroke(); return on;
+}
+const pathSeen = (cells) => { const n = cells.length; for (const k of [0, n >> 1, n - 1]) { const i = cells[k]; if (seen(i % W, (i / W) | 0, 24)) return true; } return false; };
+// tracks worn by traders (Land lens, close in); in the Trade lens every way by its grade, and the sea lanes
+const GRADE = [null, { c: '#9a7a55', d: [3, 3], wd: 1 }, { c: '#d6c29a', d: [], wd: 1.6 }, { c: '#2a2628', d: [], wd: 2 }];
+function drawWays(ctx, w, cam, z, lens) {
+  const Tr = travelState; if (Tr.w !== w) return; const q = Math.max(1, cam.dpr), wear = w.tracks || new Map();
+  if (lens === 0 && z >= 2.2) {
+    ctx.strokeStyle = '#7a5f42'; ctx.lineWidth = Math.max(1, Math.round(q * Math.min(1.6, z / 4))); ctx.setLineDash([2 * q, 3 * q]); ctx.lineCap = 'round';
+    for (const e of Tr.edges.values()) { if (e.grade !== 1 || !e.path || !pathSeen(e.path)) continue; ctx.globalAlpha = Math.min(0.85, 0.3 + (wear.get(e.key) || 0) / 8); pathLine(ctx, cam, e.path); }
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+  if (lens === 0 && z < 5) {   /* the sea lanes, faint, where ships run often */
+    ctx.strokeStyle = 'rgba(225,240,255,0.35)'; ctx.lineWidth = q; ctx.setLineDash([1 * q, 4 * q]);
+    for (const [k, L] of Tr.lanes) { const r = w.routes.get(k); if (!L.path || !r || r.n < 3 || !pathSeen(L.path)) continue; pathLine(ctx, cam, L.path); }
+    ctx.setLineDash([]);
+  }
+  if (lens !== 14) return;
+  for (let g = 1; g <= 3; g++) { const G = GRADE[g]; ctx.strokeStyle = G.c; ctx.lineWidth = G.wd * q * Math.max(1, z / 3); ctx.setLineDash(G.d.map((v) => v * q)); ctx.globalAlpha = 0.9;
+    for (const e of Tr.edges.values()) if (e.grade === g && e.path && pathSeen(e.path)) pathLine(ctx, cam, e.path); }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+}
 // the Trade lens: every route as a line, as thick as its traffic, in the colour of what it carries
 function drawRoutes(ctx, w, cam, z, lens) {
   if (lens !== 14) { if (z < 1.2 || z > 6) return; for (const r of w.routes.values()) if (r.name && seen(r.a.x, r.a.y, 30)) { const a = at(cam, r.a.x + 0.5, r.a.y + 0.5).slice(), b = at(cam, r.a.x + wrapDx(r.b.x - r.a.x) + 0.5, r.b.y + 0.5); label(ctx, r.name, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.round(10 * cam.dpr), r.wet ? '#bfe4ff' : '#f2e0b0', true, 20 + r.n); } return; }
   const q = Math.max(1, Math.round(cam.dpr));
-  for (const r of w.routes.values()) {
+  for (const [rk, r] of w.routes) {
     if (r.n < 0.5) continue; let bg = 0; for (let g = 1; g < GOODS.length; g++) if (r.g[g] > r.g[bg]) bg = g;
     const a = at(cam, r.a.x + 0.5, r.a.y + 0.5).slice(), dx = wrapDx(r.b.x - r.a.x), b = at(cam, r.a.x + dx + 0.5, r.b.y + 0.5); if (Math.max(a[0], b[0]) < 0 || Math.min(a[0], b[0]) > cam.w) continue;
     ctx.strokeStyle = r.g[bg] > 0 ? GOODS[bg].col : '#d8d0c0'; ctx.globalAlpha = Math.min(1, 0.35 + r.n / 10); ctx.lineWidth = q * Math.min(7, 1 + Math.sqrt(r.n)); ctx.setLineDash(r.wet ? [4 * q, 3 * q] : []);
-    ctx.beginPath(); ctx.moveTo(Math.round(a[0]), Math.round(a[1])); ctx.lineTo(Math.round(b[0]), Math.round(b[1])); ctx.stroke();
+    const chain = travelState.routeWays.get(rk), lane = travelState.lanes.get(rk);
+    if (chain && travelState.w === w) { for (const e of chain) if (e.path) pathLine(ctx, cam, e.path); }
+    else if (lane && lane.path && travelState.w === w) { pathLine(ctx, cam, lane.path); ctx.setLineDash([]); ctx.globalAlpha *= 0.6; ctx.lineWidth = q; const s0 = lane.path[0], s1 = lane.path[lane.path.length - 1]; for (const [t, c] of [[r.a, s0], [r.b, s1]]) { pathLine(ctx, cam, [t.y * W + t.x, c]); } }
+    else { ctx.beginPath(); ctx.moveTo(Math.round(a[0]), Math.round(a[1])); ctx.lineTo(Math.round(b[0]), Math.round(b[1])); ctx.stroke(); }
     if (r.name) label(ctx, r.name, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 6 * cam.dpr, Math.round(11 * cam.dpr), GOODS[r.good ?? bg].col, true, 60 + r.n);
   }
   ctx.setLineDash([]); ctx.globalAlpha = 1;
@@ -276,7 +308,7 @@ hook('overlay', (ctx, w, cam, S, now) => {
   const s = cam.z * cam.dpr, z = cam.z, frac = clamp(S.acc, 0, 1);
   view = { x: cam.x, y: cam.y, hw: cam.w / (2 * s), hh: cam.h / (2 * s) };
   const bare = S.lens === 4 || S.lens === 5;
-  if (!bare) { if (S.lens === 17) drawTongues(ctx, w, cam, s); drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawRoutes(ctx, w, cam, z, S.lens); drawCourts(ctx, w, cam, s); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
+  if (!bare) { if (S.lens === 17) drawTongues(ctx, w, cam, s); drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawWays(ctx, w, cam, z, S.lens); drawRoutes(ctx, w, cam, z, S.lens); drawCourts(ctx, w, cam, s); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
   flushLabels(ctx); drawFx(ctx, w, cam, s, now); drawSel(ctx, cam, S, now);
 });
 

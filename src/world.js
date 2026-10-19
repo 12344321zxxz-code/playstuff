@@ -11,6 +11,7 @@ import { flowMemory } from './memory.js';
 import { initTrade, tradeYear } from './trade.js';
 import { initWorks, worksYear } from './works.js';
 import { initDoom, doomYear, doomTick } from './doom.js';
+import { travelTick } from './travel.js';
 import { futureYear } from './future.js';
 import { naturalYear, stormsTick, swarmsTick } from './disasters.js';
 import { discover, ev } from './story.js';
@@ -81,7 +82,7 @@ export function tick(w) {
   w.tickN++; w.phase = (w.tickN % TPY) / TPY; w.year = Math.floor(w.tickN / TPY);
   if (w.aerosol > 0.001) w.aerosol *= 0.975; else w.aerosol = 0;
   seasonFields(w, w.tickN & 1); vegetation(w, w.tickN & 3); fireStep(w);
-  doomTick(w); if (!(w.tickN & 1)) fauna(w); dragonsTick(w); magicTick(w); stormsTick(w); swarmsTick(w); moversTick(w);
+  doomTick(w); if (!(w.tickN & 1)) fauna(w); dragonsTick(w); magicTick(w); stormsTick(w); swarmsTick(w); moversTick(w); travelTick(w);
   // the yearly work is spread over the year's ticks so no single tick is heavy
   const ph = w.tickN % TPY;
   if (ph === 1) weatherYear(w); else if (ph === 2) { seaYear(w); faunaYear(w); originsYear(w); } else if (ph === 3) magicYear(w); else if (ph === 7) flowMemory(w); else if (ph === 4) { naturalYear(w); doomYear(w); futureYear(w); } else if (ph === 5) { roadsYear(w); tradeYear(w); } else if (ph === 6) worksYear(w);
