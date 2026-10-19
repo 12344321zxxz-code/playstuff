@@ -18,7 +18,7 @@ import { ev, discover, once } from './story.js';
 import { holySite } from './faith.js';
 import { dragonDies } from './fantasy.js';
 import { newHouse } from './relics.js';
-import { legCells } from './travel.js';
+import { legCells, seaLane } from './travel.js';
 import { tagFrom, word, tongueGap } from './tongues.js';
 import { W, wx, wrapDx } from './core.js';
 
@@ -98,7 +98,7 @@ export function captureYear(w) {
       const o = w.cults[ov.id];
       if (!o || !o.alive) { free(w, c, 'the overlord is gone'); ev(w, `There is no one left to send the tribute to. The ${c.name} are their own masters again.`, b.x, b.y, c.color, 1); continue; }
       c.tribute = ov.take; o.tributeIn = (o.tributeIn || 0) + ov.take * c.pop / 100;
-      if (rnd() < 0.15) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 2) { from = s; break; } if (from && o.big) send(w, { kind: 'trade', cult: o.id, x: from.x, y: from.y, tx: o.big.x, ty: o.big.y, n: 10, goods: -1, land: 0.8 }); }
+      if (rnd() < 0.15) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 2) { from = s; break; } if (from && o.big) { const lane = seaLane(w, from.x, from.y, o.big.x, o.big.y), cells = lane ? null : legCells(w, from, o.big); if (lane || (cells && cells.length > 1)) send(w, { kind: 'trade', cult: o.id, x: from.x, y: from.y, tx: o.big.x, ty: o.big.y, n: 10, goods: -1, land: 0.8, path: lane || cells, wet0: !!lane, step: lane ? 4 : 2 }); }   /* the colony's tribute sails a lane home, or goes by the ways */; }
       const gap = tongueGap(w, c.langId, o.langId), weak = o.hub && (o.hub.st === 'civil' || o.hub.st === 'factions') ? 0.03 : 0;
       const p = 0.003 + 0.03 * Math.max(0, 0.8 - L) + weak + (gap === Infinity ? 0.004 : 0) + Math.min(0.02, ov.hw / 4000);
       if (rnd() < p) {

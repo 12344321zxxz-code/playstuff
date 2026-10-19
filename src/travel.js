@@ -23,7 +23,7 @@ import { coarse } from './climate.js';
 import { near } from './people.js';
 import { familyOf } from './tongues.js';
 
-const K = 3, R = 22, SEA_EVERY = 80;
+const K = 3, R = 22, SEA_EVERY = 150;
 const _d = new Float32Array(N), _st = new Int32Array(N), _pv = new Int32Array(N), _hp = new Heap(N); let _s = 0;
 // the price of stepping onto cell n from cell c
 export function stepCost(w, c, n, diag) {
@@ -117,7 +117,7 @@ function graphPath(a, b) {
 }
 
 // sea lanes: A* on a half-resolution grid of open sea, cheap with the wind and the current, dear against them
-const HW = W / 2, HH = H / 2, HN = HW * HH, _cd = new Float32Array(HN), _cs = new Int32Array(HN), _cp = new Int32Array(HN), _ch = new Heap(HN), _wet = new Uint8Array(HN); let _cst = 0, _wetStamp = -1;
+const HW = W / 2, HH = H / 2, HN = HW * HH, _cd = new Float32Array(HN), _cs = new Int32Array(HN), _cp = new Int32Array(HN), _ch = new Heap(HN), _wet = new Uint8Array(HN), _comp = new Int32Array(HN); let _cst = 0, _wetStamp = -1;
 // the price of each of the eight moves from each half-cell, worked out once per climate
 const DIRS = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]], _lc = new Float32Array(HN * 8); let _lcFor = -1;
 function laneCosts(w) {
@@ -129,26 +129,36 @@ function laneCosts(w) {
 }
 function wetMap(w) {
   if (_wetStamp === w.stamp.land) return; _wetStamp = w.stamp.land;
-  for (let y = 0; y < HH; y++) for (let x = 0; x < HW; x++) { const i = y * 2 * W + x * 2; _wet[y * HW + x] = w.water[i] === 1 || w.water[i + 1] === 1 || w.water[i + W] === 1 || w.water[i + W + 1] === 1 ? 1 : 0; }
-  // keep only the world ocean (the largest connected water): closed seas have no lanes to anywhere
-  _cs.fill(0); let best = 0, bestK = 0, k = 0; const q = _cp;
-  for (let s = 0; s < HN; s++) { if (!_wet[s] || _cs[s]) continue; k++; let n = 0, hd = 0; q[n++] = s; _cs[s] = k; while (hd < n) { const c = q[hd++], x = c % HW, y = (c / HW) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy; if (yy < 0 || yy >= HH) continue; const m = yy * HW + (x + dx + HW) % HW; if (_wet[m] && !_cs[m]) { _cs[m] = k; q[n++] = m; } } } if (n > best) { best = n; bestK = k; } }
-  for (let s = 0; s < HN; s++) if (_wet[s] && _cs[s] !== bestK) _wet[s] = 0; _cs.fill(0); _cst = 0;
+  for (let y = 0; y < HH; y++) for (let x = 0; x < HW; x++) { const i = y * 2 * W + x * 2; _wet[y * HW + x] = (w.water[i] === 1) + (w.water[i + 1] === 1) + (w.water[i + W] === 1) + (w.water[i + W + 1] === 1) >= 2 ? 1 : 0; }   /* mostly sea: a strip of land one cell wide still stops a ship */
+  // every connected body of water gets its own number: a lane runs only within one sea
+  _comp.fill(0); let k = 0; const q = _cp;
+  for (let s = 0; s < HN; s++) { if (!_wet[s] || _comp[s]) continue; k++; let n = 0, hd = 0; q[n++] = s; _comp[s] = k; while (hd < n) { const c = q[hd++], x = c % HW, y = (c / HW) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy; if (yy < 0 || yy >= HH) continue; const m = yy * HW + (x + dx + HW) % HW; if (_wet[m] && !_comp[m]) { _comp[m] = k; q[n++] = m; } } } }
+  _cs.fill(0); _cst = 0;
 }
-// returns fine-grid cell indices along the lane, or null
-export function seaLane(w, ax, ay, bx, by) {
-  wetMap(w); laneCosts(w);
-  const snap = (x, y) => { const cx = (x / 2) | 0, cy = clamp((y / 2) | 0, 0, HH - 1); let best = -1, bd = 999; for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) { const yy = cy + dy; if (yy < 0 || yy >= HH) continue; const i = yy * HW + ((cx + dx + HW) % HW); if (_wet[i] && dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; best = i; } } return best; };
-  const src = snap(ax, ay), dst = snap(bx, by); if (src < 0 || dst < 0) return null;
-  _cst++; _ch.clear(); _cd[src] = 0; _cs[src] = _cst; _cp[src] = -1; const tx = dst % HW, ty = (dst / HW) | 0; _ch.push(0, src); let budget = 15000;
-  const hdx = (a, b) => { let d = a - b; if (d > HW / 2) d -= HW; else if (d < -HW / 2) d += HW; return d; };
-  while (_ch.n && budget-- > 0) {
-    const c = _ch.pop(); if (c === dst) { const p = []; for (let k = c; k >= 0; k = _cp[k]) p.push(((k / HW) | 0) * 2 * W + (k % HW) * 2); return p.reverse(); }
-    const x = c % HW, y = (c / HW) | 0, dc = _cd[c];
-    for (let d = 0; d < 8; d++) { const dx = DIRS[d][0], dy = DIRS[d][1], yy = y + dy; if (yy < 0 || yy >= HH) continue; const n = yy * HW + (x + dx + HW) % HW; if (!_wet[n]) continue;
-      const nd = dc + _lc[c * 8 + d]; if (_cs[n] !== _cst || nd < _cd[n]) { _cs[n] = _cst; _cd[n] = nd; _cp[n] = c; _ch.push(nd + Math.hypot(hdx(x + dx, tx), yy - ty) * 1.0, n);   /* a greedy heuristic: near-cheapest lanes, found fast */ } }
+// One map per destination (slice 17 fix): a cheapest-way field over its sea, worked out once and kept
+// (saved, so a loaded world sails the same lanes). From any water of that sea, a ship follows the
+// field to the port. Lanes are listed as fine cells chosen on open water.
+const fineOf = (w, c) => { const i = ((c / HW) | 0) * 2 * W + (c % HW) * 2; for (const j of [i, i + 1, i + W, i + W + 1]) if (w.water[j] === 1) return j; return i; };
+function fieldTo(w, dst) {
+  const F = T.fields || (T.fields = new Map()); const have = F.get(dst); if (have && w.year - have.year < SEA_EVERY) { F.delete(dst); F.set(dst, have); return have.dir; }   /* most recently used last: the least used go first */
+  const dir = new Uint8Array(HN).fill(255); dir[dst] = 254; _cst++; _ch.clear(); _cd[dst] = 0; _cs[dst] = _cst; _ch.push(0, dst);
+  while (_ch.n) {
+    const v = _ch.pop(), dv = _cd[v]; if (_ch.key > dv + 1e-4) continue; const vx = v % HW, vy = (v / HW) | 0;
+    for (let d = 0; d < 8; d++) { const uy = vy - DIRS[d][1]; if (uy < 0 || uy >= HH) continue; const u = uy * HW + (vx - DIRS[d][0] + HW) % HW; if (!_wet[u] || u === dst) continue;
+      const nd = dv + _lc[u * 8 + d]; if (_cs[u] !== _cst || nd < _cd[u]) { _cs[u] = _cst; _cd[u] = nd; dir[u] = d; _ch.push(nd, u); } }
   }
-  return null;
+  F.delete(dst); F.set(dst, { year: w.year, dir }); if (F.size > 300) F.delete(F.keys().next().value);   /* the oldest go first */
+  return dir;
+}
+export function seaLane(w, ax, ay, bx, by) {
+  ensure(w); wetMap(w); laneCosts(w);
+  const snap = (x, y) => { const cx = (x / 2) | 0, cy = clamp((y / 2) | 0, 0, HH - 1); let best = -1, bd = 999; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const yy = cy + dy; if (yy < 0 || yy >= HH) continue; const i = yy * HW + ((cx + dx + HW) % HW); if (_wet[i] && dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; best = i; } } return best; };
+  const src = snap(ax, ay), dst = snap(bx, by); if (src < 0 || dst < 0 || _comp[src] !== _comp[dst]) return null;   /* different seas: no lane */
+  // ports a few cells apart share one map: the map leads to its block's open-water anchor, and the last few cells go straight
+  const bx0 = ((dst % HW) >> 2) << 2, by0 = (((dst / HW) | 0) >> 2) << 2; let rep = dst, rd = 99; for (let yy = by0; yy < Math.min(HH, by0 + 4); yy++) for (let xx = bx0; xx < bx0 + 4; xx++) { const i = yy * HW + xx; if (!_wet[i] || _comp[i] !== _comp[dst]) continue; const q = (xx - bx0 - 1.5) ** 2 + (yy - by0 - 1.5) ** 2; if (q < rd) { rd = q; rep = i; } }
+  const dir = fieldTo(w, rep), out = [fineOf(w, src)]; let c = src;
+  for (let k = 0; k < HN && c !== rep; k++) { const d = dir[c]; if (d > 7) return null; const x = c % HW, y = (c / HW) | 0; c = (y + DIRS[d][1]) * HW + (x + DIRS[d][0] + HW) % HW; if (!_wet[c]) return null; out.push(fineOf(w, c)); }
+  if (c !== rep) return null; if (rep !== dst) out.push(fineOf(w, dst)); return out;
 }
 function lanes(w) { for (const [k, L] of T.lanes) if (w.year - L.year > 60) T.lanes.delete(k); }
 export const laneFor = (Tr, r) => Tr.lanes.get(r.a.id + '>' + r.b.id) || Tr.lanes.get(r.b.id + '>' + r.a.id);
@@ -208,8 +218,8 @@ export function legCells(w, a, b) {
 // Plan a sea trip from port a to port b: whole, or broken at a port along the lane
 export function planSea(w, a, b) {
   ensure(w); const key = a.id + '>' + b.id; let L = T.lanes.get(key);
-  if (!L || w.year - L.year >= SEA_EVERY) { if ((T.laneBudget || 0) <= 0) return { legs: [b], path: null }; T.laneBudget--; L = { year: w.year, path: seaLane(w, a.x, a.y, b.x, b.y) }; T.lanes.set(key, L); }   /* no lane worked out yet this tick: sail straight, as before */
-  if (!L.path) return { legs: [b], path: null };   /* a closed sea or a shore the lanes miss: coast along, straight */ const C = w.cults[a.cult], R0 = rangeOf(C, true); if (!R0) return null;
+  if (!L || w.year - L.year >= SEA_EVERY) { L = { year: w.year, path: seaLane(w, a.x, a.y, b.x, b.y) }; T.lanes.set(key, L); }
+  if (!L.path) return null;   /* no way by sea between them: the ship does not sail */ const C = w.cults[a.cult], R0 = rangeOf(C, true); if (!R0) return null;
   const len = L.path.length; if (len <= R0) return { legs: [b], path: L.path };
   // too far: the last good harbour inside the range
   let best = null, bs = -1; for (let k = Math.floor(R0 * 0.5); k < Math.min(len, R0); k += 3) { const c = L.path[k]; near(w, c % W, (c / W) | 0, 6, null, true, (s) => { if (s === a || s === b || !s.port || w.cults[s.cult].power) return; const sc = score(s) * (k / R0); if (sc > bs) { bs = sc; best = s; } }); }

@@ -22,12 +22,17 @@ export function moversTick(w) {
   const ms = w.movers; if (!ms.length) { w.stats.ships = 0; return; } const { water, lava, fireT } = w, rnd = w.rnd; let ships = 0, gone = false;
   for (let k = 0; k < ms.length; k++) {
     const m = ms[k]; if (m.done) { gone = true; continue; } m.px = m.x; m.py = m.y;
-    if (m.path && m.step > 1 && m.pi + 1 < m.path.length) m.pi = Math.min(m.path.length - 1, m.pi + m.step - 1);   /* faster carriers cover several cells a tick */
-    let tx = m.tx, ty = m.ty; if (m.path) { const c = m.path[m.rev ? m.path.length - 1 - m.pi : m.pi]; tx = c % W; ty = (c / W) | 0; }
     const i = clamp(Math.round(m.y), 0, H - 1) * W + wx(Math.round(m.x)), wet = water[i] === 1; m.wet = wet;
-    const sp = m.path ? 1.25 * (m.step || 1) : wet ? m.sea : m.land, dx = wrapDx(tx - m.x), dy = ty - m.y, l = Math.hypot(dx, dy);
-    if (l <= sp) { m.x = tx; m.y = ty; if (m.path && ++m.pi < m.path.length) continue; m.done = true; gone = true; const fn = arrive[m.kind]; if (fn) fn(w, m); continue; }
-    m.x = wx(m.x + (dx / l) * sp); m.y += (dy / l) * sp;
+    if (m.path) {   /* walk the route point by point, so a fast carrier never cuts a corner over land or sea */
+      const P = m.path, n = P.length; let left = 1.25 * (m.step || 1), there = false;
+      while (left > 1e-6) { const c = P[m.rev ? n - 1 - m.pi : m.pi], tx = c % W, ty = (c / W) | 0, dx = wrapDx(tx - m.x), dy = ty - m.y, l = Math.hypot(dx, dy);
+        if (l <= left) { m.x = tx; m.y = ty; left -= l; if (++m.pi >= n) { there = true; break; } } else { m.x = wx(m.x + (dx / l) * left); m.y += (dy / l) * left; left = 0; } }
+      if (there) { m.done = true; gone = true; const fn = arrive[m.kind]; if (fn) fn(w, m); continue; }
+    } else {
+      const tx = m.tx, ty = m.ty, sp = wet ? m.sea : m.land, dx = wrapDx(tx - m.x), dy = ty - m.y, l = Math.hypot(dx, dy);
+      if (l <= sp) { m.x = tx; m.y = ty; m.done = true; gone = true; const fn = arrive[m.kind]; if (fn) fn(w, m); continue; }
+      m.x = wx(m.x + (dx / l) * sp); m.y += (dy / l) * sp;
+    }
     if (!wet && !m.done && (w.tickN & 3) === (k & 3) && onRoad[m.kind]) onRoad[m.kind](w, m);
     if (wet && m.kind !== 'missile') { ships++;
       for (const s of w.storms) if (s.str > 0.6 && wrapDx(s.x - m.x) ** 2 + (s.y - m.y) ** 2 < 20 && rnd() < 0.3 * s.str) { sink(w, m, 'storm'); break; }
