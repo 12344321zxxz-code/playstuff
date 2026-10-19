@@ -146,7 +146,7 @@ void main(){
   }
   // fallout: a sick yellow-green over the land, flickering close in
   float fo = float((int(ff.a * 255. + .5) >> 5) & 7) / 7.;
-  if (fo > 0. && !sea && uLens == 0) { col = mix(col, vec3(.66, .74, .2) * (.8 + .2 * lit), .35 + .5 * fo); if (cellPx >= 5. && hash(vec2(c) + floor(f * 6.) + floor(uTime * 2.)) < .04 * fo) col = vec3(.85, 1., .35); }
+  if (fo > 0. && !sea && uLens == 0) { float sk = .45 + .55 * smoothstep(-.3, .9, sin(float(c.y) * 1.3 + float(c.x) * .08 + hash(vec2(float(c.x / 9), float(c.y))) * 1.5)); col = mix(col, mix(vec3(.84, .98, .22), vec3(.42, .5, .08), step(sk, .6)) * (.85 + .15 * lit), (.35 + .5 * fo) * (.55 + .45 * sk)); if (cellPx >= 5. && hash(vec2(c) + floor(f * 6.) + floor(uTime * 2.)) < .04 * fo) col = vec3(.85, 1., .35); }
   // lenses
   if (uLens == 1) col = heatPal((Tm + 30.) / 65.) * (sea ? .8 : .9 + .2 * lit);
   else if (uLens == 2) col = sea ? vec3(.18, .22, .30) : wetPal(mi / 2.2) * (.9 + .2 * lit);

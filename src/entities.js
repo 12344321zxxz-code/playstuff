@@ -1,13 +1,13 @@
 // Everything on the map that is not terrain: animals, peoples, roads, ruins, dragons, storms and
 // the brief flashes when something big happens. Drawn on the 2D overlay, on top of the shader.
-import { tongueColor, quirksOf } from './tongues.js';
+import { tongueColor, tongueHsl, familyOf, quirksOf } from './tongues.js';
 import { overlordOf } from './capture.js';
 import { KINDS, STANCES, memAt, kindAt } from './memory.js';
 import { GOODS } from './trade.js';
 import { ERA, blockedReasons } from './tech.js';
 import { SPIRIT_KINDS } from './spirits.js';
 import { PLANTS, luckOf } from './origins.js';
-import { W, H, TAU, TPY, CS, CW, CH, clamp, wrapDx, hash2 } from './core.js';
+import { W, H, N, TAU, TPY, CS, CW, CH, clamp, wrapDx, hash2, wx } from './core.js';
 import { toScreen } from './render.js';
 import { SPECIES } from './fauna.js';
 import { blit, pixScale } from './pixels.js';
@@ -19,7 +19,7 @@ const setPal = (k, c) => { palette[k * 3] = parseInt(c.slice(1, 3), 16) / 255; p
 for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]);
 // a realm of the dead borrows a colour slot but is drawn grey while it lasts
 let palKey = '';
-const deadPal = (w) => { let key = ''; for (const c of w.cults) if (c.alive && c.power) key += c.slot + ','; if (key === palKey) return; palKey = key; for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]); for (const c of w.cults) if (c.alive && c.power) { setPal(c.slot, c.color); setPal(c.slot + 24 < 32 ? c.slot + 24 : c.slot, c.color); } };
+const deadPal = (w) => { let key = ''; for (const c of w.cults) if (c.alive && (c.power || (c.over && c.over.kind === 'dragon'))) key += c.slot + (c.power ? ',' : 'd,'); if (key === palKey) return; palKey = key; for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]); for (const c of w.cults) if (c.alive && c.power) { setPal(c.slot, c.color); setPal(c.slot + 24 < 32 ? c.slot + 24 : c.slot, c.color); } else if (c.alive && c.over && c.over.kind === 'dragon') setPal(c.slot, '#e8962c'); };   /* a dragon kingdom is drawn in the dragon's gold */
 hook('tick', (w) => { if ((w.tickN & 7) === 0) deadPal(w); }); hook('newWorld', (w) => { palKey = '?'; deadPal(w); });
 
 const A = [0, 0], B = [0, 0];
@@ -92,7 +92,7 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
     if (st.name && (st.tier === 3 ? z >= 2.2 : st.tier === 2 ? z >= 5 : z >= 10)) names.push(st, x, y + 2 * cam.dpr);
   }
   for (let q = 0; q < names.length; q += 3) { const st = names[q]; label(ctx, st.name, names[q + 1], names[q + 2], Math.round((st.tier === 3 ? 13 : st.tier === 2 ? 11.5 : 10.5) * cam.dpr), '#fff', false, st.tier * 100 + Math.log(st.pop + 1)); }
-  if (lens === 6 || lens === 0) for (const c of w.cults) if (lens === 6 || (z < 4 && c.count >= 8)) { if (!c.alive || c.power || !c.big || c.count < 2 || !seen(c.big.x, c.big.y, 10)) continue; const p = at(cam, c.big.x + 0.5, c.big.y + 0.5); const px = Math.round(clamp(9 + Math.sqrt(c.count) * 1.6, 11, 20) * cam.dpr), yy = p[1] - clamp(z * 2.4, 22, 46) * cam.dpr; label(ctx, c.name.toUpperCase(), p[0], yy, px, colorOf(c), false, 1000 + c.pop / 100); }
+  if (lens === 6 || lens === 0) for (const c of w.cults) if (lens === 6 || (z < 4 && (c.count >= 8 || (c.over && c.over.kind === 'dragon')))) { if (!c.alive || c.power || !c.big || c.count < 2 || !seen(c.big.x, c.big.y, 10)) continue; const p = at(cam, c.big.x + 0.5, c.big.y + 0.5); const px = Math.round(clamp(9 + Math.sqrt(c.count) * 1.6, 11, 20) * cam.dpr), yy = p[1] - clamp(z * 2.4, 22, 46) * cam.dpr; const dk = c.over && c.over.kind === 'dragon'; label(ctx, dk ? 'DRAGON KINGDOM OF ' + c.name.toUpperCase() : c.name.toUpperCase(), p[0], yy, px, dk ? '#f0a43a' : colorOf(c), false, 1000 + c.pop / 100); }
   if (lens === 9) { const top = new Map(); for (const st of w.sets) if (!st.dead && st.faith != null && (!top.has(st.faith) || top.get(st.faith).pop < st.pop)) top.set(st.faith, st);
     for (const [id, st] of top) { const f = w.faiths[id]; if (!f.alive || f.towns < 2 || !seen(st.x, st.y, 10)) continue; const p = at(cam, st.x + 0.5, st.y + 0.5); label(ctx, f.name.replace(/^the /, '').toUpperCase(), p[0], p[1] - clamp(z * 2.4, 22, 46) * cam.dpr, Math.round(clamp(10 + Math.sqrt(f.towns), 12, 20) * cam.dpr), f.color, false, 1000 + f.towns); } }
 }
@@ -131,7 +131,7 @@ function drawOther(ctx, w, cam, z, now, frac) {
   const k = pixScale(z, cam.dpr);
   if (z >= 1.6) for (const q of w.wells) { if (!seen(q.x, q.y, 2)) continue; const p = at(cam, q.x + 0.5, q.y + 1); blit(ctx, 'well', p[0], p[1], k, KINDS[q.kind || 0].col); if (z >= 5 && q.name) label(ctx, cap(q.name), p[0], p[1] + 2 * cam.dpr, Math.round(10 * cam.dpr), '#e6dcff', true, 30); }
   // the borders of great powers: a ragged ring in their colour
-  for (const sp of w.spirits.concat(w.dragons.filter((d) => d.R).map((d) => ({ x: d.lx, y: d.ly, R: d.R, kind: 'dragon', name: d.name })), w.machines || [])) { if (!sp.R || !seen(sp.x, sp.y, sp.R + 4)) continue; const c = at(cam, sp.x + 0.5, sp.y + 0.5), R = sp.R * z * cam.dpr, q = Math.max(2, Math.round(cam.dpr * 2)); ctx.fillStyle = sp.kind === 'dragon' ? '#ff7a3a' : sp.kind === 'machine' ? '#4affd0' : KINDS[SPIRIT_KINDS[sp.kind].mem].col; ctx.globalAlpha = 0.75;
+  for (const sp of w.spirits.filter((p) => !(p.kind === 'fey' && p.cells)).concat(w.dragons.filter((d) => d.R).map((d) => ({ x: d.lx, y: d.ly, R: d.R, kind: 'dragon', name: d.name })), w.machines || [])) { if (!sp.R || !seen(sp.x, sp.y, sp.R + 4)) continue; const c = at(cam, sp.x + 0.5, sp.y + 0.5), R = sp.R * z * cam.dpr, q = Math.max(2, Math.round(cam.dpr * 2)); ctx.fillStyle = sp.kind === 'dragon' ? '#ff7a3a' : sp.kind === 'machine' ? '#4affd0' : KINDS[SPIRIT_KINDS[sp.kind].mem].col; ctx.globalAlpha = 0.75;
     for (let n = 0; n < 90; n++) { if (n % 3 === 2) continue; const a = (n / 90) * TAU, r = R * (0.96 + 0.06 * Math.sin(n * 1.7 + sp.x)); ctx.fillRect(Math.round((c[0] + Math.cos(a) * r) / q) * q, Math.round((c[1] + Math.sin(a) * r) / q) * q, q, q); } ctx.globalAlpha = 1;
     if (z < 6 && z > 1) label(ctx, cap(sp.name), c[0], c[1] - R - 6 * cam.dpr, Math.round(11 * cam.dpr), ctx.fillStyle, true, 70); }
   if (z >= 2.2) for (const sp of w.spirits) { if (!seen(sp.x, sp.y, 2)) continue; const x = sp.px + wrapDx(sp.x - sp.px) * frac + 0.5, y = sp.py + (sp.y - sp.py) * frac + 1; const p = at(cam, x, y); const bob = still || sp.kind === 'lich' || sp.kind === 'saint' || sp.kind === 'drowned' ? 0 : Math.round(Math.sin(now * 0.003 + sp.id) * k); blit(ctx, SPR_OF[sp.kind], p[0], p[1] + bob, k); if (z >= 6) label(ctx, cap(sp.name), p[0], p[1] + 2 * cam.dpr, Math.round(10 * cam.dpr), KINDS[SPIRIT_KINDS[sp.kind].mem].col, true, 40); }
@@ -139,14 +139,76 @@ function drawOther(ctx, w, cam, z, now, frac) {
   for (const st of w.storms2) { const x = st.px + wrapDx(st.x - st.px) * frac + 0.5, y = st.py + (st.y - st.py) * frac + 0.5; if (!seen(x, y, 4)) continue; const p = at(cam, x, y), col = KINDS[st.kind].col, q = Math.max(2, Math.round(z * cam.dpr * 0.35));
     for (let n = 0; n < 14; n++) { const a = n * 2.4 + (still ? 0 : now * 0.004), r = (0.4 + (n % 5) * 0.35) * z * cam.dpr; ctx.fillStyle = col; ctx.globalAlpha = 0.9 - (n % 5) * 0.15; ctx.fillRect(Math.round((p[0] + Math.cos(a) * r) / q) * q, Math.round((p[1] + Math.sin(a) * r) / q) * q, q, q); } ctx.globalAlpha = 1; }
 }
-// the Tongues lens: every town as a dot in the colour of its language family, branches in shades of
-// it; each living tongue's name over its biggest town
-function drawTongues(ctx, w, cam, s) {
-  if (!w.langs) return; const big = new Map(), r = Math.max(2, s * 1.6);
-  for (const t of w.sets) { if (t.dead || t.lang == null || !seen(t.x, t.y, 4)) continue; const p = at(cam, t.x + 0.5, t.y + 0.5); ctx.fillStyle = tongueColor(w, t.lang); ctx.globalAlpha = 0.9;
-    ctx.beginPath(); ctx.arc(p[0], p[1], r * (t.nomad ? 0.6 : 0.8 + 0.3 * t.tier), 0, 6.2832); ctx.fill(); const b = big.get(t.lang); if (!b || t.pop > b.pop) big.set(t.lang, t); }
+// the fey courts: the edge of each court's forest, one cell wide, at every zoom (slice 14)
+let rimKey = -1, rim = [], inner = [];
+function drawCourts(ctx, w, cam, s) {
+  const CO = w.courtOf; if (!CO) return;
+  if (rimKey !== w.courtStamp) { rimKey = w.courtStamp; rim = []; inner = []; for (const p of w.spirits) { if (!p.cells || p.dead) continue; for (const i of p.cells) { const x = i % W, y = (i / W) | 0; let e = 0; inner.push(x, y);
+    if (CO[y * W + wx(x + 1)] !== p.slot) e |= 1; if (CO[y * W + wx(x - 1)] !== p.slot) e |= 2; if (y > 0 && CO[i - W] !== p.slot) e |= 4; if (y < H - 1 && CO[i + W] !== p.slot) e |= 8; if (e) rim.push(x, y, e); } } }
+  if (!rim.length) return; const q = Math.max(1, Math.round(s * 0.3)), sz = Math.max(1, s);
+  ctx.fillStyle = 'rgba(150,255,120,0.13)'; for (let k = 0; k < inner.length; k += 2) { const x = inner[k], y = inner[k + 1]; if (!seen(x, y, 1)) continue; const p = at(cam, x, y); ctx.fillRect(Math.round(p[0]), Math.round(p[1]), Math.ceil(sz), Math.ceil(sz)); }
+  ctx.fillStyle = '#b6ff8c'; ctx.globalAlpha = 0.95;
+  for (let k = 0; k < rim.length; k += 3) { const x = rim[k], y = rim[k + 1], e = rim[k + 2]; if (!seen(x, y, 1)) continue; const p = at(cam, x, y), X = Math.round(p[0]), Y = Math.round(p[1]), S2 = Math.max(1, Math.round(sz));
+    if (s < 2) { ctx.fillRect(X, Y, S2, S2); continue; }
+    if (e & 1) ctx.fillRect(X + S2 - q, Y, q, S2); if (e & 2) ctx.fillRect(X, Y, q, S2); if (e & 4) ctx.fillRect(X, Y, S2, q); if (e & 8) ctx.fillRect(X, Y + S2 - q, S2, q); }
   ctx.globalAlpha = 1;
-  for (const [id, t] of big) { const p = at(cam, t.x + 0.5, t.y + 0.5); label(ctx, w.langs[id].name, p[0], p[1] - r * 2.4, Math.round(11 * cam.dpr), tongueColor(w, id), true, 40 + Math.sqrt(w.langs[id].pop)); }
+  if (s > 1 * cam.dpr && s < 6 * cam.dpr) for (const p of w.spirits) if (p.cells && !p.dead && p.name && seen(p.x, p.y, 4)) { const c = at(cam, p.x + 0.5, p.y + 0.5); label(ctx, cap(p.name), c[0], c[1] - 4 * s, Math.round(11 * cam.dpr), '#9cf07e', true, 70); }
+}
+// the Tongues lens (slice 14, after EU5's language map): every owned cell in its town's tongue, the
+// hue for the family and the lightness for the tongue; thick lines where the family changes, thin
+// where only the tongue does, realm borders dashed; diagonal hatching in the court's colour where a
+// town does not speak its rulers' tongue. Family names spaced out when far, tongue names when near.
+const NB8o = [[1, 0], [-1, 0], [0, -1], [0, 1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+const TPX = 4; let tmKey = '', tmCv = null, tmE = [], tmFam = [];
+function hsl2rgb(h, s, l) { const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)]; }
+function buildTongues(w) {
+  if (!tmCv) { tmCv = document.createElement('canvas'); tmCv.width = W * TPX; tmCv.height = H * TPX; }
+  const g = tmCv.getContext('2d'), img = g.createImageData(W * TPX, H * TPX), u = new Uint32Array(img.data.buffer), WW = W * TPX;
+  const col = new Map(), fam = new Map(), rgb = (id) => { let v = col.get(id); if (v == null) { const [h, s2, l] = tongueHsl(w, id), c = hsl2rgb(h, s2 / 100, l / 100); v = ((235 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]) >>> 0; col.set(id, v); } return v; };
+  const famOf = (id) => { let f = fam.get(id); if (f == null) { f = familyOf(w, id); fam.set(id, f); } return f; };
+  // each land cell speaks as its nearest town does, out to a dozen cells (a flood out from every town at once)
+  const T = new Int32Array(N).fill(-1), R = new Int32Array(N).fill(-1), D = new Uint8Array(N), Q = new Int32Array(N), O = new Int32Array(N).fill(-1); let qn = 0;
+  for (let k = 0; k < w.sets.length; k++) { const t = w.sets[k]; if (t.dead || t.nomad || t.lang == null || !w.langs[t.lang]) continue; const c = w.cults[t.cult]; if (!c || c.power) continue; const i = t.y * W + t.x; if (w.water[i] || O[i] >= 0) continue; O[i] = k; Q[qn++] = i; }
+  for (let hd = 0; hd < qn; hd++) { const i = Q[hd], x = i % W, y = (i / W) | 0; if (D[i] >= 12) continue;
+    for (let d = 0; d < (D[i] & 1 ? 8 : 4); d++) { const nb = NB8o[d], yy = y + nb[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(x + nb[0]); if (O[j] >= 0 || w.water[j] === 1) continue;   /* diagonals every other step: rounder lands */ O[j] = O[i]; D[j] = D[i] + 1; Q[qn++] = j; } }
+  for (let i = 0; i < N; i++) { const o = O[i]; if (o < 0) continue; const t = w.sets[o], c = w.cults[t.cult];
+    T[i] = t.lang; R[i] = t.cult; const base = rgb(t.lang), hatch = c.langId != null && c.langId !== t.lang && w.langs[c.langId] ? rgb(c.langId) : 0, x0 = (i % W) * TPX, y0 = ((i / W) | 0) * TPX;
+    for (let py = 0; py < TPX; py++) { const r = (y0 + py) * WW; for (let px = 0; px < TPX; px++) { const X = x0 + px; u[r + X] = hatch && (X + y0 + py) % 7 < 2 ? hatch : base; } } }
+  g.putImageData(img, 0, 0);
+  tmE = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x, a = T[i];
+    const nb = [y * W + (x + 1) % W, y < H - 1 ? i + W : -1];
+    for (let d = 0; d < 2; d++) { const j = nb[d]; if (j < 0) continue; const b = T[j]; if (a === b && R[i] === R[j]) continue; if (a < 0 && b < 0) continue;
+      const k = a < 0 || b < 0 || famOf(a) !== famOf(b) ? 2 : a !== b ? 1 : 0, realm = a >= 0 && b >= 0 && R[i] !== R[j]; tmE.push(x, y, d, k | (realm ? 4 : 0)); } }
+  // where to write each family's name: the middle of its towns, weighted by people
+  const acc = new Map(); for (const t of w.sets) { if (t.dead || t.lang == null || !w.langs[t.lang] || w.cults[t.cult].power) continue; const f = famOf(t.lang); let q = acc.get(f); if (!q) acc.set(f, (q = { f, x0: t.x, sx: 0, sy: 0, n: 0, towns: 0 })); q.sx += wrapDx(t.x - q.x0) * t.pop; q.sy += t.y * t.pop; q.n += t.pop; q.towns++; }
+  tmFam = [...acc.values()].filter((q) => q.towns >= 3 && q.n > 0).map((q) => ({ name: w.langs[q.f].name, x: (q.x0 + q.sx / q.n + W) % W, y: q.sy / q.n, n: q.n, id: q.f }));
+}
+function drawTongues(ctx, w, cam, s) {
+  if (!w.langs) return; const key = Math.floor(w.year / 4) + ':' + w.sets.length + ':' + w.cults.length; if (key !== tmKey || !tmCv) { tmKey = key; buildTongues(w); }
+  ctx.imageSmoothingEnabled = false; const o = at(cam, 0, 0), x0 = o[0], y0 = o[1], ws = W * s;
+  for (let k = -1; k <= 1; k++) { const X = x0 + k * ws; if (X > cam.w || X + ws < 0) continue; ctx.drawImage(tmCv, Math.round(X), Math.round(y0), Math.round(ws), Math.round(H * s)); }
+  // borders
+  const thick = Math.max(1, Math.round(s * 0.28)), thin = Math.max(1, Math.round(s * 0.12));
+  for (let n = 0; n < tmE.length; n += 4) { const x = tmE[n], y = tmE[n + 1], d = tmE[n + 2], k = tmE[n + 3]; if (!seen(x, y, 1)) continue; const kind = k & 3;
+    if (kind === 1 && s < 2.5) continue; const p = at(cam, x + (d === 0 ? 1 : 0), y + (d === 1 ? 1 : 0)), q = kind === 2 ? thick : thin, L = Math.max(1, Math.ceil(s));
+    if (kind) { ctx.fillStyle = kind === 2 ? 'rgba(18,16,14,0.85)' : 'rgba(18,16,14,0.6)'; if (d === 0) ctx.fillRect(Math.round(p[0] - q / 2), Math.round(p[1]), q, L); else ctx.fillRect(Math.round(p[0]), Math.round(p[1] - q / 2), L, q); }
+    if ((k & 4) && s >= 1.5 && (x + y) % 2 === 0) { ctx.fillStyle = 'rgba(250,244,230,0.85)'; const r = Math.max(1, Math.round(s * 0.12)); if (d === 0) ctx.fillRect(Math.round(p[0] - r / 2), Math.round(p[1]), r, L); else ctx.fillRect(Math.round(p[0]), Math.round(p[1] - r / 2), L, r); } }
+  // names
+  if (cam.z < 3) { for (const f of tmFam) { if (!seen(f.x, f.y, 20)) continue; const p = at(cam, f.x + 0.5, f.y + 0.5); label(ctx, f.name.toUpperCase().split('').join(' '), p[0], p[1], Math.round(clamp(10 + Math.sqrt(f.n) / 12, 11, 17) * cam.dpr), '#f4ead8', false, 900 + f.n / 100); } return; }
+  const big = new Map(); for (const t of w.sets) { if (t.dead || t.lang == null || !seen(t.x, t.y, 4)) continue; const b = big.get(t.lang); if (!b || t.pop > b.pop) big.set(t.lang, t); }
+  for (const [id, t] of big) { const p = at(cam, t.x + 0.5, t.y + 0.5); label(ctx, w.langs[id].name, p[0], p[1] - s * 1.6, Math.round(11 * cam.dpr), '#f4ead8', true, 40 + Math.sqrt(w.langs[id].pop)); }
+}
+function tongueCard(w, x, y) {
+  if (!w.langs) return null; const i = y * W + ((x + W) % W), o = w.owner[i]; if (o < 0) return null; const t = w.sets[o]; if (!t || t.dead || t.lang == null) return null; const L = w.langs[t.lang]; if (!L) return null;
+  const F = w.langs[familyOf(w, L.id)], P = L.parent != null ? w.langs[L.parent] : null, c = w.cults[t.cult];
+  const realms = new Map(); for (const s of w.sets) if (!s.dead && s.lang === L.id) { const r = w.cults[s.cult]; if (r && !r.power) realms.set(r.id, (realms.get(r.id) || 0) + 1); }
+  const rl = [...realms.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id]) => 'the ' + w.cults[id].name);
+  const court = c && c.langId != null && w.langs[c.langId] ? w.langs[c.langId] : null;
+  return { title: L.name, color: tongueColor(w, L.id), lines: [
+    F && F.id !== L.id ? `A tongue of the ${F.name} family.` : `The first tongue of its family${P ? `, apart from ${P.name} long enough to be its own` : ''}.`,
+    P ? `It grew out of ${P.name} in year ${L.born}.` : `It is as old as its people.`,
+    `Spoken in ${L.towns} ${L.towns === 1 ? 'town' : 'towns'} by about ${big(L.pop)} people${rl.length ? `, under ${list(rl)}` : ''}.`,
+    court && court.id !== L.id ? `${t.name || 'This place'} is ruled by the ${c.name}, whose court speaks ${court.name}. (Hatched.)` : c ? `It is the court tongue of the ${c.name}.` : ''].filter(Boolean) };
 }
 // the Trade lens: every route as a line, as thick as its traffic, in the colour of what it carries
 function drawRoutes(ctx, w, cam, z, lens) {
@@ -166,6 +228,7 @@ function drawRoutes(ctx, w, cam, z, lens) {
 function drawDragons(ctx, w, cam, z, now, frac) {
   for (const d of w.dragons) {
     const k = pixScale(z, cam.dpr, 1.3);
+    if (d.king != null && !d.dead && d.st !== 'fly' && z >= 0.9 && seen(d.lx, d.ly, 3)) { const p = at(cam, d.lx + 0.5, d.ly + 0.5), kk = Math.max(1, pixScale(z, cam.dpr, 1.6)); blit(ctx, d.st === 'sleep' ? 'dragonSleep' : 'dragon', p[0], p[1] - 6 * kk, kk); if (z >= 3) label(ctx, d.name.split(',')[0], p[0], p[1] - 14 * kk, Math.round(11 * cam.dpr), '#ffb27a', true, 300); continue; }
     if (z >= 2.6 && seen(d.lx, d.ly, 2)) { const p = at(cam, d.lx + 0.5, d.ly + 1); blit(ctx, d.st === 'sleep' ? 'dragonSleep' : 'lair', p[0], p[1], pixScale(z, cam.dpr)); if (z >= 6) label(ctx, d.name, p[0], p[1] + 2 * cam.dpr, Math.round(11 * cam.dpr), '#ffb27a', true, 50); }
     const fly = d.st === 'fly' || d.st === 'home'; if (!fly && d.st !== 'wake') continue;
     const x = d.px + wrapDx(d.x - d.px) * frac + 0.5, y = d.py + (d.y - d.py) * frac + 0.5; if (!seen(x, y, 4)) continue; const p = at(cam, x, y);
@@ -213,7 +276,7 @@ hook('overlay', (ctx, w, cam, S, now) => {
   const s = cam.z * cam.dpr, z = cam.z, frac = clamp(S.acc, 0, 1);
   view = { x: cam.x, y: cam.y, hw: cam.w / (2 * s), hh: cam.h / (2 * s) };
   const bare = S.lens === 4 || S.lens === 5;
-  if (!bare) { drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawRoutes(ctx, w, cam, z, S.lens); if (S.lens === 17) drawTongues(ctx, w, cam, s); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
+  if (!bare) { if (S.lens === 17) drawTongues(ctx, w, cam, s); drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawRoutes(ctx, w, cam, z, S.lens); drawCourts(ctx, w, cam, s); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
   flushLabels(ctx); drawFx(ctx, w, cam, s, now); drawSel(ctx, cam, S, now);
 });
 
@@ -268,6 +331,7 @@ const RUIN_SAY = { abandoned: 'Its people left, or died out.', sacked: 'It was s
 const WORK_SAY = { dam: ['A dam', 'A wall across the river. The lake behind it waters the fields below.'], canal: ['A canal', 'Dug through the land so ships can pass from one sea to the other.'], ditch: ['Irrigation canals', 'River water carried out into dry country.'], polder: ['Polders', 'Fields on what used to be the sea floor, behind dikes.'], wall: ['A great wall', 'Built across the grass to keep the riders out. Most raids stop at it.'], pass: ['A blasted pass', 'A mountain cut through for a road.'], raised: ['Raised land', 'Called up out of the sea by sorcerers.'] };
 const SP_SAY = { winter: 'A cold that spreads from something sitting in the snow. The whole region around it is colder for it; the ice follows.',  burned: 'The dead of a city that burned in a single moment. They walk out of the glass toward the living.',  host: 'A dead army that fights its war again every night. Nobody settles near it; those who live close sicken and leave.', shamblers: 'The dead of a plague, walking. Wherever they reach, the sickness comes back.', lich: 'A dead king in a ruined hall. It sends the dead against the living, and against its enemies first.', hunger: 'Something in the cold woods that is never full. It takes travellers, herders and game.', drowned: 'Bells under the water. Ships founder nearby; the drowned come ashore in storms.', fey: 'A court under old trees. It steals children, unless a people bargains with it; then their fields never fail.', saint: 'A holy place. Plagues turn back here, and the faithful hold together.' };
 function looker(w, x, y, i, r) {
+  if (lens0 === 17) { const t = tongueCard(w, x, y); if (t) return t; }
   let hit = null, bd = r * r;
   for (const d of w.dragons) { for (const p of [[d.x, d.y], [d.lx, d.ly]]) { const q = wrapDx(p[0] - x) ** 2 + (p[1] - y) ** 2; if (q <= bd * 2.5) hit = d; } }
   if (hit) { const d = hit; return { title: d.name, color: '#b3201c', lines: [`A dragon, ${d.age} years on this mountain.`, d.st === 'sleep' ? 'It is asleep on its hoard.' : d.st === 'fly' ? 'It is hunting.' : d.st === 'home' ? 'It is flying home, fed.' : 'It is awake, and looking around.', d.hoard > 20 ? 'Its hoard is the richest thing in the world.' : d.hoard > 6 ? 'It has a respectable hoard.' : 'It has not gathered much yet.'], follow: { pos: () => (d.dead ? null : [d.x, d.y, 2]) } }; }
@@ -289,4 +353,5 @@ function looker(w, x, y, i, r) {
 }
 let cam0 = 1;
 hook('newWorld', (w) => { w.lookers = [(ww, x, y, i) => looker(ww, x, y, i, Math.max(1.3, 9 / cam0))]; });
-hook('overlay', (ctx, w, cam) => { cam0 = cam.z; });
+hook('overlay', (ctx, w, cam, S) => { cam0 = cam.z; lens0 = S ? S.lens : 0; });
+let lens0 = 0;

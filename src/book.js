@@ -104,6 +104,6 @@ hook('tick', (w) => { drain(w); });
 hook('vitals', (w, rows) => {
   drain(w); render(); spark(w); const s = w.stats;
   rows.push(['People', short(s.people)], ['Peoples', String(s.peoples || 0)], ['Grazers', short(s.grazers)], ['Hunters', short(s.hunters)]);
-  if (s.clock && s.clock !== '—') rows.push(['To midnight', s.clock]); if (w.nukes) rows.push(['Bombs fallen', String(w.nukes)]);
+  if (s.clock && s.clock !== '—') rows.push(['To midnight', s.clock]); if (w.nukes) rows.push(['Bombs fallen', String(w.nukes)]); if (s.fallout > 0.001) rows.push(['Land poisoned', (s.fallout * 100).toFixed(s.fallout < 0.1 ? 1 : 0) + '%']);
   $('tab-alm').textContent = `Almanac ${Object.keys(w.found).length}/${pageCount()}`;
 });

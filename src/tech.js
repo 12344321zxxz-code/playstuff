@@ -73,6 +73,7 @@ export const ART = {
   genetics: { say: 'reading the blood', tier: 9, req: ['medicine', 'computers'], push: (c) => (c.hungry ? 2 : 0) },
   automation: { say: 'machines that build machines', tier: 9, req: ['computers', 'engines'] },
   ai: { say: 'minds of their own making', tier: 9, req: ['networks', 'automation'] },
+  cleanup: { say: 'the cleaning of poisoned land', tier: 9, req: ['computers', 'genetics'], push: (c) => (c.poisoned > 0.02 ? 6 : 0) },
   // the space age
   orbital: { say: 'living in orbit', tier: 10, req: ['satellites', 'automation'] },
   fusion: { say: 'the captured sun', tier: 10, req: ['reactors', 'computers'] },

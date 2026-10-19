@@ -8,7 +8,8 @@
 // and in the quiet the old powers come back. Then someone digs in a ruin and finds a bomb that works.
 import { nukeDeep } from './greatpowers.js';
 import { record } from './ledger.js';
-import { W, H, N, DISC, wx, wrapDx, clamp } from './core.js';
+import { W, H, N, DISC, wx, wrapDx, clamp, CS, CW, CH, CN } from './core.js';
+import { coarse } from './climate.js';
 import { ev, discover, once } from './story.js';
 import { near, endSet, flee, infect, collapse } from './people.js';
 import { remember, DEATH, FIRE } from './memory.js';
@@ -16,7 +17,7 @@ import { ignite } from './life.js';
 import { send, arrive } from './movers.js';
 import { ART, TECH } from './tech.js';
 
-export function initDoom(w) { w.fallout = new Float32Array(N); w.soot = 0; w.nukes = 0; w.clock = 12 * 60; w.deadAge = null; }
+export function initDoom(w) { w.fallout = new Float32Array(N); w.veil = new Float32Array(CN); w.hot = []; w.glassI = []; w.craters = []; w.soot = 0; w.nukes = 0; w.clock = 12 * 60; w.deadAge = null; }
 const big = (n) => (n >= 1000 ? Math.round(n / 100) / 10 + ' thousand' : String(Math.round(n)));
 
 // Once a year: arsenals grow, tempers rise, and sometimes a hand reaches for the key.
@@ -102,11 +103,10 @@ export function nuke(w, x, y, by) {
   near(w, x, y, 11, null, false, (s, q) => { const d = Math.sqrt(q); const k = d < 5 ? 1 : 0.7 * (1 - (d - 5) / 6); dead += s.pop * k; s.pop *= 1 - k; const c = w.cults[s.cult]; c.hurt = (c.hurt || 0) + 4; if (s === c.big) c.lostCapAt = w.year; if (s.pop < 20) endSet(w, s, 'nuked', by ? by.name : null); else flee(w, s, s.pop * 0.3); });
   for (const o of DISC[14]) { const yy = y + o[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(x + o[0]), d = o[2];
     if (d < 3) w.h[i] = Math.min(w.h[i], w.h[i] - 0.05);
-    if (w.water[i]) continue; if (d < 3) w.glass = w.glass || new Uint8Array(N), w.glass[i] = 1; if (d < 10) { w.t[i] = 0; w.g[i] *= 0.1; w.farm[i] = 0; w.ash[i] = 1; w.urban[i] = 0; w.graze[i] = 0; w.hunt[i] = 0; if (d > 2 && w.rnd() < 0.5) ignite(w, i); } }
-  // the fallout rides the wind east (or west, if the world turns the other way)
-  const dir = w.params.spin >= 0 ? 1 : -1;
-  for (let k = 0; k < 70; k++) { const cx = wx(x + dir * k), cy = clamp(Math.round(y + Math.sin(k * 0.21 + x) * k * 0.2), 1, H - 2), r = 3 + Math.min(8, k / 6) | 0, a = 1.6 * (1 - k / 80);
-    for (const o of DISC[r]) { const yy = cy + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(cx + o[0]); w.fallout[i] = Math.min(2, w.fallout[i] + a * (1 - o[2] / (r + 1))); } }
+    if (w.water[i]) continue; if (d < 3) { w.glass = w.glass || new Uint8Array(N); if (!w.glass[i]) (w.glassI || (w.glassI = [])).push(i); w.glass[i] = 255; } if (d < 10) { w.t[i] = 0; w.g[i] *= 0.1; w.farm[i] = 0; w.ash[i] = 1; w.urban[i] = 0; w.graze[i] = 0; w.hunt[i] = 0; if (d > 2 && w.rnd() < 0.5) ignite(w, i); } }
+  // the fallout: a hot zone around the city, lying downwind, and a share for the high winds
+  hotZone(w, x, y, 1.6, 0.35, 70, name); w.veil[((y / CS) | 0) * CW + ((x / CS) | 0)] += 160;
+  (w.craters || (w.craters = [])).push({ x, y, at: w.year, name, lake: false });
   w.soot = Math.min(1.6, w.soot + 0.13); (w.recent || (w.recent = [])).push(w.year); w.aerosol = Math.max(w.aerosol, w.soot);
   remember(w, x, y, DEATH, 1.4, 9, 'nuked', name ? `the fire that fell on ${name}` : 'the fire that fell from the sky', { place: name || 'the burned country' });
   remember(w, x, y, FIRE, 0.7, 5);
@@ -122,8 +122,7 @@ export function nuke(w, x, y, by) {
 // An atomic power station fails.
 function meltdown(w, c) {
   const S = w.sets.filter((s) => s.cult === c.id && s.tier >= 2 && !s.dead); if (!S.length) return; const s = S[(w.rnd() * S.length) | 0];
-  const dir = w.params.spin >= 0 ? 1 : -1;
-  for (let k = 0; k < 18; k++) for (const o of DISC[2]) { const yy = clamp(s.y + o[1], 0, H - 1), i = yy * W + wx(s.x + dir * k + o[0]); w.fallout[i] = Math.min(2, w.fallout[i] + 0.8 * (1 - k / 20)); }
+  hotZone(w, s.x, s.y, 0.6, 0.5, 18, s.name); w.veil[((s.y / CS) | 0) * CW + ((s.x / CS) | 0)] += 12;
   flee(w, s, s.pop * 0.6); s.pop *= 0.3; remember(w, s.x, s.y, DEATH, 0.5, 4, 'nuked', `the poisoned country around ${s.name}`, { place: s.name });
   ev(w, `The power station outside ${s.name} catches fire and will not go out. The town is emptied in a day and nobody goes back.`, s.x, s.y, c.color, 0); discover(w, 'meltdown', s.x, s.y); c.arts.reactors = w.year - 1; if (rnd2(w) < 0.4) { delete c.arts.reactors; c.banned = c.banned || {}; c.banned.reactors = w.year; }
 }
@@ -144,17 +143,67 @@ export function disarm(w, x, y) { const s = near(w, Math.round(x), Math.round(y)
 
 const rnd2 = (w) => w.rnd();
 
-// Fallout settles into the ground, washes down the rivers and spreads with the rain; it fades
-// over a lifetime or two.
-const _fo = new Float32Array(N);
+// Fallout (slice 14). Two parts. A thin veil on the coarse climate grid that the winds carry round
+// the world and that fades over a few decades; and hot zones, a short list of struck cities and
+// failed reactors, each a streak lying downwind whose strength is a·e^(-t/30) + b·e^(-t/250): most of
+// it is gone in a lifetime, the rest takes centuries. Peoples who learn to clean the land age the
+// zones on their own ground three times as fast. The glass where a city stood crumbles over about
+// three hundred years; the crater fills with rain.
+const shapes = new WeakMap();
+function hotZone(w, x, y, a, b, len, place) {
+  const dir = w.params.spin >= 0 ? 1 : -1;
+  (w.hot || (w.hot = [])).push({ x: wx(x), y: clamp(y, 1, H - 2), a, b, age: 0, len, dir, place: place || null, at: w.year });
+}
+function shapeOf(z) {
+  let sh = shapes.get(z); if (sh) return sh; const m = new Map();
+  for (let k = 0; k < z.len; k++) { const cx = wx(z.x + z.dir * k), cy = clamp(Math.round(z.y + Math.sin(k * 0.21 + z.x) * k * 0.2), 1, H - 2), r = 3 + Math.min(8, k / 6) | 0, a = 1 - k / (z.len + 10);
+    for (const o of DISC[r]) { const yy = cy + o[1]; if (yy < 0 || yy >= H) continue; const i = yy * W + wx(cx + o[0]), v = a * (1 - o[2] / (r + 1)); m.set(i, Math.min(1.25, (m.get(i) || 0) + v)); } }
+  sh = { i: Int32Array.from(m.keys()), v: Float32Array.from(m.values()) }; shapes.set(z, sh); return sh;
+}
+const _vl = new Float32Array(CN);
 function falloutYear(w) {
-  const fo = w.fallout; let any = false; for (let i = 0; i < N; i += 64) if (fo[i] > 0.01) { any = true; break; } if (!any && !w.nukes) return;
-  _fo.set(fo);
-  for (let y = 1; y < H - 1; y++) for (let x = 0; x < W; x++) { const i = y * W + x, v = _fo[i]; if (v < 0.02) continue;
-    const d = w.down[i]; if (w.river[i] && d >= 0) fo[d] = Math.min(2, fo[d] + v * 0.25);   // down the river
-    const sp = v * 0.03; fo[i] -= sp * 4; fo[i - W] += sp; fo[i + W] += sp; fo[y * W + (x + 1) % W] += sp; fo[y * W + (x + W - 1) % W] += sp; }
-  for (let i = 0; i < N; i++) { fo[i] *= 0.985; if (fo[i] < 0.004) fo[i] = 0; }
-  if (w.glass) for (let i = 0; i < N; i++) if (w.glass[i]) { w.ash[i] = 1; w.t[i] = 0; w.g[i] *= 0.3; w.soil[i] = 0.05; w.farm[i] = 0; }   // the glass where the cities stood
+  const fo = w.fallout, V = w.veil || (w.veil = new Float32Array(CN)), Z = w.hot || (w.hot = []);
+  if (w.glass && !w.glassI) { w.glassI = []; for (let i = 0; i < N; i++) if (w.glass[i]) w.glassI.push(i); }   /* an older save */
+  glassYear(w);
+  let vs = 0; for (let i = 0; i < CN; i++) vs += V[i];
+  if (!Z.length && vs < 0.5) { if (w.foOn) { fo.fill(0); w.foOn = false; w.stats.fallout = 0; for (const c of w.cults) c.poisoned = 0; } return; }
+  w.foOn = true;
+  // the veil: three steps on the wind each year, a little spreading, and it fades
+  const f = 0.5 - 0.5 * Math.cos(w.phase * 6.283185), o0 = coarse.out[0], o1 = coarse.out[1];
+  for (let st = 0; st < 4; st++) {
+    _vl.fill(0);   /* pushed forward along the wind, so nothing is lost on the way */
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) { const i = y * CW + x, m = V[i]; if (!m) continue; const u = (o0.u[i] * (1 - f) + o1.u[i] * f) * 2, v = (o0.v[i] * (1 - f) + o1.v[i] * f) * 2;
+      let px = x + u; const py = clamp(y + v, 0, CH - 1.001); px = ((px % CW) + CW) % CW; const x0 = px | 0, y0 = py | 0, fx = px - x0, fy = py - y0, x1 = (x0 + 1) % CW, y1 = Math.min(CH - 1, y0 + 1);
+      _vl[y0 * CW + x0] += m * (1 - fx) * (1 - fy); _vl[y0 * CW + x1] += m * fx * (1 - fy); _vl[y1 * CW + x0] += m * (1 - fx) * fy; _vl[y1 * CW + x1] += m * fx * fy; }
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) { const i = y * CW + x, n = y > 0 ? _vl[i - CW] : _vl[i], s2 = y < CH - 1 ? _vl[i + CW] : _vl[i]; V[i] = _vl[i] * 0.4 + (n + s2 + _vl[y * CW + (x + 1) % CW] + _vl[y * CW + (x + CW - 1) % CW]) * 0.15; }
+  }
+  for (let y = 0; y < CH; y++) { let m = 0; for (let x = 0; x < CW; x++) m += V[y * CW + x]; m /= CW; for (let x = 0; x < CW; x++) V[y * CW + x] += (m - V[y * CW + x]) * 0.15; }   /* the high winds carry it round the world in bands */
+  // cleaning: whoever owns the land under a zone and knows how, clears it three times as fast
+  const clean = new Set(); for (const c of w.cults) if (c.alive && c.arts.cleanup && !c.power) clean.add(c.id);
+  for (let i = 0; i < CN; i++) { const x = (i % CW) * CS + 2, y = ((i / CW) | 0) * CS + 2, o = w.owner[y * W + x]; V[i] *= o >= 0 && clean.has(o) ? 0.88 : 0.97; if (V[i] < 1e-4) V[i] = 0; }
+  // the field the land and the towns feel: the veil (thin) plus every hot zone
+  for (let y = 0; y < H; y++) { const cy = Math.min(CH - 1, (y / CS) | 0); for (let x = 0; x < W; x++) { const v = V[cy * CW + ((x / CS) | 0)] * 0.35; fo[y * W + x] = v > 0.004 ? Math.min(0.12, v) : 0; } }
+  for (let k = Z.length - 1; k >= 0; k--) { const z = Z[k], o = w.owner[z.y * W + z.x];
+    z.age += o >= 0 && clean.has(o) ? 3 : 1; if (o >= 0 && clean.has(o)) z.cleanedBy = o;
+    const s = z.a * Math.exp(-z.age / 30) + z.b * Math.exp(-z.age / 250);
+    if (s < 0.012) { if (z.cleanedBy != null && w.cults[z.cleanedBy] && z.place) { const c = w.cults[z.cleanedBy]; ev(w, `The ${c.name} have scraped the last of the poison out of the country around ${z.place}. Children may play there again.`, z.x, z.y, c.color, 0); discover(w, 'cleaned', z.x, z.y); } Z.splice(k, 1); shapes.delete(z); continue; }
+    const sh = shapeOf(z); for (let j = 0; j < sh.i.length; j++) { const i = sh.i[j]; fo[i] = Math.min(2, fo[i] + s * sh.v[j]); } }
+  // who is poisoned, and how badly: the mean over each realm's towns
+  const sum = new Float32Array(w.cults.length), cnt = new Uint16Array(w.cults.length);
+  for (const t of w.sets) { if (t.dead) continue; const v = fo[t.y * W + t.x]; sum[t.cult] += v > 0.05 ? Math.min(1, v) : 0; cnt[t.cult]++; }
+  for (const c of w.cults) { c.poisoned = cnt[c.id] ? sum[c.id] / cnt[c.id] : 0; if (c.arts.cleanup && c.poisoned > 0.01) c.surplus = Math.max(0, (c.surplus || 0) - 0.05); }
+  let land = 0, hot = 0; for (let i = 0; i < N; i += 7) if (!w.water[i]) { land++; if (fo[i] > 0.12) hot++; } w.stats.fallout = land ? hot / land : 0;
+}
+function glassYear(w) {
+  const G = w.glassI; if (G && G.length) { const g = w.glass;
+    for (let k = G.length - 1; k >= 0; k--) { const i = G[k]; if (w.rnd() < 0.85) g[i]--; const left = g[i] / 255;
+      if (!g[i]) { G[k] = G[G.length - 1]; G.pop(); w.soil[i] = Math.max(w.soil[i], 0.35); continue; }
+      w.ash[i] = left > 0.3 ? 1 : w.ash[i]; w.farm[i] = 0; if (left > 0.15) { w.t[i] = 0; w.g[i] *= 0.6; } w.soil[i] = 0.05 + 0.3 * (1 - left); } }
+  // three centuries on, the crater holds a lake
+  for (const cr of w.craters || []) { if (cr.lake || w.year - cr.at < 300) continue; cr.lake = true; const sea = w.params.sea;
+    for (const o of DISC[3]) { const yy = cr.y + o[1]; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(cr.x + o[0]); if (w.h[i] < sea) continue; w.h[i] -= 0.09 * (1 - o[2] / 3.5); (w.crater || (w.crater = new Uint8Array(N)))[i] = 1; }
+    w.stamp.land++; w.need.water = true; cr.lakeName = cr.name ? `the Lake of ${cr.name}` : 'the Glass Lake';
+    ev(w, `${cr.name ? `Where ${cr.name} stood` : 'Where the bomb fell'}, the glass has crumbled to sand and the crater has filled with rain. People call it ${cr.lakeName}.`, cr.x, cr.y, null, 0); discover(w, 'craterlake', cr.x, cr.y); }
 }
 // After the exchange: whoever fired or was struck is thrown back to iron and stone; if enough
 // bombs fell, the whole world goes down with them. And in the quiet, the old powers come back.

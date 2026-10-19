@@ -51,6 +51,22 @@ export function captureYear(w) {
     const b = best.big; record(w, 'capture', [best.id], { note: `${d.name} takes the ${best.name}`, x: b.x, y: b.y, terms: { theirs: strength(best, best.pop), its: dragonPower(d) } });
     holySite(w, b.x, b.y, 'dragonking', 0.3); ev(w, `${d.name} lands in the square of ${b.name} and does not leave. The ${best.name} have a king now, and ${best.over.house} will collect what it asks.`, b.x, b.y, best.color, 2); discover(w, 'dragonking', b.x, b.y);
   }
+  // a dragon king lives in its kingdom's capital (slice 14). Whoever takes that city has to fight it.
+  for (const d of w.dragons) {
+    if (d.dead) continue;
+    if (d.king == null) { if (d.home) { d.lx = d.home.x; d.ly = d.home.y; d.home = null; d.seat = null; if (d.st !== 'fly') { d.st = 'home'; d.tx = d.lx; d.ty = d.ly; } } continue; }
+    const c = w.cults[d.king]; if (!c || !c.big) continue; if (!d.home) d.home = { x: d.lx, y: d.ly };
+    const seat = d.seat != null ? w.sets.find((s) => s.id === d.seat && !s.dead) : null;
+    if (seat && seat.cult !== c.id && w.cults[seat.cult] && !w.cults[seat.cult].power) {
+      const o = w.cults[seat.cult], gun = (o.arts.gunpowder ? 3 : 1) * (o.arts.flight ? 2 : 1), mine = strength(o, o.pop) * gun, pw = mine / (mine + dragonPower(d)), roll = rnd();
+      const id = record(w, 'dragonfight', [o.id, c.id], { p: pw, roll, note: `the ${o.name} against ${d.name} in ${seat.name}`, x: seat.x, y: seat.y, terms: { army: mine, dragon: dragonPower(d) } });
+      if (roll < pw) { o.treasure = (o.treasure || 0) + d.hoard; const hoard = d.hoard; d.hoard = 0; dragonDies(w, d); holySite(w, seat.x, seat.y, 'slayer', 0.9); d.king = null; free(w, c, `the ${o.name} kill ${d.name} in ${seat.name}`, id);
+        ev(w, `The ${o.name} take ${seat.name} street by street and find ${d.name} waiting on the palace roof. It takes them three days to kill it. ${hoard > 5 ? 'Its hoard goes home in their wagons.' : 'There is less gold under it than the songs said.'}`, seat.x, seat.y, o.color, 2); discover(w, 'dragonslain', seat.x, seat.y); continue; }
+      seat.cult = c.id; seat.trade = 0; seat.pop *= 0.6; o.hurt = (o.hurt || 0) + 3; if (o.war && o.war.foe === c.id) o.war.lost = (o.war.lost || 0) + 2;
+      ev(w, `The ${o.name} take ${seat.name}, and ${d.name} wakes on the palace roof. By morning the city belongs to the dragon again, and the army that took it is ash.`, seat.x, seat.y, c.color, 1);
+    }
+    const b = c.big; d.seat = b.id; d.lx = b.x; d.ly = b.y; if (d.st !== 'fly') { d.x = d.lx; d.y = d.ly; d.px = d.x; d.py = d.y; }
+  }
   for (const c of w.cults) {
     if (!c.alive || c.power) { if (c.over) c.over = null; continue; }
     const ov = c.over; if (!ov) continue; const b = c.big, h = c.hub; if (!b) continue;
@@ -63,7 +79,7 @@ export function captureYear(w) {
       const need = 1 + d.age / 150, got = ov.take * c.pop / 800;
       if (got < need) { ov.take = Math.min(0.4, ov.take + 0.01); c.overPush = 2.5; } else { ov.take = Math.max(0.12, ov.take - 0.003); c.overPush = 1; d.hoard += 0.2; }
       c.tribute = ov.take; d.hunger = 0;
-      if (rnd() < 0.3) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 2 && (!from || rnd() < 0.2)) from = s; if (from) send(w, { kind: 'tribute', cult: c.id, x: from.x, y: from.y, tx: d.lx, ty: d.ly, n: 8, gold: ov.take * 3, dragon: d.name, land: 0.8 }); }
+      if (rnd() < 0.3) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 1 && s !== b && (!from || rnd() < 0.2)) from = s; if (from) send(w, { kind: 'tribute', cult: c.id, x: from.x, y: from.y, tx: d.lx, ty: d.ly, n: 8, gold: ov.take * 3, dragon: d.name, land: 0.8 }); }
       // a town that will not pay is burned
       if (L < 0.8 && rnd() < 0.12 && d.st === 'wake') { let far = null, fd = 0; for (const s of w.sets) { if (s.cult !== c.id || s.nomad || s === b) continue; const q = wrapDx(s.x - b.x) ** 2 + (s.y - b.y) ** 2; if (q > fd) { fd = q; far = s; } }
         if (far) { d.pacts.delete(c.id); d.st = 'fly'; d.target = { kind: 'town', s: far }; d.tx = far.x; d.ty = far.y; d.repact = c.id; if (once(w, 'refuse-' + c.id + '-' + Math.floor(w.year / 60))) ev(w, `${far.name} will not pay ${ov.d}. Everyone knows what happens next.`, far.x, far.y, c.color, 1); } }

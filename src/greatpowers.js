@@ -15,14 +15,35 @@ import { send } from './movers.js';
 import { record } from './ledger.js';
 import { ev, discover, once } from './story.js';
 import { remember, memAt, DEEP, WILD } from './memory.js';
-import { W, H, wx, wrapDx, clamp } from './core.js';
+import { W, H, N, wx, wrapDx, clamp } from './core.js';
 
 const GNAME = ['the Sleeper Under the Shelf', 'the Mother of Tides', 'the One Who Was Called', 'the Drowned Star', 'the Hunger Below the Light'];
 
 /* ---------- the fey ---------- */
+// A court is its forest (slice 14): a flood fill of wooded cells out from its heart, as many as its
+// strength and the wild memory there allow, kept in its own map (courtOf) and never in the forest or
+// owner fields. Its edge is drawn on the map; it grows by letting fallow fields go back to trees.
+const _q = new Int32Array(N);
+function courtFill(w, p) {
+  const CO = w.courtOf || (w.courtOf = new Uint8Array(N));
+  if (p.cells) for (const i of p.cells) if (CO[i] === p.slot) CO[i] = 0;
+  if (p.dead) { p.cells = null; return; }
+  if (!p.slot) { const used = new Set(w.spirits.filter((q) => !q.dead && q.slot).map((q) => q.slot)); let k = 1; while (used.has(k) && k < 254) k++; p.slot = k; }
+  if (w.water[p.y * W + p.x]) { let best = -1, bd = 1e9; for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) { const yy = p.y + dy; if (yy < 1 || yy >= H - 1) continue; const i = yy * W + wx(p.x + dx); if (w.water[i] || w.t[i] < 0.45) continue; const q = dx * dx + dy * dy; if (q < bd) { bd = q; best = i; } } if (best >= 0) { p.x = best % W; p.y = (best / W) | 0; } }   /* a court whose heart drowned moves to the nearest wood */
+  const wild = memAt(w, p.y * W + p.x, WILD), cap = Math.round((40 + 110 * p.str) * (0.5 + wild)), R = (p.R || 6) + 6, h0 = p.y * W + p.x;
+  if (!w.water[h0]) w.t[h0] = Math.max(w.t[h0], 0.8);
+  let n = 0, hd = 0; const cells = []; if (!w.water[h0] && !CO[h0]) { _q[n++] = h0; CO[h0] = p.slot; }
+  while (hd < n && n < cap) { const c = _q[hd++], x = c % W, y = (c / W) | 0; cells.push(c);
+    for (let k = 0; k < 4; k++) { const yy = y + (k === 2 ? -1 : k === 3 ? 1 : 0); if (yy < 1 || yy >= H - 1) continue; const xx = wx(x + (k === 0 ? 1 : k === 1 ? -1 : 0)), i = yy * W + xx;
+      if (CO[i] || w.water[i] || w.t[i] < 0.45 || w.urban[i]) continue; const dx = wrapDx(xx - p.x), dy = yy - p.y; if (dx * dx + dy * dy > R * R) continue; CO[i] = p.slot; _q[n++] = i; if (n >= cap) break; } }
+  for (; hd < n; hd++) cells.push(_q[hd]);
+  p.cells = cells; w.courtStamp = (w.courtStamp || 0) + 1;
+}
+export const inCourt = (w, x, y, r, slot) => { const CO = w.courtOf; if (!CO) return false; for (let dy = -r; dy <= r; dy++) { const yy = y + dy; if (yy < 0 || yy >= H) continue; for (let dx = -r; dx <= r; dx++) if (CO[yy * W + wx(x + dx)] === slot) return true; } return false; };
 function feyYear(w) {
   const rnd = w.rnd;
   for (const p of w.spirits) {
+    if (p.kind === 'fey' && (p.cells || !p.dead)) courtFill(w, p);
     if (p.dead || p.kind !== 'fey') continue;
     // food: how wild the country is, how tired and squeezed the peoples around it are
     let coh = 0, L = 0, n = 0, farm = 0, cells = 0;
@@ -32,8 +53,8 @@ function feyYear(w) {
     p.feed = +(0.5 * (wild - 0.5) + tired - 0.6 * cut).toFixed(3);
     p.str = clamp((p.str || 1) + 0.03 * p.feed, 0.3, p.great ? 4 : 2.5);
     // changelings: a village near the court goes quiet
-    near(w, p.x, p.y, (p.R || 6) + 4, null, true, (s) => {
-      if (s.lost || p.pact === s.cult || s.tier >= 3 || rnd() > 0.012 * p.str) return; s.lost = 'fey'; s.lostTo = p.id; s.trade = 0;
+    near(w, p.x, p.y, (p.R || 6) + 8, null, true, (s) => {
+      if (s.lost || p.pact === s.cult || s.tier >= 3 || !inCourt(w, s.x, s.y, 2, p.slot) || rnd() > 0.02 * p.str) return; s.lost = 'fey'; s.lostTo = p.id; s.trade = 0;
       const c = w.cults[s.cult]; c.feyTaken = (c.feyTaken || 0) + 1;
       if (once(w, 'changeling-' + p.id + '-' + Math.floor(w.year / 40))) { ev(w, `${s.name} goes quiet. Its people still work the fields, but they send no grain and no sons to the ${c.name}, and they do not look at strangers.`, s.x, s.y, c.color, 1); discover(w, 'changelings', s.x, s.y); }
     });

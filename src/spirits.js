@@ -135,7 +135,9 @@ const ACT = {
   fey(w, p) {
     // the court's forest creeps over fields and roads
     if (!p.R) p.R = 6; if (memAt(w, p.y * W + p.x, WILD) > 0.6) p.R = Math.min(p.great ? 26 : 16, p.R + 0.15);
-    for (let q = 0; q < 14; q++) { const a = w.rnd() * 6.283, r = Math.sqrt(w.rnd()) * p.R, xx = wx(Math.round(p.x + Math.cos(a) * r)), yy = clamp(Math.round(p.y + Math.sin(a) * r), 1, H - 2), i = yy * W + xx; if (w.water[i]) continue; if (p.pact != null && w.owner[i] >= 0 && w.sets[w.owner[i]] && w.sets[w.owner[i]].cult === p.pact) continue; w.farm[i] = 0; w.road[i] = 0; w.t[i] = Math.min(1, w.t[i] + 0.15); remember(w, xx, yy, WILD, 0.05, 1); }
+    /* the court grows only into fallow land at its edge: fields still worked hold it back */
+    const C = p.cells; if (C && C.length) for (let q = 0; q < 14; q++) { const c = C[(w.rnd() * C.length) | 0], k = (w.rnd() * 4) | 0, yy = clamp(((c / W) | 0) + (k === 2 ? -1 : k === 3 ? 1 : 0), 1, H - 2), xx = wx((c % W) + (k === 0 ? 1 : k === 1 ? -1 : 0)), i = yy * W + xx;
+      if (w.water[i] || w.farm[i] || w.urban[i] || (w.courtOf && w.courtOf[i])) continue; if (p.pact != null && w.owner[i] >= 0 && w.sets[w.owner[i]] && w.sets[w.owner[i]].cult === p.pact) continue; w.road[i] = 0; w.t[i] = Math.min(1, w.t[i] + 0.2); remember(w, xx, yy, WILD, 0.05, 1); }
     // and now and then the wild hunt rides out
     if (w.rnd() < 0.07) { let hit = 0; near(w, p.x, p.y, p.R + 10, null, false, (s) => { if (p.pact === s.cult) return; s.pop *= 0.85; hit++; w.cults[s.cult].hurt = (w.cults[s.cult].hurt || 0) + 1; }); if (hit && w.year - p.last > 20) { p.last = w.year; ev(w, `The wild hunt rides out of ${p.place}. In the morning ${hit === 1 ? 'one village is' : hit + ' villages are'} missing their young.`, p.x, p.y, null, 0); discover(w, 'wildhunt', p.x, p.y); } }
     near(w, p.x, p.y, 9, null, false, (s) => {

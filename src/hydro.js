@@ -44,7 +44,7 @@ export function* hydroSteps(w) {
     const m = mi[c]; flow2[c] += rMean[c] * (0.12 + 0.88 * clamp((m - 0.15) / 1.1, 0, 1)) + 0.01;
     const d = dn2[c]; if (d >= 0) flow2[d] += flow2[c];
   }
-  for (let i = 0; i < N; i++) if (!wat2[i] && fl2[i] > h[i] + 0.004 && flow2[i] > 9) wat2[i] = 2;
+  const cr = w.crater; for (let i = 0; i < N; i++) if (!wat2[i] && fl2[i] > h[i] + 0.004 && (flow2[i] > 9 || (cr && cr[i]))) wat2[i] = 2;   /* a crater holds rain even without a river */
   // puddles are not lakes: keep only hollows a few cells across
   const q = order; seen.fill(0); let big = null;
   for (let i = 0; i < N; i++) {

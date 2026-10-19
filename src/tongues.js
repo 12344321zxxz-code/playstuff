@@ -179,12 +179,15 @@ export function confound(w, c) {
   if (c.big) { c.langId = c.big.lang; c.lang = w.langs[c.langId].snd; } return k;
 }
 
-// colour by family (hue) with each branch its own shade
-export function tongueColor(w, id) {
-  const L = w.langs && w.langs[id]; if (!L) return '#888';
-  const F = w.langs[familyOf(w, id)], hue = (L.root * 137.508 + (F.depth ? 25 + ((F.id * 97) % 90) : 0)) % 360, sh = ((L.id * 2654435761) >>> 0) % 1000 / 1000;
-  return `hsl(${hue.toFixed(0)},${(55 + 25 * sh).toFixed(0)}%,${(38 + Math.min(3, L.depth - F.depth) * 9 + 10 * sh).toFixed(0)}%)`;
+// colour by family (one of ten hues) with each tongue of the family its own lightness (slice 14,
+// after the language maps of EU5)
+const HUES = [8, 40, 70, 105, 150, 185, 212, 245, 285, 325];
+export function tongueHsl(w, id) {
+  const L = w.langs && w.langs[id]; if (!L) return [0, 0, 55]; const F = familyOf(w, id), hue = HUES[(F * 7) % 10];
+  const sh = ((L.id * 2654435761) >>> 0) % 5;
+  return [hue, 48 + (sh % 2) * 10, L.id === F ? 48 : 34 + sh * 7];
 }
+export function tongueColor(w, id) { const [h, s, l] = tongueHsl(w, id); return `hsl(${h},${s}%,${l}%)`; }
 
 // A family is every tongue that split off within the last 600 years from one ancestor (Romance from
 // Latin); branches that parted longer ago than that are separate families of one origin (Romance and
