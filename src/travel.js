@@ -11,12 +11,19 @@
 //   grades: 0 a way nobody uses, 1 a track worn by traders, 2 a road the state built, 3 a railway.
 //   sea lanes: wet trade routes follow the cheapest way over the coarse climate grid, where sailing
 //     with the wind and the current is cheap and beating against them dear.
-// Nothing here draws a random number, so the simulation is the same with or without it.
+// Slice 16 (movement step 2): trade now goes by these ways. A carrier can only go so far before a
+// trip stops paying (porters least; pack animals, carts on roads, ships, railways and lorries more),
+// spent faster over rough country, and a trip also breaks where the language family changes and
+// where the carrier does not know the next people. Where it breaks, the goods change hands: the
+// leg ends at the best market in the last part of the range, so relays gather in front of deserts,
+// passes and straits. Everything here lives in the world (w.travel) and is saved, because trade
+// decides by it now.
 import { W, H, N, CW, CH, CS, wx, wrapDx, clamp, Heap } from './core.js';
 import { coarse } from './climate.js';
 import { near } from './people.js';
+import { familyOf } from './tongues.js';
 
-const K = 3, R = 22, SEA_EVERY = 20;
+const K = 3, R = 22, SEA_EVERY = 40;
 const _d = new Float32Array(N), _st = new Int32Array(N), _pv = new Int32Array(N), _hp = new Heap(N); let _s = 0;
 // the price of stepping onto cell n from cell c
 export function stepCost(w, c, n, diag) {
@@ -39,9 +46,17 @@ export function landPath(w, src, dst, budget) {
   return null;
 }
 
-// the graph lives outside the world (rebuilt from it), except the wear on each way, which is saved
-const T = { chains: new Map(), edges: new Map(), adj: new Map(), q: [], stamp: -1, w: null, routeWays: new Map(), lanes: new Map(), laneYear: -99 };
-export const travelState = T;
+// the graph lives in the world (w.travel) and is saved; adjacency is derived
+let T = null;
+export const travelOf = (w) => w.travel;
+function ensure(w) {
+  if (!w.travel) w.travel = { edges: new Map(), q: [], stamp: -1, last: -99, lanes: new Map(), chains: new Map(), pairs: new Map(), relayOf: new Map() };
+  T = w.travel; if (!T.pairs) T.pairs = new Map(); if (!T.relayOf) T.relayOf = new Map();
+  if (T._adjFor !== T) { T._adjFor = T; T.adj = new Map(); T.routeWays = T.routeWays || new Map(); for (const e of T.edges.values()) { (T.adj.get(e.a) || T.adj.set(e.a, []).get(e.a)).push(e); (T.adj.get(e.b) || T.adj.set(e.b, []).get(e.b)).push(e); } }
+  if (_wetFor !== w) { _wetFor = w; _wetStamp = -1; _lcFor = -1; }
+  return T;
+}
+let _wetFor = null;
 const keyOf = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
 
 function rebuild(w) {
@@ -52,14 +67,14 @@ function rebuild(w) {
   }
   for (const [key, e] of T.edges) if (!keep.has(key)) T.edges.delete(key);
   const landChanged = T.stamp !== w.stamp.land; T.stamp = w.stamp.land;
-  T.adj = new Map(); T.q = [];
+  T.adj = new Map(); T._adjFor = T; T.q = [];
   for (const e of T.edges.values()) {
     const A = byId.get(e.a), B = byId.get(e.b); e.A = A; e.B = B;
     (T.adj.get(e.a) || T.adj.set(e.a, []).get(e.a)).push(e); (T.adj.get(e.b) || T.adj.set(e.b, []).get(e.b)).push(e);
     const stale = !e.path ? w.year - e.tried > 30 : w.year - e.tried > 30 || (landChanged && e.path.some((i) => w.water[i] === 1 || w.lava[i]));   /* drowned or buried ways are found again */
-    if (stale) T.q.push(e);
+    if (stale) T.q.push(e.key);
   }
-  T.q.sort((p, q) => (p.path ? 1 : 0) - (q.path ? 1 : 0));   /* ways never found first, then the stale ones */
+  T.q.sort((p, q) => (T.edges.get(p).path ? 1 : 0) - (T.edges.get(q).path ? 1 : 0));   /* ways never found first, then the stale ones */
 }
 // the trade on each route walks the cheapest chain of ways between its towns (land routes) or its
 // sea lane (wet routes); what walks a way wears it into a track
@@ -75,6 +90,13 @@ function flows(w) {
   for (const e of T.edges.values()) { const f = use.get(e.key) || 0, old = wear.get(e.key) || 0, v = old + (f - old) * 0.15; if (v > 0.05) wear.set(e.key, +v.toFixed(3)); else wear.delete(e.key); }
   for (const k of [...wear.keys()]) if (!T.edges.has(k)) wear.delete(k);
   for (const k of [...T.chains.keys()]) if (!w.routes.has(k)) T.chains.delete(k);
+  // danger: a way through the land of the dead is closed; a way between realms at war costs three times as much
+  for (const e of T.edges.values()) {
+    e.block = false; e.war = false; if (!e.A || !e.B) continue; const ca = w.cults[e.A.cult], cb = w.cults[e.B.cult];
+    e.war = !!((ca.war && ca.war.foe === cb.id) || (cb.war && cb.war.foe === ca.id));
+    e.fo = 0; if (e.path && w.fallout) { let mx = 0, sm = 0; for (const i of e.path) { const v = w.fallout[i]; sm += v; if (v > mx) mx = v; } if (mx > 1) e.block = true; else e.fo = +(4 * sm / e.path.length + 2 * mx).toFixed(2); }   /* the worst fallout closes a way; lighter fallout makes it dearer */
+    if (e.path && w.anyPower !== false) for (let k = 0; k < e.path.length && !e.block; k += 4) { const i = e.path[k]; near(w, i % W, (i / W) | 0, 5, null, true, (s) => { if (w.cults[s.cult].power === 'dead') e.block = true; }); }
+  }
   // grades
   for (const e of T.edges.values()) {
     e.grade = 0; if (!e.path) continue; let rd = 0; for (const i of e.path) if (w.road[i]) rd++;
@@ -87,20 +109,23 @@ const _gh = new Heap(1 << 15), _gdist = new Map(), _gprev = new Map();
 function graphPath(a, b) {
   if (a === b || !T.adj.has(a) || !T.adj.has(b)) return null; _gdist.clear(); _gprev.clear(); _gh.clear(); _gdist.set(a, 0); _gh.push(0, a); let n = 0;
   while (_gh.n) {
-    const u = _gh.pop(), d = _gh.key; if (u === b) { const out = []; for (let v = b; v !== a; ) { const e = _gprev.get(v); out.push(e); v = e.a === v ? e.b : e.a; } return out; }
-    if (d > _gdist.get(u) || ++n > 2500 || _gh.n > 30000) { if (n > 2500 || _gh.n > 30000) return null; continue; }
-    for (const e of T.adj.get(u) || []) { const v = e.a === u ? e.b : e.a, nd = d + e.cost; const old = _gdist.get(v); if (old === undefined || nd < old) { _gdist.set(v, nd); _gprev.set(v, e); _gh.push(nd, v); } }
+    const u = _gh.pop(), d = _gdist.get(u); if (_gh.key > d + 1e-3) continue; if (u === b) { const out = []; for (let v = b; v !== a; ) { const e = _gprev.get(v); if (!e || out.length > 600) return null; out.push(e); v = e.a === v ? e.b : e.a; } return out; }
+    if (++n > 2500 || _gh.n > 30000) return null;
+    for (const e of T.adj.get(u) || []) { const v = e.a === u ? e.b : e.a; if (e.block || v === a) continue; const nd = d + Math.max(0.5, e.cost) * (e.war ? 3 : 1) * (1 + (e.fo || 0)); const old = _gdist.get(v); if (old === undefined || nd < old - 1e-6) {   /* exact distances (not the heap's rounded keys) and no free edges, or the chain can loop */ _gdist.set(v, nd); _gprev.set(v, e); _gh.push(nd, v); } }
   }
   return null;
 }
 
 // sea lanes: A* on a half-resolution grid of open sea, cheap with the wind and the current, dear against them
 const HW = W / 2, HH = H / 2, HN = HW * HH, _cd = new Float32Array(HN), _cs = new Int32Array(HN), _cp = new Int32Array(HN), _ch = new Heap(HN), _wet = new Uint8Array(HN); let _cst = 0, _wetStamp = -1;
-function laneCost(hx, hy, dx, dy) {
-  const i = clamp((hy * 2 / CS) | 0, 0, CH - 1) * CW + (((hx * 2 / CS) | 0) % CW), o0 = coarse.out[0], o1 = coarse.out[1];
-  const u = (o0.u[i] + o1.u[i]) * 0.5 + (o0.cu[i] + o1.cu[i]) * 0.25, v = (o0.v[i] + o1.v[i]) * 0.5 + (o0.cv[i] + o1.cv[i]) * 0.25, l = Math.hypot(dx, dy), m = Math.hypot(u, v), s = Math.min(1, m * 1.6);
-  const along = m > 1e-4 ? (u * dx + v * dy) / (l * m) : 0;
-  return l * (0.25 + 1.25 * Math.exp(-1.6 * along * s));   /* running before a steady wind about 0.6, across it 1.5, beating against it up to 4.7 */
+// the price of each of the eight moves from each half-cell, worked out once per climate
+const DIRS = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]], _lc = new Float32Array(HN * 8); let _lcFor = -1;
+function laneCosts(w) {
+  const st = w.climateStamp == null ? 0 : w.climateStamp; if (_lcFor === st) return; _lcFor = st; const o0 = coarse.out[0], o1 = coarse.out[1];
+  for (let hy = 0; hy < HH; hy++) for (let hx = 0; hx < HW; hx++) {
+    const i = clamp((hy * 2 / CS) | 0, 0, CH - 1) * CW + (((hx * 2 / CS) | 0) % CW), u = (o0.u[i] + o1.u[i]) * 0.5 + (o0.cu[i] + o1.cu[i]) * 0.25, v = (o0.v[i] + o1.v[i]) * 0.5 + (o0.cv[i] + o1.cv[i]) * 0.25, m = Math.hypot(u, v), s = Math.min(1, m * 1.6), b = (hy * HW + hx) * 8;
+    for (let d = 0; d < 8; d++) { const dx = DIRS[d][0], dy = DIRS[d][1], l = Math.hypot(dx, dy), along = m > 1e-4 ? (u * dx + v * dy) / (l * m) : 0; _lc[b + d] = l * (0.25 + 1.25 * Math.exp(-1.6 * along * s)); }   /* running before a steady wind about 0.6, across it 1.5, beating against it up to 4.7 */
+  }
 }
 function wetMap(w) {
   if (_wetStamp === w.stamp.land) return; _wetStamp = w.stamp.land;
@@ -112,7 +137,7 @@ function wetMap(w) {
 }
 // returns fine-grid cell indices along the lane, or null
 export function seaLane(w, ax, ay, bx, by) {
-  wetMap(w);
+  wetMap(w); laneCosts(w);
   const snap = (x, y) => { const cx = (x / 2) | 0, cy = clamp((y / 2) | 0, 0, HH - 1); let best = -1, bd = 999; for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) { const yy = cy + dy; if (yy < 0 || yy >= HH) continue; const i = yy * HW + ((cx + dx + HW) % HW); if (_wet[i] && dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; best = i; } } return best; };
   const src = snap(ax, ay), dst = snap(bx, by); if (src < 0 || dst < 0) return null;
   _cst++; _ch.clear(); _cd[src] = 0; _cs[src] = _cst; _cp[src] = -1; const tx = dst % HW, ty = (dst / HW) | 0; _ch.push(0, src); let budget = 25000;
@@ -120,24 +145,80 @@ export function seaLane(w, ax, ay, bx, by) {
   while (_ch.n && budget-- > 0) {
     const c = _ch.pop(); if (c === dst) { const p = []; for (let k = c; k >= 0; k = _cp[k]) p.push(((k / HW) | 0) * 2 * W + (k % HW) * 2); return p.reverse(); }
     const x = c % HW, y = (c / HW) | 0, dc = _cd[c];
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const yy = y + dy; if (yy < 0 || yy >= HH) continue; const n = yy * HW + (x + dx + HW) % HW; if (!_wet[n]) continue;
-      const nd = dc + laneCost(x, y, dx, dy); if (_cs[n] !== _cst || nd < _cd[n]) { _cs[n] = _cst; _cd[n] = nd; _cp[n] = c; _ch.push(nd + Math.hypot(hdx(x + dx, tx), yy - ty) * 0.9, n);   /* a greedy heuristic: near-cheapest lanes, found fast */ } }
+    for (let d = 0; d < 8; d++) { const dx = DIRS[d][0], dy = DIRS[d][1], yy = y + dy; if (yy < 0 || yy >= HH) continue; const n = yy * HW + (x + dx + HW) % HW; if (!_wet[n]) continue;
+      const nd = dc + _lc[c * 8 + d]; if (_cs[n] !== _cst || nd < _cd[n]) { _cs[n] = _cst; _cd[n] = nd; _cp[n] = c; _ch.push(nd + Math.hypot(hdx(x + dx, tx), yy - ty) * 0.9, n);   /* a greedy heuristic: near-cheapest lanes, found fast */ } }
   }
   return null;
 }
-function lanes(w) {
-  const seen = new Set();
-  let budget = 3;   /* a few lanes per rebuild, busiest routes first, so no year is heavy */
-  const want = []; for (const [rk, r] of w.routes) { if (!r.wet || r.a.dead || r.b.dead) continue; seen.add(rk); const L = T.lanes.get(rk); if (!L || w.year - L.year >= SEA_EVERY) want.push([r.n, rk, r]); }
-  want.sort((a, b) => b[0] - a[0]);
-  for (const [, rk, r] of want) { if (budget-- <= 0) break; T.lanes.set(rk, { year: w.year, path: seaLane(w, r.a.x, r.a.y, r.b.x, r.b.y) }); }
-  for (const k of [...T.lanes.keys()]) if (!seen.has(k)) T.lanes.delete(k);
-}
+function lanes(w) { for (const [k, L] of T.lanes) if (w.year - L.year > 60) T.lanes.delete(k); }
+export const laneFor = (Tr, r) => Tr.lanes.get(r.a.id + '>' + r.b.id) || Tr.lanes.get(r.b.id + '>' + r.a.id);
 
 export function travelTick(w) {
-  if (T.w !== w) { T.w = w; T.edges = new Map(); T.adj = new Map(); T.q = []; T.stamp = -1; T.lanes = new Map(); T.routeWays = new Map(); T.chains = new Map(); T.last = -99; }
-  if (w.year - T.last >= 2 && (w.tickN % 8) === 6) { T.last = w.year; rebuild(w); flows(w); lanes(w); }
+  ensure(w); T.laneBudget = 1;
+  if (w.year - T.last >= 2 && (w.tickN % 8) === 6) { T.last = w.year; rebuild(w); flows(w); lanes(w); T.pairs.clear(); }
   // a few paths every tick
-  for (let n = 0; n < 4 && T.q.length; n++) { const e = T.q.shift(); if (!e.A || !e.B || e.A.dead || e.B.dead) continue; e.tried = w.year;
+  for (let n = 0; n < 4 && T.q.length; n++) { const e = T.edges.get(T.q.shift()); if (!e || !e.A || !e.B || e.A.dead || e.B.dead) continue; e.tried = w.year;
     const r = landPath(w, e.A.y * W + e.A.x, e.B.y * W + e.B.x, 5000); if (r) { e.path = r.path; e.cost = r.cost; } else { e.path = null; e.cost = Math.hypot(wrapDx(e.A.x - e.B.x), e.A.y - e.B.y) * 6; } }
 }
+
+/* ---------- route breaks (slice 16) ---------- */
+// how far a carrier of this people goes before the trip stops paying, in cost units (a flat open
+// cell costs 1, a road cell a third); at sea in lane cells
+export function rangeOf(c, sea) {
+  const A = c.arts, t = c.tame || {};
+  if (sea) return A.engines ? 900 : A.navigation ? 320 : A.sailing ? 150 : A.boats ? 45 : 0;
+  return A.oil && A.engines ? 900 : A.railways ? 500 : A.roads || A.wheel ? (t.horse || t.camel ? 130 : 95) : t.horse || t.camel || t.donkey || t.llama ? 75 : 45;
+}
+export const stepOf = (c, sea) => { const A = c.arts; return sea ? (A.engines ? 8 : A.navigation ? 5 : A.sailing ? 4 : 2) : A.railways ? 10 : A.roads || c.tame.horse || c.tame.camel ? 3 : 2; };
+const fam = (w, s) => (s.lang != null && w.langs && w.langs[s.lang] ? familyOf(w, s.lang) : -1);
+const knows = (c, o) => c === o || !!(c.met && c.met[o.id]);
+const score = (s) => Math.sqrt(s.pop) * (s.market ? 2 : 1) * (s.port ? 1.3 : 1) * (1 + (s.relayE || 0));   /* big markets, and above all the places where goods already change hands */
+// the towns along the cheapest chain of ways from a to b, with the cost to reach each
+function chainNodes(w, a, b) {
+  const key = a.id + '>' + b.id; let P = T.pairs.get(key); if (P !== undefined) return P;
+  const chain = graphPath(b.id, a.id);   /* from b back to a: the edges come out in order from a */
+  P = null; if (chain) { const nodes = [a], cost = [0]; let at = a.id, c = 0; for (const e of chain) { const nx = e.a === at ? e.B : e.A; c += Math.max(0.5, e.cost) * (e.war ? 3 : 1) * (1 + (e.fo || 0)); nodes.push(nx); cost.push(c); at = nx.id; } P = { nodes, cost }; }
+  T.pairs.set(key, P); return P;
+}
+// Plan a land trip: the list of towns where the goods change hands, ending at b; null if it cannot go
+export function planLand(w, a, b) {
+  ensure(w); const P = chainNodes(w, a, b); if (!P) return null; const { nodes, cost } = P, legs = []; let i = 0;
+  while (i < nodes.length - 1 && legs.length < 6) {
+    const s = nodes[i], C = w.cults[s.cult], R0 = rangeOf(C, false), f0 = fam(w, s); let end = -1, best = -1, bs = -1;
+    for (let j = i + 1; j < nodes.length; j++) {
+      const t = nodes[j], d = cost[j] - cost[i]; if (d > R0) break;
+      end = j; if (j === nodes.length - 1) { best = j; break; }
+      if (fam(w, t) !== f0 || !knows(C, w.cults[t.cult])) { best = j; break; }   /* a new tongue, or a people the carrier does not know: the goods change hands here */
+      if (d >= 0.6 * R0 && score(t) > bs) { bs = score(t); best = j; }
+    }
+    if (end < 0) return null;   /* the first stretch is already too far */
+    if (best < 0) best = end; legs.push(nodes[best]); i = best;
+  }
+  return i === nodes.length - 1 ? legs : null;
+}
+// the land path of one leg, as cells (for the moving picture)
+export function legCells(w, a, b) {
+  const P = chainNodes(w, a, b); if (!P) return null; const out = [];
+  for (let k = 1; k < P.nodes.length; k++) { const u = P.nodes[k - 1], v = P.nodes[k], e = T.edges.get(keyOf(u.id, v.id)); if (!e || !e.path) return null;
+    const fwd = e.path[0] === u.y * W + u.x; const p = fwd ? e.path : Array.from(e.path).reverse(); for (const c of p) out.push(c); if (v === b) break; }
+  return out;
+}
+// Plan a sea trip from port a to port b: whole, or broken at a port along the lane
+export function planSea(w, a, b) {
+  ensure(w); const key = a.id + '>' + b.id; let L = T.lanes.get(key);
+  if (!L || w.year - L.year >= SEA_EVERY) { if ((T.laneBudget || 0) <= 0) return null; T.laneBudget--; L = { year: w.year, path: seaLane(w, a.x, a.y, b.x, b.y) }; T.lanes.set(key, L); }
+  if (!L.path) return null; const C = w.cults[a.cult], R0 = rangeOf(C, true); if (!R0) return null;
+  const len = L.path.length; if (len <= R0) return { legs: [b], path: L.path };
+  // too far: the last good harbour inside the range
+  let best = null, bs = -1; for (let k = Math.floor(R0 * 0.5); k < Math.min(len, R0); k += 3) { const c = L.path[k]; near(w, c % W, (c / W) | 0, 6, null, true, (s) => { if (s === a || s === b || !s.port || w.cults[s.cult].power) return; const sc = score(s) * (k / R0); if (sc > bs) { bs = sc; best = s; } }); }
+  return best ? { legs: [best, b], path: L.path.slice(0, R0) } : null;
+}
+// a relay town takes its cut; the ledger notes when the place where goods change hands moves
+export function relayAt(w, s, a, b, val) {
+  s.relayN = (s.relayN || 0) + 1; s.relayY = w.year; s.wealth = (s.wealth || 0) + val * 0.35; s.toll = (s.toll || 0) + val * 0.35;
+  const key = a.id + '>' + b.id, was = T.relayOf.get(key);
+  if (was && was.id !== s.id && was.n >= 6) { const old = w.sets.find((q) => q.id === was.id && !q.dead); return { old, n: was.n }; }
+  if (!was || was.id !== s.id) T.relayOf.set(key, { id: s.id, n: 1 }); else was.n++;
+  return null;
+}
+export function clearRelay(w, a, b) { ensure(w); const key = a.id + '>' + b.id, was = T.relayOf.get(key); T.relayOf.delete(key); return was && was.n >= 6 ? w.sets.find((q) => q.id === was.id && !q.dead) : null; }

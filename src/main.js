@@ -191,7 +191,7 @@ function legend() {
   if (S.lens === 17) { const fam = new Map(); for (const L of w.langs || []) if (L.alive) { const k = familyOf(w, L.id), f = fam.get(k) || { n: 0, pop: 0 }; f.n++; f.pop += L.pop; fam.set(k, f); }
     keyList('Language families', [...fam].sort((a, b) => b[1].pop - a[1].pop).slice(0, 9).map(([r, f]) => { const F = w.langs[r]; return [tongueColor(w, r), `${F.name}${F.depth ? ' (from ' + w.langs[F.root].name + ')' : ''} · ${f.n} ${f.n === 1 ? 'tongue' : 'tongues'}`]; }), 'Each land is coloured by the tongue its nearest town speaks: hue for the family, shade for the tongue. Thick lines part families, thin lines tongues, dashed lines realms. Hatching in the rulers\' colour marks towns that do not speak their court\'s tongue. Hover a land for its tongue.'); return; }
   if (S.lens === 15) { keyList('The age each people lives in', ERA.map((e, k) => [ERA_COL[k], e[0].toUpperCase() + e.slice(1)])); return; }
-  if (S.lens === 14) { keyList('Trade routes', GOODS.map((g) => [g.col, g.name[0].toUpperCase() + g.name.slice(1)]), 'Line colour: what a route mostly carries. Thicker: busier. Routes follow the cheapest ways over the land, and at sea the lanes the winds and currents make. Under them, the ways between towns: brown dashes are tracks worn by traders, pale lines roads a state built, dark lines railways. Gold squares: markets.'); return; }
+  if (S.lens === 14) { keyList('Trade routes', GOODS.map((g) => [g.col, g.name[0].toUpperCase() + g.name.slice(1)]), 'Line colour: what a route mostly carries. Thicker: busier. Routes follow the cheapest ways over the land, and at sea the lanes the winds and currents make. Under them, the ways between towns: brown dashes are tracks worn by traders, pale lines roads a state built, dark lines railways. Gold squares: markets. Orange diamonds: entrepôts, where goods change hands because carriers can go no further, the tongue changes, or the next people is strangers.'); return; }
   if (S.lens === 13) { const alive = new Set(); for (const m in w.massKinds) for (const s of w.massKinds[m]) alive.add(s); keyList('Wild beasts', SPECIES.map((q, k) => [q, k]).filter(([, k]) => alive.has(k)).map(([q]) => [q.lc, q.name[0].toUpperCase() + q.name.slice(1) + (q.tame ? ' (can be tamed)' : '')]), 'Solid: a people could tame it. Checked: it will never be tamed.'); return; }
   if (S.lens === 10) { const b = document.createElement('b'); b.textContent = 'Climate zones'; const k = document.createElement('div'); k.className = 'keys'; for (const z of ZONES) { if (!z) continue; const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = z.col; r.append(i, document.createTextNode(z.name)); k.appendChild(r); } el.append(b, k); el.hidden = false; return; }
   if (!L) { el.hidden = true; return; }
@@ -316,7 +316,16 @@ function overlay(now) {
 }
 
 /* ---------- loop ---------- */
+// An error anywhere in a frame used to stop the loop for good (the world froze but the buttons still
+// worked). Now each part runs guarded: an error in the simulation pauses the world and says so; the
+// error is kept for the report; drawing errors are logged and the next frame tries again.
+export const errors = [];
+function oops(where, e) { const w = S.w; const rec = { where, year: w ? w.year : null, tick: w ? w.tickN : null, msg: String(e && e.message || e), stack: String(e && e.stack || '').split('\n').slice(0, 6).join(' | ') }; if (errors.length < 20 && !errors.some((x) => x.msg === rec.msg && x.where === where)) errors.push(rec); console.error(e); return rec; }
 function frame(now) {
+  requestAnimationFrame(frame);
+  try { frameInner(now); } catch (e) { const r = oops('sim', e); if (S.speed) { setSpeed(0); say(`Something broke in year ${r.year}. The world is paused. Use Report and send it to Claude (Save too, if it works).`, 15000); } }
+}
+function frameInner(now) {
   const raw = now - S.last, dt = Math.min(0.1, raw / 1000); S.last = now; const w = S.w, P = S.perf, t0 = performance.now(); let ran = 0;
   // a slow graphics card gets a coarser terrain rather than a slideshow
   if (raw < 400) P.frame += (raw - P.frame) * 0.06;
@@ -330,9 +339,8 @@ function frame(now) {
   climateWatch(now);
   // the map texture is rebuilt at most a few times a second while time runs; at once after an edit
   if (R) { if (S.dirty || (S.simDirty && now - (S.upT || 0) > 160)) { R.upload(w, S.lens); S.dirty = false; S.simDirty = false; S.upT = now; } R.draw(w, cam, S.lens === 8 ? 0 : S.lens, now / 1000, pal, S.q); }
-  const t2 = performance.now(); overlay(now); const t3 = performance.now(); P.gl += (t2 - t1 - P.gl) * 0.05; P.ov += (t3 - t2 - P.ov) * 0.05;
-  if (now - S.hudT > 500) { S.hudT = now; vitals(); if ((S.lens === 6 || S.lens === 9) && now - (S.legT || 0) > 3000) legend(); if (S.sel && S.sel.info) { const inf = S.sel.info(); if (inf) showInfo(inf); else { S.sel = null; } } }
-  requestAnimationFrame(frame);
+  const t2 = performance.now(); try { overlay(now); } catch (e) { oops('draw', e); } const t3 = performance.now(); P.gl += (t2 - t1 - P.gl) * 0.05; P.ov += (t3 - t2 - P.ov) * 0.05;
+  if (now - S.hudT > 500) { S.hudT = now; try { vitals(); } catch (e) { oops('panel', e); } if ((S.lens === 6 || S.lens === 9) && now - (S.legT || 0) > 3000) legend(); if (S.sel && S.sel.info) { const inf = S.sel.info(); if (inf) showInfo(inf); else { S.sel = null; } } }
 }
 
 /* ---------- boot ---------- */

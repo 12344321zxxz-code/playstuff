@@ -4,7 +4,7 @@ import { tongueColor, tongueHsl, familyOf, quirksOf } from './tongues.js';
 import { overlordOf } from './capture.js';
 import { KINDS, STANCES, memAt, kindAt } from './memory.js';
 import { GOODS } from './trade.js';
-import { travelState } from './travel.js';
+import { travelOf, laneFor } from './travel.js';
 import { ERA, blockedReasons } from './tech.js';
 import { SPIRIT_KINDS } from './spirits.js';
 import { PLANTS, luckOf } from './origins.js';
@@ -223,7 +223,7 @@ const pathSeen = (cells) => { const n = cells.length; for (const k of [0, n >> 1
 // tracks worn by traders (Land lens, close in); in the Trade lens every way by its grade, and the sea lanes
 const GRADE = [null, { c: '#9a7a55', d: [3, 3], wd: 1 }, { c: '#d6c29a', d: [], wd: 1.6 }, { c: '#2a2628', d: [], wd: 2 }];
 function drawWays(ctx, w, cam, z, lens) {
-  const Tr = travelState; if (Tr.w !== w) return; const q = Math.max(1, cam.dpr), wear = w.tracks || new Map();
+  const Tr = travelOf(w); if (!Tr || !Tr.edges) return; const q = Math.max(1, cam.dpr), wear = w.tracks || new Map();
   if (lens === 0 && z >= 2.2) {
     ctx.strokeStyle = '#7a5f42'; ctx.lineWidth = Math.max(1, Math.round(q * Math.min(1.6, z / 4))); ctx.setLineDash([2 * q, 3 * q]); ctx.lineCap = 'round';
     for (const e of Tr.edges.values()) { if (e.grade !== 1 || !e.path || !pathSeen(e.path)) continue; ctx.globalAlpha = Math.min(0.85, 0.3 + (wear.get(e.key) || 0) / 8); pathLine(ctx, cam, e.path); }
@@ -231,7 +231,7 @@ function drawWays(ctx, w, cam, z, lens) {
   }
   if (lens === 0 && z < 5) {   /* the sea lanes, faint, where ships run often */
     ctx.strokeStyle = 'rgba(225,240,255,0.35)'; ctx.lineWidth = q; ctx.setLineDash([1 * q, 4 * q]);
-    for (const [k, L] of Tr.lanes) { const r = w.routes.get(k); if (!L.path || !r || r.n < 3 || !pathSeen(L.path)) continue; pathLine(ctx, cam, L.path); }
+    for (const r of w.routes.values()) { if (!r.wet || r.n < 3) continue; const L = laneFor(Tr, r); if (!L || !L.path || !pathSeen(L.path)) continue; pathLine(ctx, cam, L.path); }
     ctx.setLineDash([]);
   }
   if (lens !== 14) return;
@@ -247,13 +247,14 @@ function drawRoutes(ctx, w, cam, z, lens) {
     if (r.n < 0.5) continue; let bg = 0; for (let g = 1; g < GOODS.length; g++) if (r.g[g] > r.g[bg]) bg = g;
     const a = at(cam, r.a.x + 0.5, r.a.y + 0.5).slice(), dx = wrapDx(r.b.x - r.a.x), b = at(cam, r.a.x + dx + 0.5, r.b.y + 0.5); if (Math.max(a[0], b[0]) < 0 || Math.min(a[0], b[0]) > cam.w) continue;
     ctx.strokeStyle = r.g[bg] > 0 ? GOODS[bg].col : '#d8d0c0'; ctx.globalAlpha = Math.min(1, 0.35 + r.n / 10); ctx.lineWidth = q * Math.min(7, 1 + Math.sqrt(r.n)); ctx.setLineDash(r.wet ? [4 * q, 3 * q] : []);
-    const chain = travelState.routeWays.get(rk), lane = travelState.lanes.get(rk);
-    if (chain && travelState.w === w) { for (const e of chain) if (e.path) pathLine(ctx, cam, e.path); }
-    else if (lane && lane.path && travelState.w === w) { pathLine(ctx, cam, lane.path); ctx.setLineDash([]); ctx.globalAlpha *= 0.6; ctx.lineWidth = q; const s0 = lane.path[0], s1 = lane.path[lane.path.length - 1]; for (const [t, c] of [[r.a, s0], [r.b, s1]]) { pathLine(ctx, cam, [t.y * W + t.x, c]); } }
+    const Tw = travelOf(w), chain = Tw && Tw.routeWays && Tw.routeWays.get(rk), lane = Tw && laneFor(Tw, r);
+    if (chain) { for (const e of chain) if (e.path) pathLine(ctx, cam, e.path); }
+    else if (lane && lane.path) { pathLine(ctx, cam, lane.path); ctx.setLineDash([]); ctx.globalAlpha *= 0.6; ctx.lineWidth = q; const s0 = lane.path[0], s1 = lane.path[lane.path.length - 1]; for (const [t, c] of [[r.a, s0], [r.b, s1]]) { pathLine(ctx, cam, [t.y * W + t.x, c]); } }
     else { ctx.beginPath(); ctx.moveTo(Math.round(a[0]), Math.round(a[1])); ctx.lineTo(Math.round(b[0]), Math.round(b[1])); ctx.stroke(); }
     if (r.name) label(ctx, r.name, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 6 * cam.dpr, Math.round(11 * cam.dpr), GOODS[r.good ?? bg].col, true, 60 + r.n);
   }
   ctx.setLineDash([]); ctx.globalAlpha = 1;
+  for (const s of w.sets) if (s.entrepot && !s.dead && seen(s.x, s.y, 2)) { const p = at(cam, s.x + 0.5, s.y + 0.5), R = 5 * q + z * cam.dpr * 0.7; ctx.strokeStyle = '#ff9a3a'; ctx.lineWidth = 2 * q; ctx.beginPath(); ctx.moveTo(p[0], p[1] - R); ctx.lineTo(p[0] + R, p[1]); ctx.lineTo(p[0], p[1] + R); ctx.lineTo(p[0] - R, p[1]); ctx.closePath(); ctx.stroke(); }   /* entrepôts: an orange diamond */
   for (const s of w.sets) if (s.market && seen(s.x, s.y, 2)) { const p = at(cam, s.x + 0.5, s.y + 0.5), R = 4 * q + z * cam.dpr * 0.6; ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2 * q; ctx.strokeRect(Math.round(p[0] - R), Math.round(p[1] - R), Math.round(2 * R), Math.round(2 * R)); }
   for (const p of w.pirates) { if (!seen(p.x, p.y, 3)) continue; const s = at(cam, p.x + 0.5, p.y + 0.5); blit(ctx, 'ship', s[0], s[1], pixScale(z, cam.dpr), '#1b1714'); label(ctx, p.name, s[0], s[1] + 4 * cam.dpr, Math.round(10 * cam.dpr), '#ff8a7a', true, 45); }
 }
@@ -354,7 +355,8 @@ const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fis
     if (s.burned) L.push(`A dragon has burned it ${s.burned === 1 ? 'once' : s.burned + ' times'}.`); }
   { const ex = Object.keys(s.exp || {}).filter((g) => w.year - s.exp[g] < 15).map((g) => GOODS[g].name), im = Object.keys(s.imp || {}).filter((g) => w.year - s.imp[g] < 15).map((g) => GOODS[g].name);
     if (ex.length) L.push(`It sells ${list(ex)}.`); if (im.length) L.push(`It buys ${list(im)}.`);
-    const named = [...w.routes.values()].filter((r) => r.name && (r.a === s || r.b === s)).map((r) => r.name); if (s.market) L.push(`It is a great market${named.length ? ', on ' + list(named) : ''}.`); else if (named.length) L.push(`It lies on ${list(named)}.`); }
+    const named = [...w.routes.values()].filter((r) => r.name && (r.a === s || r.b === s)).map((r) => r.name); if (s.entrepot) L.push(`Goods change hands here: far carriers stop, sell and turn back, and its merchants carry them on (${Math.round(s.relayE)} loads a year lately).`); else if (s.relayE > 0.5) L.push(`Now and then goods change hands here on their way somewhere else.`);
+    if (s.market) L.push(`It is a great market${named.length ? ', on ' + list(named) : ''}.`); else if (named.length) L.push(`It lies on ${list(named)}.`); }
   return { title: s.name || `A band of the ${c.name}`, sub: s.nomad ? c.kind : `${TIER[s.tier]} of the ${c.name}`, color: colorOf(c), bar, lines: L.concat(cultLines(w, c)), split: L.length, splitTitle: 'The ' + c.name, follow: { pos: () => (s.dead ? null : [s.x, s.y, s.R + 0.6]), info: () => (s.dead ? null : setInfo(w, s)) } };
 }
 export const describeSet = setInfo;

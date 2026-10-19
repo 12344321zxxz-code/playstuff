@@ -125,6 +125,7 @@ export const PAGES = [
     ['nuked', 'A city in a moment', 'A bomb fell on people.'],
     ['nukewinter', 'Nuclear winter', 'Enough cities burned to dim the sun.'],
     ['meltdown', 'Meltdown', 'A power station that would not stop burning.'],
+    ['entrepot', 'Entrepôt', 'A town where far traders stop, sell, and turn back, and its own merchants carry the goods on.'],
     ['cleaned', 'Clean ground', 'A people scrubbed the poison out of a struck country.'],
     ['craterlake', 'Crater lake', 'The glass of a burned city crumbled and the crater filled with rain.'],
     ['germwar', 'A made plague', 'A sickness that never existed until someone built it.'],

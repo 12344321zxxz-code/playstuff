@@ -1,6 +1,6 @@
 // Keeping a world: Report (plain text to paste into a chat with Claude), Save (the exact world, as a
 // file Claude can load headless) and Load (pick up a saved world where it was).
-import { state, adopt, say } from './main.js';
+import { state, adopt, say, errors } from './main.js';
 import { settle } from './world.js';
 import { encodeWorld, gzip, zipOne, readSave } from './save.js';
 import { report } from './probe.js';
@@ -17,7 +17,7 @@ async function offer(filename, data) {
 const stem = (w) => `formicarium-seed${w.seed}-year${w.year}`;
 
 function showReport() {
-  const w = state.w; if (!w) return; const text = report(w, BUILD);
+  const w = state.w; if (!w) return; let text = report(w, BUILD); if (errors.length) text = errors.map((e) => `ERROR (${e.where}, year ${e.year}, tick ${e.tick}): ${e.msg}\n  ${e.stack}`).join('\n') + '\n\n' + text;
   let box = $('reportbox');
   if (!box) {
     box = document.createElement('div'); box.id = 'reportbox'; box.className = 'reportbox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'World report');
@@ -32,7 +32,7 @@ function showReport() {
 
 async function saveWorld() {
   const w = state.w; if (!w) return; say('Saving the world…', 4000);
-  settle(w);   // finish work in flight, so the saved world and this one carry on identically
+  try { settle(w); } catch (e) { console.error(e); }   // finish work in flight, so the saved world and this one carry on identically (if the world is broken, save it as it is)
   const gz = await gzip(encodeWorld(w)), name = stem(w);
   const ok = await offer(name + '.zip', zipOne(name + '.formi', gz));
   say(ok ? `Saved ${(gz.length / 1e6).toFixed(1)} MB. Send the file to Claude to have it look at this exact world.` : 'Not saved.', 5000);

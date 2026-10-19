@@ -15,10 +15,11 @@ import { ev, discover, once } from './story.js';
 import { SPECIES, takeGame, habRaw as habitat, introduce } from './fauna.js';
 import { wetAt } from './weather.js';
 import { catchFish } from './sea.js';
-import { send, arrive } from './movers.js';
+import { send, arrive, onRoad } from './movers.js';
+import { planLand, planSea, legCells, stepOf, relayAt, clearRelay } from './travel.js';
 export { send };
 import { holySite, carry, convert, faithYear, sameFaith, tenetOf, docsOf } from './faith.js';
-import { pickGoods, deliver, importedMetals, leagued, G as GD } from './trade.js';
+import { pickGoods, deliver, importedMetals, leagued, G as GD, GOODS } from './trade.js';
 import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst, carriersFor } from './tech.js';
 export { ART, TECH, techOf };
 import { wallBetween } from './works.js';
@@ -184,9 +185,53 @@ arrive.settlers = (w, m) => {
   if (m.ocean && m.far && (w.massSize[w.mass[i]] || 0) > 150 && discover(w, 'oversea', x, y)) ev(w, `Ships of the ${c.name} cross the open sea and land ${whereAbouts(w, x, y)}.`, x, y, c.color, 2);
 };
 arrive.home = (w, m) => { if (m.to && !m.to.dead) m.to.pop += m.n; };
+// A trade trip (slice 16): planned over the ways between towns, or the sea lanes. If the carrier's
+// range runs out, the tongue changes or the next people is unknown, the goods change hands on the
+// way; only the first leg is a moving picture, the rest follow as yearly flow.
+export function tradeTrip(w, from, to, g, wet) {
+  if (!from || !to || from.dead || to.dead || from.nomad || to.nomad) return false; const c = w.cults[from.cult];
+  let legs, path;
+  if (!wet) { legs = planLand(w, from, to); if (!legs) return false; path = legCells(w, from, legs[0]); }
+  else { const P = planSea(w, from, to); if (!P) return false; legs = P.legs; path = P.path; }
+  const first = legs[0]; if (legs.length === 1) { const old = clearRelay(w, from, to); if (old && once(w, 'bypass-' + old.id + '-' + Math.floor(w.year / 60))) bypassed(w, old, from, to); }
+  send(w, { kind: 'trade', cult: from.cult, x: from.x, y: from.y, tx: first.x, ty: first.y, n: wet ? 8 : 6, from, to: first, origin: from, final: to, legs: legs.slice(1), goods: g, wet0: !!wet, path: path && path.length > 1 ? path : null, step: stepOf(c, !!wet), land: 1 });
+  return true;
+}
+function bypassed(w, old, a, b) {
+  const c = w.cults[old.cult]; record(w, 'bypass', [old.cult], { x: old.x, y: old.y, note: `${old.name}: carriers from ${a.name} now go straight through to ${b.name}` });
+  ev(w, `Carriers from ${a.name} no longer stop at ${old.name}; they go straight through to ${b.name} now. The inns of ${old.name} have fewer guests every year.`, old.x, old.y, c.color, 1);
+}
+// the goods reach a relay town: it takes its cut, and passes them on (as flow) toward the next town
+function relay(w, m, b) {
+  const val = (m.goods >= 0 ? GOODS[m.goods].v : 0.5) * 1.5, origin = m.origin || m.from, fin = m.final;
+  const div = relayAt(w, b, origin, fin, val);
+  if (div && div.old && once(w, 'divert-' + origin.id + '-' + fin.id + '-' + Math.floor(w.year / 40))) { const c = w.cults[b.cult];
+    record(w, 'divert', [b.cult, div.old.cult], { x: b.x, y: b.y, note: `goods from ${origin.name} to ${fin.name} now change hands at ${b.name}, not ${div.old.name}` });
+    ev(w, `The goods of ${origin.name} bound for ${fin.name} change hands at ${b.name} now, not at ${div.old.name}.`, b.x, b.y, c.color, 1); }
+  const next = m.legs[0], d = Math.hypot(wrapDx(next.x - b.x), next.y - b.y), bc = w.cults[b.cult];
+  (w.flowQ || (w.flowQ = [])).push({ due: w.tickN + Math.max(2, Math.round(d / (m.wet0 ? 6 : 3))), from: b, to: next, origin, final: fin, legs: m.legs.slice(1), goods: m.goods, wet0: m.wet0 });
+}
+export function flowTick(w) {
+  const Q = w.flowQ; if (!Q || !Q.length) return; let k = 0;
+  for (let i = 0; i < Q.length; i++) { const f = Q[i]; if (f.due > w.tickN) { Q[k++] = f; continue; } if (f.from.dead || f.to.dead) continue; f.kind = 'trade'; f.cult = f.from.cult; f.n = 6; f.flow = true; arrive.trade(w, f); }
+  Q.length = k;
+}
+// on the road: the dead take caravans that come too near, and armies rob their enemies' caravans
+onRoad.trade = (w, m) => {
+  const c = w.cults[m.cult]; if (!c) return; let dead = null;
+  near(w, m.x, m.y, 3.5, null, true, (s) => { if (!dead && w.cults[s.cult].power === 'dead') dead = s; });
+  if (dead && w.rnd() < 0.5) { m.done = true; dead.pop += m.n * 0.6; const dc = w.cults[dead.cult]; record(w, 'robbed', [c.id, dc.id], { x: dead.x, y: dead.y, note: `a caravan of the ${c.name} taken by the dead near ${dead.name}` });
+    if (once(w, 'deadcaravan-' + c.id + '-' + Math.floor(w.year / 30))) ev(w, `A caravan of the ${c.name} goes too near ${dead.name}. Its drivers join the garrison there.`, m.x, m.y, dc.color, 1); return; }
+  if (!c.war) return;
+  for (const a of w.movers) { if (a.done || a.kind !== 'army' || Math.abs(wrapDx(a.x - m.x)) > 3 || Math.abs(a.y - m.y) > 3) continue; const ac = w.cults[a.cult];
+    if (!((c.war && c.war.foe === a.cult) || (ac.war && ac.war.foe === c.id))) continue;
+    m.done = true; const home = a.from && !a.from.dead ? a.from : null; if (home) home.wealth = (home.wealth || 0) + 2; record(w, 'robbed', [c.id, ac.id], { x: Math.round(m.x), y: Math.round(m.y), note: `a war band of the ${ac.name} takes a caravan of the ${c.name}` });
+    if (once(w, 'robbed-' + ac.id + '-' + c.id + '-' + Math.floor(w.year / 20))) ev(w, `A war band of the ${ac.name} falls on a caravan of the ${c.name} and drives off the mules.`, m.x, m.y, ac.color, 1); return; }
+};
 arrive.trade = (w, m) => {
   const a = m.from, b = m.to; if (!a || !b || a.dead || b.dead) return; const ca = w.cults[a.cult], cb = w.cults[b.cult];
-  a.trade = Math.min(6, a.trade + 1); b.trade = Math.min(6, b.trade + 1); if (ca !== cb) meet(w, ca, cb, 0.3);
+  a.trade = Math.min(6, a.trade + 1); b.trade = Math.min(6, b.trade + 1); if (ca !== cb) { meet(w, ca, cb, 0.3); w.meets = (w.meets || 0) + 1; (ca.ties || (ca.ties = {}))[cb.id] = ((ca.ties[cb.id]) || 0) + 1; (cb.ties || (cb.ties = {}))[ca.id] = ((cb.ties[ca.id]) || 0) + 1; }
+  if (m.legs && m.legs.length) relay(w, m, b);
   carry(w, a, b, m.wet0 ? 'ship' : 'trade'); if (w.rnd() < 0.4) carry(w, b, a, m.wet0 ? 'ship' : 'trade');
   deliver(w, m);
   if (a.plague > 0) { if (w.rnd() < 0.3 + w.plagues[a.pid].catchy) infect(w, b, a.pid); }
@@ -370,11 +415,12 @@ function cultYear(w, c) {
   c.tenet = tenetOf(w, c); c.docs = docsOf(w, c); c.zeal = !!(c.docs && c.docs.war);
   c.kind = kindOf(c); c._ownMetals = c._metals; c.metals = c._metals | importedMetals(w, c); c.gold = !!(c.metals & 16);
   if (c.env.nomads > c.count * 0.5 && c.know > TECH[3] * 0.95) c.know = TECH[3] * 0.95;   // wanderers stop at about the iron age until they settle
-  // Knowledge needs carriers: this people's own numbers plus half of those it is in close contact
-  // with. Below what a tier needs, its arts start to be forgotten, the highest first, and what the
+  // Knowledge needs carriers: this people's own numbers plus half of those it trades with. Below what a tier needs, its arts start to be forgotten, the highest first, and what the
   // people knows in general sinks toward what its numbers can hold. A plague that thins a big
   // realm costs nothing; a crash that breaks every network costs whole eras, unevenly.
-  { let carry = c.pop; for (const k in c.nb) { const o = w.cults[k]; if (o && o.alive && !o.power && c.nb[k] > 0.5) carry += 0.5 * o.pop; } c.carry = carry;
+  // (slice 16) the contact that counts is trade: half of each partner's people, as far as trade ties
+  // the two (a few loads a year is a full tie); ties fade by a fifth a year
+  { let carry = c.pop; const T = c.ties || {}; for (const k in T) { const o = w.cults[k]; T[k] *= 0.8; if (T[k] < 0.05) { delete T[k]; continue; } if (o && o.alive && !o.power) carry += 0.5 * o.pop * Math.min(1, T[k] / 3); } c.carry = carry;
     let hold = 0; while (hold < 10 && carry >= carriersFor(hold + 1)) hold++; c.hold = hold;
     if (hold < 9 && c.know > TECH[Math.max(0, hold)]) c.know -= (c.know - TECH[Math.max(0, hold)] * 0.97) * 0.06;
     let top = -1; for (const k in c.arts) { const T = ART[k]; if (T && T.tier < 99 && T.tier > hold && T.tier > top) top = T.tier; }
@@ -521,13 +567,13 @@ function townStep(w, s, c) {
   if (s.tier >= 2 && s.trade > 1.5 && rnd() < (s.tier === 3 ? 0.0016 : 0.0005) && infect(w, s, null) && w.plagues[s.pid].bad) ev(w, `A sickness nobody has a name for breaks out in ${s.name}.`, s.x, s.y, c.color);
   // a town that badly lacks something sends for it, as far as its roads and ships can reach
   if (s.need && s.tier >= 1 && rnd() < 0.12) { let g = -1, gv = 1.4; for (let k = 0; k < s.need.length; k++) if (s.need[k] > gv) { gv = s.need[k]; g = k; }
-    if (g >= 0) { let best = null, bd = 1e9; const reach = A.sailing ? 90 : A.boats ? 40 : A.roads || c.tame.horse || c.tame.camel ? 32 : 18;
+    if (g >= 0) { let best = null, bd = 1e9; const reach = A.sailing ? 140 : A.boats ? 70 : 60;   /* far suppliers are reached through middlemen, or not at all */
       near(w, s.x, s.y, reach, s, true, (o, q) => { if (!o.make || !o.make[g] || q >= bd) return; const oc = w.cults[o.cult]; if (oc.war && oc.war.foe === c.id) return; const wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet > 1 && !(A.boats || oc.arts.boats)) return; bd = q; best = { o, wet }; });
-      if (best) { const o = best.o; send(w, { kind: 'trade', cult: o.cult, x: o.x, y: o.y, tx: s.x, ty: s.y, n: 6, from: o, to: s, wet0: best.wet >= 5, land: 1, goods: g }); } } }
+      if (best) { const o = best.o; if (!tradeTrip(w, o, s, g, false) && o.port && s.port) tradeTrip(w, o, s, g, true); } } }
   // ships: ports trade with whatever other ports they can reach
   if (s.port && A.boats && s.tier >= 1 && rnd() < (s.tier >= 2 ? 0.2 : 0.07)) {
     const cand = []; near(w, s.x, s.y, A.navigation ? 140 : A.sailing ? 80 : 26, s, true, (o) => { if (o.port && o.tier >= 1) cand.push(o); });
-    if (cand.length) { const o = cand[(rnd() * cand.length) | 0], wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet >= 5) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 8, from: s, to: o, wet0: true, land: 1.2, goods: pickGoods(w, s, o) }); }
+    if (cand.length) { const o = cand[(rnd() * cand.length) | 0], wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet >= 5) tradeTrip(w, s, o, pickGoods(w, s, o), true); }
   }
 }
 
@@ -562,11 +608,11 @@ function pasture(w, s, c) {
 function raid(w, s, c) {
   if (s.lost) return;   /* a changeling village or a dark town sends no soldiers */
   const rnd = w.rnd, A = c.arts, war = c.war, reach = s.R + 5 + (A.riding ? 8 : 0) + (s.nomad ? 4 : 0) + (A.boats ? 3 : 0) + (war && A.sailing ? (A.navigation ? 50 : 30) : 0) + (war && A.railways ? 20 : 0); let o = null, bd = 1e9;
-  near(w, s.x, s.y, reach + 9, s, false, (u, q) => { if (u.cult === s.cult || (u.nomad && !s.nomad && !(war && u.cult === war.foe))) return; const lim = (reach + u.R) ** 2, pref = war && u.cult === war.foe ? 0.35 : 1; if (q < lim && q * pref < bd) { bd = q * pref; o = u; } });
+  near(w, s.x, s.y, reach + 9, s, false, (u, q) => { if (u.cult === s.cult || (u.nomad && !s.nomad && !(war && u.cult === war.foe))) return; const lim = (reach + u.R) ** 2, pref = (war && u.cult === war.foe ? 0.35 : 1) * (u.entrepot && war && u.cult === war.foe ? 0.5 : 1);   /* at war, the enemy's entrepôts first */ if (q < lim && q * pref < bd) { bd = q * pref; o = u; } });
   if (!o) return; const oc = w.cults[o.cult], foe = war && war.foe === oc.id;
   const wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet > 1 && !A.boats) return; if (wet > 5 && !A.sailing) return;
   if (s.nomad && w.wall && wallBetween(w, s.x, s.y, o.x, o.y) && rnd() < 0.75) return;   // the wall holds
-  if (oc.power) { if (w.rnd() < 0.5) return; } else if (!foe && (oc.war || (!!(c.docs && c.docs.peace) && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8, goods: pickGoods(w, s, o) }); else meet(w, c, oc, 0.15); return; }
+  if (oc.power) { if (w.rnd() < 0.5) return; } else if (!foe && (oc.war || (!!(c.docs && c.docs.peace) && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) { const gg = pickGoods(w, s, o); if (s.nomad || !tradeTrip(w, s, o, gg, false)) { if (wet <= 5) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8, goods: gg }); } } else meet(w, c, oc, 0.15); return; }
   if (!oc.power) meet(w, c, oc, 0.1);
   const men = Math.max(6, s.pop * (s.nomad ? 0.3 : A.bureaucracy ? 0.2 : 0.14)); s.pop -= men; s.busy = w.year + (A.bureaucracy ? 2 : 3);
   if (wet > 5 && foe && once(w, 'invasion-' + c.id + '-' + oc.id)) ev(w, `A fleet of the ${c.name} crosses the sea to make war on the ${oc.name}.`, s.x, s.y, c.color, 0);

@@ -41,7 +41,7 @@ arrive.tribute = (w, m) => { const d = w.dragons.find((q) => q.name === m.dragon
 
 export function captureYear(w) {
   const rnd = w.rnd; for (const c of w.cults) c.tributeIn = 0;
-  for (const d of w.dragons) if (d.king != null && !(w.cults[d.king] && w.cults[d.king].alive && w.cults[d.king].over)) d.king = null;
+  for (const d of w.dragons) if (d.king != null && !(w.cults[d.king] && w.cults[d.king].alive && w.cults[d.king].over && w.cults[d.king].over.d === d.name)) d.king = null;   /* a kingdom has one dragon: the one named in its overlordship */
   // dragons looking for a kingdom
   for (const d of w.dragons) {
     if (d.dead || d.king != null || d.age < 80 || rnd() > 0.05) continue;

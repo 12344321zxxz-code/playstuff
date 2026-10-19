@@ -8,6 +8,7 @@
 import { plantWild } from './origins.js';
 import { W, H, N, DISC, wx, wrapDx, clamp } from './core.js';
 import { ev, discover, once } from './story.js';
+import { record } from './ledger.js';
 import { zoneOf } from './zones.js';
 import { near } from './people.js';
 import { PLANTS, giveCrop, hasCrop } from './origins.js';
@@ -66,15 +67,18 @@ export function tradeYear(w) {
     if (!c.tame.horse && c.tech >= 1 && !s.nomad) need[G.horses] = 0.8;
     if (s.tier >= 2) for (const g of LUX) if (!make[g]) need[g] = Math.max(need[g], s.tier >= 3 ? 1.5 : 0.8);
     if (c.stance === 'use') need[G.relics] = 1.5;
+    // re-export: what came in during the last 25 years can be passed on, at half (access, never production)
+    if (s.imp) for (const k in s.imp) { const g = +k; if (!make[g] && w.year - s.imp[k] < 25 && (s.relayE || 0) > 0.5) make[g] = 0.5; }
     s.wealth = (s.wealth || 0) * 0.93;
   }
   // routes fade unless they are used; the busiest get names
   for (const [k, r] of w.routes) {
-    r.n *= 0.9; if (r.a.dead || r.b.dead || r.n < 0.3) { if (r.name && r.n < 0.3 && w.year - r.named > 20) ev(w, `${cap(r.name)} falls out of use. The inns along it close one by one.`, r.a.x, r.a.y, null, 1); w.routes.delete(k); continue; }
+    r.n *= 0.9; if (r.a.dead || r.b.dead || r.n < 0.3) { if (r.name && r.n < 0.3 && w.year - r.named > 20) { ev(w, `${cap(r.name)} falls out of use. The inns along it close one by one.`, r.a.x, r.a.y, null, 1); record(w, 'route-end', [r.a.cult, r.b.cult], { x: r.a.x, y: r.a.y, note: `${r.name}, ${r.a.name} to ${r.b.name}` }); } w.routes.delete(k); continue; }
     if (!r.name && r.n > 9 && w.year - r.year > 15) { let bg = 0; for (let g = 1; g < GOODS.length; g++) if (r.g[g] > r.g[bg]) bg = g; const base = (r.wet ? SEA : ROAD)[GOODS[bg].key], same = [...w.routes.values()].filter((q) => q.name && q.good === bg && q.wet === r.wet), close = same.find((q) => wrapDx(q.a.x - r.a.x) ** 2 + (q.a.y - r.a.y) ** 2 < 3600);
       if (close) { r.name = close.name; r.good = bg; r.named = w.year; continue; }   // a branch of a road that already has a name
       const dir = r.a.y < H / 3 ? 'Northern ' : r.a.y > (2 * H) / 3 ? 'Southern ' : r.a.x < W / 2 ? 'Western ' : 'Eastern '; r.name = same.length ? base.replace(/^the /, 'the ' + dir) : base; r.good = bg; r.named = w.year;
       if (same.some((q) => q.name === r.name)) continue;
+      record(w, 'route-born', [r.a.cult, r.b.cult], { x: r.a.x, y: r.a.y, note: `${r.name}, ${r.a.name} to ${r.b.name}` });
       { ev(w, r.wet ? `So many ships carry ${GOODS[bg].name} between ${r.a.name} and ${r.b.name} that sailors start calling that water ${r.name}.` : `So many caravans carry ${GOODS[bg].name} between ${r.a.name} and ${r.b.name} that people start calling the way ${r.name}.`, r.a.x, r.a.y, w.cults[r.a.cult].color, same.length ? 1 : 0); discover(w, r.wet ? 'searoute' : 'road-name', r.a.x, r.a.y); } }
   }
   markets(w); tolls(w); pirates(w); leagues(w); dependence(w);
@@ -112,8 +116,23 @@ export function importedMetals(w, c) {
   let bits = 0; const imp = c.imp || {}; if (w.year - (imp[G.copper] ?? -99) < 25) bits |= 2; if (w.year - (imp[G.tin] ?? -99) < 25) bits |= 4; if (w.year - (imp[G.iron] ?? -99) < 25) bits |= 8; if (w.year - (imp[G.gold] ?? -99) < 25) bits |= 16; if (w.year - (imp[G.timber] ?? -99) < 25) bits |= 256; if (G.uranium != null && w.year - (imp[G.uranium] ?? -99) < 25) bits |= 128; return bits;
 }
 
+// Entrepôts (slice 16): towns where goods change hands. Their tolls feed the realm's lords and
+// their merchant houses want posts; a realm at war wants them.
+function entrepots(w) {
+  for (const c of w.cults) { c.tollIn = 0; c.merchantPosts = 0; }
+  for (const s of w.sets) { if (s.dead) continue; s.relayE = (s.relayE || 0) * 0.85 + (s.relayN || 0) - (s._rN || 0); s._rN = s.relayN || 0; }
+  const top = new Set(w.sets.filter((s) => !s.dead && !s.nomad && s.relayE > 6).sort((a, b) => b.relayE - a.relayE).slice(0, 12));   /* only the great ones: a dozen in the world at most */
+  for (const s of w.sets) { if (s.dead) continue; const c = w.cults[s.cult];
+    if (s.toll) { c.tollIn += s.toll * 0.5; s.toll = 0; }
+    const was = s.entrepot; s.entrepot = top.has(s) || (was && s.relayE > 3); if (s.entrepot) c.merchantPosts += 1;
+    if (s.entrepot && !was && w.year - (s.entAt || -999) > 100) { s.entAt = w.year; record(w, 'entrepot', [c.id], { x: s.x, y: s.y, note: `${s.name} becomes a place where goods change hands` });
+      ev(w, once(w, 'entrepot') ? `${s.name} is the first entrepôt: caravans from far away stop there, sell, and go home, and the town's merchants carry the goods on.` : `${s.name} grows rich as the place where goods change hands.`, s.x, s.y, c.color, 1); discover(w, 'entrepot', s.x, s.y); }
+    if (was && !s.entrepot && w.year - (s.entAt || -999) > 30) { record(w, 'entrepot-lost', [c.id], { x: s.x, y: s.y, note: `${s.name} is no longer where goods change hands` }); }
+  }
+}
 // Where many roads meet, a market grows, and markets grow rich.
 function markets(w) {
+  entrepots(w);
   const cnt = new Map(); for (const r of w.routes.values()) if (r.n > 1.5) { cnt.set(r.a, (cnt.get(r.a) || 0) + 1); cnt.set(r.b, (cnt.get(r.b) || 0) + 1); }
   const rich = [...cnt.keys()].filter((s) => !s.dead && s.tier >= 2 && cnt.get(s) >= 4).sort((a, b) => b.wealth - a.wealth).slice(0, 6), top = new Set(rich.filter((s) => s.wealth > 30));
   for (const s of w.sets) if (s.market && !top.has(s)) s.market = false;

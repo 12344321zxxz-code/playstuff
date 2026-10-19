@@ -1,10 +1,67 @@
 [
-  {"metric": "nan", "q": 0.9, "max": 0, "hard": true, "note": "no NaN populations"},
-  {"metric": "collapseMax50", "q": 0.5, "max": 4, "hard": true, "note": "no more than 4 collapses in any 50-year window (a share was too noisy once collapses got rare)"},
-  {"metric": "majorPerCentury", "q": 0.5, "min": 1, "max": 8, "note": "major turning points: history neither stagnant nor thrashing"},
-  {"metric": "peakPeoples", "q": 0.9, "max": 40, "note": "people cap 30; independence may go past it (up to 40)"},
-  {"metric": "msPerTick", "q": 0.9, "max": 16, "note": "full world stays under a frame"},
-  {"metric": "eraSpread", "q": 0.5, "min": 2, "note": "worlds don't converge"},
-  {"metric": "maxCauseShare", "q": 0.5, "max": 0.5, "note": "no single trigger behind more than half of collapses"},
-  {"metric": "realmCycle", "q": 0.5, "min": 200, "note": "realms take at least two centuries from founding to collapse or civil war"}
+ {
+  "metric": "nan",
+  "q": 0.9,
+  "max": 0,
+  "hard": true,
+  "note": "no NaN populations"
+ },
+ {
+  "metric": "collapseMax50",
+  "q": 0.5,
+  "max": 4,
+  "hard": true,
+  "note": "no more than 4 collapses in any 50-year window (a share was too noisy once collapses got rare)"
+ },
+ {
+  "metric": "majorPerCentury",
+  "q": 0.5,
+  "min": 1,
+  "max": 8,
+  "note": "major turning points: history neither stagnant nor thrashing"
+ },
+ {
+  "metric": "peakPeoples",
+  "q": 0.9,
+  "max": 40,
+  "note": "people cap 30; independence may go past it (up to 40)"
+ },
+ {
+  "metric": "msPerTick",
+  "q": 0.9,
+  "max": 16,
+  "note": "full world stays under a frame"
+ },
+ {
+  "metric": "eraSpread",
+  "q": 0.5,
+  "min": 2,
+  "note": "worlds don't converge"
+ },
+ {
+  "metric": "maxCauseShare",
+  "q": 0.5,
+  "max": 0.5,
+  "note": "no single trigger behind more than half of collapses"
+ },
+ {
+  "metric": "realmCycle",
+  "q": 0.5,
+  "min": 200,
+  "note": "realms take at least two centuries from founding to collapse or civil war"
+ },
+ {
+  "metric": "relaySpacingCV",
+  "q": 0.5,
+  "min": 0.5,
+  "note": "test A: relay towns gather at a few nodes (deserts, passes, straits, tongue borders), not on an even lattice",
+  "hard": false
+ },
+ {
+  "metric": "relayTop10",
+  "q": 0.5,
+  "min": 0.35,
+  "note": "test A: the busiest tenth of relay towns carry a large share of the goods that change hands",
+  "hard": false
+ }
 ]
