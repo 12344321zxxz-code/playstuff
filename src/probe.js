@@ -125,5 +125,5 @@ export function regionCard(w, x, y, r) {
 
 // The plain-text report the page copies to the clipboard for pasting into a chat.
 export function report(w, build) {
-  return [`Formicarium report (build ${build || '?'})`, digest(w, { realms: 10, hist: 30 }), '', asciiMap(w, 'owner', 96, 40)].join('\n');
+  return [`Formicarium report (build ${build || '?'}); pop figures are counted people (x1000 shown in game)`, digest(w, { realms: 10, hist: 30 }), '', asciiMap(w, 'owner', 96, 40)].join('\n');
 }

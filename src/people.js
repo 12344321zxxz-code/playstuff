@@ -10,7 +10,7 @@ import { powersYear as greatPowersYear } from './greatpowers.js';
 import { word, makeSound, rootTags, tagFrom, soundOf, tonguesYear, tongueGap, cultureOf } from './tongues.js';
 import { record, triggerOf } from './ledger.js';
 import { POWER, POWER_TOWN } from './registry.js';
-import { W, H, N, DISC, clamp, wx, wrapDx, Heap } from './core.js';
+import { W, H, N, DISC, clamp, wx, wrapDx, Heap , peopleText } from './core.js';
 import { ev, discover, once } from './story.js';
 import { SPECIES, takeGame, habRaw as habitat, introduce } from './fauna.js';
 import { wetAt } from './weather.js';
@@ -20,7 +20,7 @@ import { planLand, planSea, legCells, stepOf, relayAt, clearRelay, seaLane, land
 export { send };
 import { holySite, carry, convert, faithYear, sameFaith, tenetOf, docsOf } from './faith.js';
 import { pickGoods, deliver, importedMetals, leagued, G as GD, GOODS } from './trade.js';
-import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst, carriersFor } from './tech.js';
+import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst, carriersFor, boomOf } from './tech.js';
 export { ART, TECH, techOf };
 import { wallBetween } from './works.js';
 import { ignite } from './life.js';
@@ -302,7 +302,7 @@ function territory(w) {
   const { owner, ocult, ownD, sets, urban } = w; owner.fill(-1); ocult.fill(-1); ownD.fill(1e9); urban.fill(0);
   for (let k = 0; k < sets.length; k++) {
     const s = sets[k]; s._k = k; if (s.dead) continue; if (s.nomad) { s.R = w.cults[s.cult].grazer ? 3 : 2; continue; }
-    const R = (s.R = Math.min(9, 2 + Math.floor(Math.sqrt(s.pop) / 7))), bias = s.pop * 0.0015, slot = w.cults[s.cult].slot;
+    if (!(s.pop >= 0)) s.pop = 0;   /* a broken number must not stop the world */ const R = (s.R = Math.min(9, 2 + Math.floor(Math.sqrt(s.pop) / 7))), bias = s.pop * 0.0015, slot = w.cults[s.cult].slot;
     for (const o of DISC[R]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]), d = o[2] * o[2] - bias; if (d < ownD[i]) { ownD[i] = d; owner[i] = k; ocult[i] = slot; } }
     if (s.tier >= 2) { const ur = s.tier === 3 ? (s.pop > 2500 ? 2 : 1) : 0; for (const o of DISC[ur]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); if (!w.water[i]) urban[i] = 1; } }
   }
@@ -314,7 +314,7 @@ export function peopleYear(w) { for (const _ of peopleSteps(w)); }
 export function* peopleSteps(w) {
   buildGrid(w); territory(w);
   const sets = w.sets, n0 = sets.length, rnd = w.rnd, { water, river, farm, soil, g, t, fresh, owner, fireT, ore, mi, crop, h } = w, sea = w.params.sea;
-  for (const c of w.cults) { c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
+  for (const c of w.cults) { c.boom = boomOf(c.arts); c.boomL = c.boomL ? c.boomL + (c.boom - c.boomL) * 0.05 : c.boom;   /* the numbers take a generation or two to catch up with a new harvest */ c._poolLast = c._pool || 0; c._poolWLast = c._poolW || 0; c._pool = 0; c._poolW = 0; c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
   let total = 0, smoke = 0; const sun = 1 - Math.min(0.6, w.aerosol * 0.8);
   const chunk = Math.max(6, Math.ceil(n0 / 22));   /* the towns in 22 even steps, then the peoples, faiths and tongues in three: the year fits in its eight ticks */
   for (let k = 0; k < n0; k++) {
@@ -356,20 +356,26 @@ export function* peopleSteps(w) {
     if (tameAt >= 0 && c.know > 600 && rnd() < 0.08) { const sp = SPECIES[w.spAt[tameAt]];
       if (sp && sp.tame && !c.tame[sp.tame]) { c.tame[sp.tame] = w.year; if (TAME_GRAZE[sp.tame] && !c.grazer) { c.grazer = sp.tame; learn(w, c, 'herding'); } if (once(w, 'tame' + sp.tame)) ev(w, `The ${c.name} tame the ${sp.tame === 'cattle' ? 'aurochs' : sp.tame === 'pig' ? 'boar' : sp.tame}. Others will learn it from them.`, s.x, s.y, c.color); } }
     s.ores = ores; c._metals |= ores; s.port = seaN >= 3 && !s.nomad;
-    const L = c._L || (c._L = livestock(c)), yieldF = 15 * (1 + (A.plough ? 0.3 : 0.08) * L.plough) * (A.pottery ? 1.03 : 1) * (A.mills ? 1.15 : 1) * (A.genetics ? 1.3 : 1) * (A.automation ? 1.15 : 1) * (A.aqueducts && s.tier >= 3 ? 1.15 : 1) * (A.dikes ? 1.05 : 1) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * (A.engines ? 1.5 : 1);
+    if (!c.boom) { c.boom = c.boomL = boomOf(A); c._pool = c._pool || 0; c._poolW = c._poolW || 0; }   /* a people born during this census */
+    const L = c._L || (c._L = livestock(c)), yieldF = 15 * (1 + (A.plough ? 0.3 : 0.08) * L.plough) * (A.pottery ? 1.03 : 1) * (A.mills ? 1.15 : 1) * (A.aqueducts && s.tier >= 3 ? 1.15 : 1) * (A.dikes ? 1.05 : 1) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * c.boom;
     const fW = wildF * (s.nomad ? 3.2 : 1.1) * (0.55 + 0.45 * Math.min(wa, 1.3)) * sun, fH = hunt * 6;
     const fFr = Math.min(freshF * (A.boats ? 2.2 : 1.5), s.pop * 0.9 + 10), want = seaN ? Math.max(0, Math.min(s.pop * 0.95 + 12 - fFr, seaN * (A.sailing ? 4.5 : A.boats ? 3 : 1.1) * (!!(c.docs && c.docs.sea) ? 1.3 : 1))) : 0;
     const fSea = want > 0 ? catchFish(w, s.x, s.y, s.R + (A.sailing ? 10 : A.boats ? 4 : 1), want) : 0, fF = fFr + fSea, fishGap = want > 8 ? fSea / want : 1;
     const fA = (rain * clamp(wa, 0.2, 1.3) + irrg * (A.irrigation ? 1.15 : 1) * (0.72 + 0.28 * Math.min(wa, 1.2)) * (wa > 1.5 ? 0.8 : 1)) * yieldF * sun;
-    const fP = herder ? past * (s.nomad ? 3.4 : 2) * (c.tame.horse ? 1.15 : 1) * (0.5 + 0.5 * Math.min(wa, 1.3)) * sun : 0;
+    const fP = herder ? c.boom * past * (s.nomad ? 3.4 : 2) * (c.tame.horse ? 1.15 : 1) * (0.5 + 0.5 * Math.min(wa, 1.3)) * sun : 0;
     const imp = s.imp || {}, food = (fW + fH + fF + fA + fP) * (s.blessed && w.year - s.blessed < 3 ? 1.15 : 1) * (w.year - (s.fed ?? -99) < 3 ? 1.12 : 1) * (w.year - (imp[GD.salt] ?? -99) < 5 && (herder || seaN) ? 1.05 : 1) * (s.market ? 1.1 : 1) * (1 + 0.06 * Math.min(4, s.trade)) * (c.tame.pig ? 1.05 : 1) * (s.plague > 0 ? 0.8 : 1); s.src = [fW, fH, fF, fA, fP]; c._sur += s.pop * Math.min(1, (fA + fP) / Math.max(1, food));
     const mx = Math.max(fW, fH, fF, fA, fP); s.way = mx === fA ? 'farm' : mx === fP ? 'herd' : mx === fF ? 'fish' : mx === fH ? 'hunt' : 'forage'; c._ways[s.way] += s.pop;
     if (!s.nomad && A.farming && bestI >= 0 && farms < Math.ceil((s.pop * 1.3) / (yieldF * 0.6))) { farm[bestI] = 1; t[bestI] = 0; g[bestI] = 0.25; }
     // tallies that decide what this people can learn
     const e = c.env; if (landN && cropS / landN > 0.35) e.crop++; if (seaN >= 3) e.coast++; if (farms && mi[i0] < 0.55 && fresh[i0] <= 2) e.dryRiver++; if (h[i0] - sea > 0.24) e.hill++; if (fresh[i0] <= 2 && !s.nomad) e.river++; if (seaN >= 2 && h[i0] - sea < 0.05 && !s.nomad) e.lowcoast++; if (s.market) c.markets++; if (s.plague > 0) c.plagued = (c.plagued || 0) + 1;
     if (s.nomad) e.nomads++; else { e.sed++; if (s.tier >= 2) e.towns++; if (s.tier >= 3) e.cities++; }
-    const cap = Math.max(1, food); s.cap = cap;
-    if (s.pop < cap) { s.pop += s.pop * (s.nomad ? 0.036 : 0.025) * (1 - s.pop / cap); s.note = s.pop > cap * 0.92 ? 'full' : 'grow'; if (s.note === 'full' && !s.nomad) c._full++; }
+    // (scale-up) with railways the countryside feeds the cities: towns and villages send a fifth of
+    // their food to the realm's cities, which share last year's haul by size. The great cities of the
+    // modern age live on it. Where the richest arts are known, families get smaller: the people stop
+    // short of what the land could feed.
+    let feed = food; if (A.railways && !s.nomad) { if (s.tier <= 2) { const out = food * 0.2; feed -= out; c._pool += out; } else { const wt = 1 + Math.min(2, s.pop / 6000); c._poolW += wt; feed += c._poolWLast > 0 ? (c._poolLast * wt) / c._poolWLast : 0; } }
+    const cap = Math.max(1, feed * (A.computers || A.networks ? 0.88 : 1)); s.cap = cap;
+    if (s.pop < cap) { s.pop += s.pop * (s.nomad ? 0.036 : A.computers || A.networks ? 0.015 : 0.025) * (1 - s.pop / cap); s.note = s.pop > cap * 0.92 ? 'full' : 'grow'; if (s.note === 'full' && !s.nomad) c._full++; }
     else {
       const loss = (s.pop - cap) * (A.granaries ? 0.1 : 0.18), farmer = s.way === 'farm' || (farms > 0 && fA + 1 >= mx * 0.6);
       const why = w.aerosol > 0.3 ? 'ash' : s.plague > 0 ? 'plague' : farmer ? (blight > farms * 0.3 ? 'locusts' : wa < 0.78 ? 'drought' : wa > 1.5 && irrg > rain ? 'flood' : farms && soilS / farms < 0.66 ? 'soil' : 'crowded') : s.way === 'fish' ? (fishGap < 0.75 ? 'fish' : 'crowded') : wa < 0.78 ? 'drought' : s.way === 'hunt' || s.way === 'herd' ? (past + hunt < 2 ? 'game' : 'crowded') : 'crowded';
@@ -384,7 +390,7 @@ export function* peopleSteps(w) {
       near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (st.engineered ? 1 : 1 - 0.8 * w.cults[o.cult].germ) * (w.cults[o.cult].arts.quarantine ? 0.5 : 1)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
-    c.know += 0.65 * (c.kq || 1) * learnDrag(w, c, i0) * s.pop * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    c.know += 0.65 * (c.kq || 1) * learnDrag(w, c, i0) * (s.pop / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -406,7 +412,7 @@ export function* peopleSteps(w) {
   w.stats.people = Math.round(total); w.stats.places = w.sets.length; w.stats.peoples = alive;
   const hist = w.popHist; if (w.year % w.popEvery === 0) { hist.push(Math.round(total)); if (hist.length >= 320) { let j = 0; for (let q = 0; q < hist.length; q += 2) hist[j++] = hist[q]; hist.length = j; w.popEvery *= 2; } }
   if (w.year % 100 === 0 && total > 0) { let top = null; for (const c of w.cults) if (c.alive && (!top || c.pop > top.pop)) top = c; const was = w.popCent || 0, ch = was > 50 ? (total - was) / was : 0; w.popCent = total;
-    w.events.push({ year: w.year, digest: true, x: top && top.big ? top.big.x : null, y: top && top.big ? top.big.y : null, color: top ? top.color : null, text: `Year ${w.year}. ${total >= 2000 ? Math.round(total / 1000) + ' thousand' : Math.round(total)} people, ${alive} peoples, ${w.ruins.length} ruins.${top ? ` The ${top.name} (${top.kind}) are the most numerous.` : ''}${ch > 0.5 ? ' Far more people than a century ago.' : ch > 0.12 ? ' More people than a century ago.' : ch < -0.3 ? ' Far fewer people than a century ago.' : ch < -0.08 ? ' Fewer people than a century ago.' : was > 50 ? ' About as many people as a century ago.' : ''}` }); }
+    w.events.push({ year: w.year, digest: true, x: top && top.big ? top.big.x : null, y: top && top.big ? top.big.y : null, color: top ? top.color : null, text: `Year ${w.year}. ${peopleText(total)} people, ${alive} peoples, ${w.ruins.length} ruins.${top ? ` The ${top.name} (${top.kind}) are the most numerous.` : ''}${ch > 0.5 ? ' Far more people than a century ago.' : ch > 0.12 ? ' More people than a century ago.' : ch < -0.3 ? ' Far fewer people than a century ago.' : ch < -0.08 ? ' Fewer people than a century ago.' : was > 50 ? ' About as many people as a century ago.' : ''}` }); }
   if (total > (w.popPeak || 0)) w.popPeak = total; else if (w.popPeak > 20000 && total < w.popPeak * 0.6 && discover(w, 'fall', null, null)) ev(w, 'There are far fewer people in the world than there were. The old songs call this the Fall.', null, null, null, 2);
 }
 // roads and the traffic on them, kept apart from the yearly census so the work is spread out

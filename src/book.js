@@ -2,6 +2,7 @@
 // of what this world has produced, and the head counts.
 import { hook, flyTo, showInfo, state, toast } from './main.js';
 import { PAGES, pageCount } from './story.js';
+import { peopleShort } from './core.js';
 import { describeSet, cultLines } from './entities.js';
 import { explain } from './ledger.js';
 import { tongueColor } from './tongues.js';
@@ -10,7 +11,8 @@ import { drawSpark } from './threads.js';
 
 const $ = (id) => document.getElementById(id);
 let log = [], shown = '', almDirty = true, tab = 'chron', rosterKey = '';
-const short = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'm' : n >= 10000 ? Math.round(n / 1000) + 'k' : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n || 0)));
+const short = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'm' : n >= 10000 ? Math.round(n / 1000) + 'k' : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n || 0)));   // animals
+const folk = peopleShort;   // people (scaled)
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
 function drain(w) { if (!w.events.length) return; for (const e of w.events) { log.push(e); if (e.page) almDirty = true; if (e.big && state.speed) toast(e); } w.events.length = 0; if (log.length > 500) log = log.slice(-400); }
@@ -33,7 +35,7 @@ function roster() {
   if (!live.length) box.appendChild(el('p', 'muted', 'Nobody lives here. The People tool wakes a new band wherever you tap.'));
   for (const c of live) {
     const b = el('button', 'pp'); b.type = 'button'; const chip = el('span', 'chip'); chip.style.background = c.color;
-    b.append(chip, el('span', 'nm', c.name + (c.realmN >= 2 ? ' ' + ['', '', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][Math.min(10, c.realmN)] : '')), el('span', 'num', short(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (c.faith != null ? ' · ' + w.faiths[c.faith].name : '') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
+    b.append(chip, el('span', 'nm', c.name + (c.realmN >= 2 ? ' ' + ['', '', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][Math.min(10, c.realmN)] : '')), el('span', 'num', folk(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (c.faith != null ? ' · ' + w.faiths[c.faith].name : '') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
     if (c.series && c.series.length > 2) { b.appendChild(strip(c)); b.title = `${c.house ? c.house.name + ' rules. ' : ''}${c.parent ? 'Descended from the ' + c.parent + '. ' : ''}Line: people over time; red: more would-be lords than posts; faint: coming apart.`; }
     b.addEventListener('click', () => { const s = c.big; if (!s) return; flyTo(s.x + 0.5, s.y + 0.5, 6); const info = describeSet(w, s); state.sel = info.follow; showInfo(info); });
     box.appendChild(b);
@@ -103,7 +105,7 @@ hook('newWorld', () => { log = []; shown = ''; rosterKey = ''; almDirty = true; 
 hook('tick', (w) => { drain(w); });
 hook('vitals', (w, rows) => {
   drain(w); render(); spark(w); const s = w.stats;
-  rows.push(['People', short(s.people)], ['Peoples', String(s.peoples || 0)], ['Grazers', short(s.grazers)], ['Hunters', short(s.hunters)]);
+  rows.push(['People', folk(s.people)], ['Peoples', String(s.peoples || 0)], ['Grazers', short(s.grazers)], ['Hunters', short(s.hunters)]);
   if (s.clock && s.clock !== '—') rows.push(['To midnight', s.clock]); if (w.nukes) rows.push(['Bombs fallen', String(w.nukes)]); if (s.fallout > 0.001) rows.push(['Land poisoned', (s.fallout * 100).toFixed(s.fallout < 0.1 ? 1 : 0) + '%']);
   $('tab-alm').textContent = `Almanac ${Object.keys(w.found).length}/${pageCount()}`;
 });

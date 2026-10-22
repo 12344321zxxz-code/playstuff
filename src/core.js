@@ -2,6 +2,14 @@
 export const W = 512, H = 256, N = W * H;      // world grid, wraps east-west
 export const CS = 4, CW = W / CS, CH = H / CS, CN = CW * CH; // coarse grid the climate runs on
 export const TAU = Math.PI * 2, RAD = Math.PI / 180;
+// One person counted by the simulation stands for SCALE real people (a settlement on the map is a town
+// and its whole country). Everything shown to the player is multiplied by it (scale-up, Oct 22).
+export const SCALE = 1000;
+export function peopleText(n) {
+  const v = Math.max(0, n * SCALE), r1 = (x) => (x >= 10 ? Math.round(x) : Math.round(x * 10) / 10);
+  return v >= 1e9 ? r1(v / 1e9) + ' billion' : v >= 1e6 ? r1(v / 1e6) + ' million' : v >= 1000 ? r1(v / 1000) + ' thousand' : String(Math.round(v));
+}
+export const peopleShort = (n) => { const v = Math.max(0, (n || 0) * SCALE); return v >= 1e9 ? (v / 1e9).toFixed(v >= 1e10 ? 0 : 1) + 'bn' : v >= 1e6 ? (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'm' : v >= 1000 ? Math.round(v / 1000) + 'k' : String(Math.round(v)); };
 export const TPY = 8;                           // sim ticks per year
 
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);

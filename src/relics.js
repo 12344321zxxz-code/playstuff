@@ -7,7 +7,7 @@ import { record } from './ledger.js';
 import { ev, discover } from './story.js';
 import { word } from './tongues.js';
 import { near } from './people.js';
-import { wrapDx } from './core.js';
+import { wrapDx , peopleText } from './core.js';
 
 export function newHouse(w, c, name) {
   const old = c.house; c.house = { name: name || `the House of ${word(w, c.lang, w.rnd() < 0.5 ? 1 : 2)}`, since: w.year };
@@ -84,7 +84,7 @@ export const RECORDS = [
   ['longest', 'The longest-lived realm', (r) => `the ${r.name}, ${r.n} years`],
   ['house', 'The longest-ruling house', (r) => `${r.name}, ${r.n} years`],
   ['undying', 'The longest realm of the dead', (r) => `${r.name}, ${r.n} years`],
-  ['plague', 'The deadliest plague', (r) => `the ${r.name}, about ${r.n.toLocaleString()} dead`],
+  ['plague', 'The deadliest plague', (r) => `the ${r.name}, about ${peopleText(r.n)} dead`],
   ['crown', 'The most stolen crown', (r) => `${r.name}, changed hands ${r.n} times`],
 ];
 

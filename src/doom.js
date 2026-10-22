@@ -8,7 +8,7 @@
 // and in the quiet the old powers come back. Then someone digs in a ruin and finds a bomb that works.
 import { nukeDeep } from './greatpowers.js';
 import { record } from './ledger.js';
-import { W, H, N, DISC, wx, wrapDx, clamp, CS, CW, CH, CN } from './core.js';
+import { W, H, N, DISC, wx, wrapDx, clamp, CS, CW, CH, CN , peopleText } from './core.js';
 import { coarse } from './climate.js';
 import { ev, discover, once } from './story.js';
 import { near, endSet, flee, infect, collapse } from './people.js';
@@ -18,7 +18,7 @@ import { send, arrive } from './movers.js';
 import { ART, TECH } from './tech.js';
 
 export function initDoom(w) { w.fallout = new Float32Array(N); w.veil = new Float32Array(CN); w.hot = []; w.glassI = []; w.craters = []; w.soot = 0; w.nukes = 0; w.clock = 12 * 60; w.deadAge = null; }
-const big = (n) => (n >= 1000 ? Math.round(n / 100) / 10 + ' thousand' : String(Math.round(n)));
+const big = (n) => peopleText(n);
 
 // Once a year: arsenals grow, tempers rise, and sometimes a hand reaches for the key.
 export function doomYear(w) {

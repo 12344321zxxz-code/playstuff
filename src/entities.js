@@ -8,7 +8,7 @@ import { travelOf, laneFor } from './travel.js';
 import { ERA, blockedReasons } from './tech.js';
 import { SPIRIT_KINDS } from './spirits.js';
 import { PLANTS, luckOf } from './origins.js';
-import { W, H, N, TAU, TPY, CS, CW, CH, clamp, wrapDx, hash2, wx } from './core.js';
+import { W, H, N, TAU, TPY, CS, CW, CH, clamp, wrapDx, hash2, wx, peopleText } from './core.js';
 import { toScreen } from './render.js';
 import { SPECIES } from './fauna.js';
 import { blit, pixScale } from './pixels.js';
@@ -316,7 +316,7 @@ hook('overlay', (ctx, w, cam, S, now) => {
 });
 
 /* ---------- reading things ---------- */
-const big = (n) => (n >= 10000 ? Math.round(n / 1000) + ' thousand' : n >= 1000 ? (Math.round(n / 100) / 10) + ' thousand' : String(Math.round(n)));
+const big = (n) => peopleText(n);
 const WAY = { forage: 'gathering what grows', hunt: 'hunting', fish: 'fishing', farm: 'farming', herd: 'herding' };
 const SRC = ['wild food', 'the hunt', 'fish', 'its fields', 'its herds'];
 const NOTE = { grow: 'It is growing.', full: 'It holds as many people as its land can feed.', drought: 'The rains have failed. People are going hungry, and some are leaving.', flood: 'The river took the fields this year.', soil: 'Its fields are worn out and give less every year.', fish: 'The sea here has been fished out.', locusts: 'Locusts ate the harvest.', ash: 'Ash in the sky; nothing ripens.', game: 'The animals it lived on are gone.', crowded: 'There are more mouths than food. Some will leave, or look at the neighbours.', plague: 'Sickness is doing the counting here.' };
@@ -347,7 +347,7 @@ function setInfo(w, s) {
   const c = w.cults[s.cult], L = [], tot = s.src.reduce((a, b) => a + b, 0) || 1;
 const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fish'], ['#e3b23c', 'fields'], ['#9a7b5b', 'herds']];
   const bar = s.src.map((v, k) => [v / tot, FOOD[k][0], FOOD[k][1]]);
-  if (s.nomad) L.push(`${big(s.pop)} people on the move.`); else L.push(`A ${TIER[s.tier]} of ${big(s.pop)} people, ${s.age} years old.`);
+  if (s.nomad) L.push(`${big(s.pop)} people on the move.`); else L.push(`A ${TIER[s.tier]} with its country around it: ${big(s.pop)} people. It is ${s.age} years old.`);
   L.push(s.plague > 0 ? NOTE.plague : NOTE[s.note] || NOTE.grow);
   if (s.lost === 'fey') L.push('The fey have it. Its people still work the fields, but they send nothing and no one to their rulers.'); else if (s.lost === 'machine') L.push(`It has gone dark: it runs on ${s.machine} now and answers to no one else.`); else if (s.dep > 0.2) L.push(`It depends on the dark towns for ${Math.round(Math.min(1, s.dep) * 100)}% of what it needs.`);
   if (s.deepCult) L.push(`Its people go down to the water at night. They worship ${s.deepCult}.${s.callOdds ? ` The cult's odds of calling something up this year: about 1 in ${Math.round(1 / s.callOdds).toLocaleString()}.` : ''}`);
@@ -366,7 +366,7 @@ export const describeSet = setInfo;
 // found again by its id in the newest copy.
 const liveIn = (list, o, key) => (list && list.includes(o) ? o : (list || []).find((q) => q[key] === o[key]) || null);
 const liveSet = (s) => { const w = state.w; if (!w || w.sets.includes(s)) return s; return w.sets.find((q) => q.id === s.id) || null; };
-const MOVE = { settlers: (w, m, c) => [`Settlers of the ${c.name}`, `${Math.round(m.n)} people with everything they own, looking for a place to stop.`], army: (w, m, c) => [`A war band of the ${c.name}`, `About ${Math.round(m.n)} spears${m.to && !m.to.dead && m.to.name ? ', marching on ' + m.to.name : ''}.`], home: (w, m, c) => [`A war band of the ${c.name}`, 'On the way home.'], trade: (w, m, c) => [m.wet0 ? `A trading ship of the ${c.name}` : `A caravan of the ${c.name}`, `${m.from && m.from.name ? 'From ' + m.from.name : 'On its way'}${m.to && m.to.name ? ' to ' + m.to.name : ''}. It carries goods, news, and whatever else is going around.`], refugees: (w, m, c) => [`People of the ${c.name}, fleeing`, `${Math.round(m.n)} people walking away from hunger or worse.`] };
+const MOVE = { settlers: (w, m, c) => [`Settlers of the ${c.name}`, `${big(m.n)} people with everything they own, looking for a place to stop.`], army: (w, m, c) => [`A war band of the ${c.name}`, `About ${big(m.n)} spears${m.to && !m.to.dead && m.to.name ? ', marching on ' + m.to.name : ''}.`], home: (w, m, c) => [`A war band of the ${c.name}`, 'On the way home.'], trade: (w, m, c) => [m.wet0 ? `A trading ship of the ${c.name}` : `A caravan of the ${c.name}`, `${m.from && m.from.name ? 'From ' + m.from.name : 'On its way'}${m.to && m.to.name ? ' to ' + m.to.name : ''}. It carries goods, news, and whatever else is going around.`], refugees: (w, m, c) => [`People of the ${c.name}, fleeing`, `${big(m.n)} people walking away from hunger or worse.`] };
 const RUIN_SAY = { abandoned: 'Its people left, or died out.', sacked: 'It was sacked and burned.', drowned: 'The sea took it.', buried: 'Ash and lava buried it.', burned: 'Fire took it.', plague: 'Plague emptied it.', frozen: 'The ice closed over it.', overgrown: 'The forest swallowed it.', crater: 'A falling star erased it.', swallowed: 'The earth opened under it.', dragon: 'A dragon made it a roost.' };
 const WORK_SAY = { dam: ['A dam', 'A wall across the river. The lake behind it waters the fields below.'], canal: ['A canal', 'Dug through the land so ships can pass from one sea to the other.'], ditch: ['Irrigation canals', 'River water carried out into dry country.'], polder: ['Polders', 'Fields on what used to be the sea floor, behind dikes.'], wall: ['A great wall', 'Built across the grass to keep the riders out. Most raids stop at it.'], pass: ['A blasted pass', 'A mountain cut through for a road.'], raised: ['Raised land', 'Called up out of the sea by sorcerers.'] };
 const SP_SAY = { winter: 'A cold that spreads from something sitting in the snow. The whole region around it is colder for it; the ice follows.',  burned: 'The dead of a city that burned in a single moment. They walk out of the glass toward the living.',  host: 'A dead army that fights its war again every night. Nobody settles near it; those who live close sicken and leave.', shamblers: 'The dead of a plague, walking. Wherever they reach, the sickness comes back.', lich: 'A dead king in a ruined hall. It sends the dead against the living, and against its enemies first.', hunger: 'Something in the cold woods that is never full. It takes travellers, herders and game.', drowned: 'Bells under the water. Ships founder nearby; the drowned come ashore in storms.', fey: 'A court under old trees. It steals children, unless a people bargains with it; then their fields never fail.', saint: 'A holy place. Plagues turn back here, and the faithful hold together.' };

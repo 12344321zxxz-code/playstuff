@@ -92,7 +92,15 @@ export const ART_KEYS = Object.keys(ART);
 export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 70000000, 120000000, 170000000, 230000000, 300000000];
 // The collective brain: knowing a thing takes enough people connected to each other to keep it.
 // Each tier of knowledge needs about twice the carriers of the one below.
-export const carriersFor = (tier) => 60 * Math.pow(2.1, tier);
+// From the industrial age on, a tier needs far more (scale-up, Oct 22): railways and oil can be
+// kept by a great realm, computers only by a few hundred million people, the last arts only by a
+// connected world of billions (in people shown: 1 counted = SCALE people).
+const MODERN_CARRY = [0, 0, 0, 0, 0, 0, 20000, 80000, 250000, 700000, 1800000];
+export const carriersFor = (tier) => (tier >= 6 ? MODERN_CARRY[Math.min(10, tier)] : 60 * Math.pow(2.1, tier));
+// The modern harvest: engines, railways, oil, the grid, new seed and machines each multiply what a
+// field (or a herd) feeds: by the age of railways and oil about thirteen times what a farm fed
+// before, and nearly thirty times with the new seed and the machines.
+export const boomOf = (A) => (A.engines ? 1.5 : 1) * (A.railways ? 1.6 : 1) * (A.oil ? 2.2 : 1) * (A.electricity ? 1.4 : 1) * (A.dynamite ? 1.8 : 1) * (A.genetics ? 1.8 : 1) * (A.automation ? 1.2 : 1);   /* dynamite: the same chemistry makes fertiliser */
 export const techOf = (k) => { let t = 0; while (t < TECH.length && k >= TECH[t]) t++; return t; };
 
 export function canLearn(c, k, easy) {

@@ -10,7 +10,7 @@
 //   what it leaves: towns with a share of other tongues (which can flip the town's tongue), backlash
 //     and expulsions where many strangers live under a closed people, skilled migrants carrying
 //     knowledge, and named streams.
-import { W, H, DISC, wx, wrapDx, clamp } from './core.js';
+import { W, H, DISC, wx, wrapDx, clamp, peopleText } from './core.js';
 import { near, addSet, flee, routeToCell, departPort } from './people.js';
 import { reachFrom, rangeOf, seaLane } from './travel.js';
 import { tongueGap, cultureOf } from './tongues.js';
@@ -110,5 +110,5 @@ function openLand(w, s, c) {
 function backlash(w, towns) {
   for (const t of towns) { if (!t.mix || t.tier < 2) continue; let f = 0; for (const k in t.mix) f += t.mix[k]; const c = w.cults[t.cult]; if (f < 0.3 || open(w, c) > 0.45) continue;
     if (w.rnd() < 0.02 * f && w.year - (t.expelAt || -999) > 60) { t.expelAt = w.year; const out = Math.round(t.pop * f * 0.5); t.mix = {}; t.pop -= out; flee(w, t, out);
-      record(w, 'expel', [c.id], { x: t.x, y: t.y, note: `${t.name} drives out its newcomers (${out})` }); ev(w, `The old families of ${t.name} turn on the newcomers and drive them out of the town.`, t.x, t.y, c.color, 1); discover(w, 'expulsion', t.x, t.y); } }
+      record(w, 'expel', [c.id], { x: t.x, y: t.y, note: `${t.name} drives out its newcomers (${peopleText(out)})` }); ev(w, `The old families of ${t.name} turn on the newcomers and drive them out of the town.`, t.x, t.y, c.color, 1); discover(w, 'expulsion', t.x, t.y); } }
 }
