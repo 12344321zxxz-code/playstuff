@@ -87,7 +87,7 @@ export function asciiMap(w, layer = 'owner', cols = 128, rows = 64, box) {
       const x = (x0 + Math.floor((rx + 0.5) * sx)) % W, y = Math.min(H - 1, y0 + Math.floor((ry + 0.5) * sy)), i = y * W + x;
       let ch;
       if (w.water[i] === 1 && layer !== 'memory' && layer !== 'fallout') ch = '~';
-      else if (layer === 'owner') { const o = w.owner[i]; ch = o < 0 ? '.' : ALPH[o % 26]; if (o >= 0) key.set(ch, (w.cults[o] && w.cults[o].name) || o); }
+      else if (layer === 'owner') { const k = w.owner[i], o = k >= 0 && w.sets[k] ? w.sets[k].cult : -1; ch = o < 0 ? '.' : ALPH[o % 26]; if (o >= 0) key.set(ch, (w.cults[o] && w.cults[o].name) || o); }
       else if (layer === 'biome') ch = w.ice[i] ? '*' : w.farm[i] ? 'f' : w.urban[i] ? '#' : w.t[i] > 0.5 ? 'T' : w.g[i] > 0.3 ? ',' : w.mi[i] < 0.2 ? ':' : '.';
       else if (layer === 'memory') { let bk = 0, bv = 0.08; for (let k = 0; k < NK; k++) { const v = w.mem[i * NK + k]; if (v > bv) { bv = v; bk = k + 1; } } ch = bk ? 'dwfaxs'[bk - 1] : (w.water[i] === 1 ? '~' : '.'); if (bk && bv > 0.6) ch = ch.toUpperCase(); }
       else if (layer === 'fallout') ch = w.fallout && w.fallout[i] > 0.05 ? (w.fallout[i] > 0.5 ? '#' : '+') : w.water[i] === 1 ? '~' : '.';

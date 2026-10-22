@@ -146,15 +146,22 @@ function wetMap(w) {
 // (saved, so a loaded world sails the same lanes). From any water of that sea, a ship follows the
 // field to the port. Lanes are listed as fine cells chosen on open water.
 const fineOf = (w, c) => { const i = ((c / HW) | 0) * 2 * W + (c % HW) * 2; for (const j of [i, i + 1, i + W, i + W + 1]) if (w.water[j] === 1 && !w.ice[j]) return j; return i; };
+const DDX = Int8Array.from(DIRS, (q) => q[0]), DDY = Int8Array.from(DIRS, (q) => q[1]);   /* HW is 256: a shift and a mask */
+const BQ = 4, NB = 1024, _bh = new Int32Array(NB); let _ev = new Int32Array(1 << 16), _en = new Int32Array(1 << 16), _ed = new Float32Array(1 << 16);   /* step costs stay well under NB / BQ */
 function fieldTo(w, dst) {
   const F = T.fields || (T.fields = new Map()); const have = F.get(dst), sk = w.stamp.land * 1000 + (w.climateStamp || 0) % 1000;
   if (have && w.year - have.year >= SEA_EVERY && have.sk === sk) have.year = w.year;   /* nothing changed on the water since it was made: the same map would come out */
   if (have && w.year - have.year < SEA_EVERY) { F.delete(dst); F.set(dst, have); return have.dir; }   /* most recently used last: the least used go first */
-  const dir = new Uint8Array(HN).fill(255); dir[dst] = 254; _cst++; _ch.clear(); _cd[dst] = 0; _cs[dst] = _cst; _ch.push(0, dst);
-  while (_ch.n) {
-    const v = _ch.pop(), dv = _cd[v]; if (_ch.key > dv + 1e-4) continue; const vx = v % HW, vy = (v / HW) | 0;
-    for (let d = 0; d < 8; d++) { const uy = vy - DIRS[d][1]; if (uy < 0 || uy >= HH) continue; const u = uy * HW + (vx - DIRS[d][0] + HW) % HW; if (!_wet[u] || u === dst) continue;
-      const nd = dv + _lc[u * 8 + d]; if (_cs[u] !== _cst || nd < _cd[u]) { _cs[u] = _cst; _cd[u] = nd; dir[u] = d; _ch.push(nd, u); } }
+  const dir = new Uint8Array(HN).fill(255); dir[dst] = 254; _cst++; _cd[dst] = 0; _cs[dst] = _cst;
+  // a ring of buckets (width 1/BQ) instead of a heap: nodes come out nearly in order, and one that is
+  // reached more cheaply later is simply queued again, so the distances still come out exact
+  let en = 0, cur = 0, live = 1; const bh = _bh.fill(-1); const put = (v, d) => { if (en >= _ev.length) { const a = new Int32Array(_ev.length * 2), b = new Int32Array(_ev.length * 2), c = new Float32Array(_ev.length * 2); a.set(_ev); b.set(_en); c.set(_ed); _ev = a; _en = b; _ed = c; } const k = ((d * BQ) | 0) & (NB - 1); _ev[en] = v; _ed[en] = d; _en[en] = bh[k]; bh[k] = en++; };
+  put(dst, 0);
+  while (live) {
+    let e = bh[cur]; if (e < 0) { cur = (cur + 1) & (NB - 1); continue; } bh[cur] = _en[e]; live--;
+    const v = _ev[e], dv = _cd[v]; if (_ed[e] > dv + 1e-4) continue; const vx = v & (HW - 1), vy = v >> 8;
+    for (let d = 0; d < 8; d++) { const uy = vy - DDY[d]; if (uy < 0 || uy >= HH) continue; const u = uy * HW + ((vx - DDX[d]) & (HW - 1)); if (!_wet[u] || u === dst) continue;
+      const nd = dv + _lc[u * 8 + d]; if (_cs[u] !== _cst || nd < _cd[u] - 1e-6) { _cs[u] = _cst; _cd[u] = nd; dir[u] = d; put(u, _cd[u]); live++; } }
   }
   F.delete(dst); F.set(dst, { year: w.year, dir, sk }); if (F.size > 300) F.delete(F.keys().next().value);   /* the oldest go first */
   return dir;

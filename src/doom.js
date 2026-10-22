@@ -161,6 +161,8 @@ function shapeOf(z) {
   sh = { i: Int32Array.from(m.keys()), v: Float32Array.from(m.values()) }; shapes.set(z, sh); return sh;
 }
 const _vl = new Float32Array(CN);
+// owner holds the index of the owning town; cleaning goes by its people
+const ownerCult = (w, i) => { const k = w.owner[i], s = k >= 0 ? w.sets[k] : null; return s && !s.dead ? s.cult : -1; };
 function falloutYear(w) {
   const fo = w.fallout, V = w.veil || (w.veil = new Float32Array(CN)), Z = w.hot || (w.hot = []);
   if (w.glass && !w.glassI) { w.glassI = []; for (let i = 0; i < N; i++) if (w.glass[i]) w.glassI.push(i); }   /* an older save */
@@ -180,10 +182,10 @@ function falloutYear(w) {
   for (let y = 0; y < CH; y++) { let m = 0; for (let x = 0; x < CW; x++) m += V[y * CW + x]; m /= CW; for (let x = 0; x < CW; x++) V[y * CW + x] += (m - V[y * CW + x]) * 0.15; }   /* the high winds carry it round the world in bands */
   // cleaning: whoever owns the land under a zone and knows how, clears it three times as fast
   const clean = new Set(); for (const c of w.cults) if (c.alive && c.arts.cleanup && !c.power) clean.add(c.id);
-  for (let i = 0; i < CN; i++) { const x = (i % CW) * CS + 2, y = ((i / CW) | 0) * CS + 2, o = w.owner[y * W + x]; V[i] *= o >= 0 && clean.has(o) ? 0.88 : 0.97; if (V[i] < 1e-4) V[i] = 0; }
+  for (let i = 0; i < CN; i++) { const x = (i % CW) * CS + 2, y = ((i / CW) | 0) * CS + 2, o = ownerCult(w, y * W + x); V[i] *= o >= 0 && clean.has(o) ? 0.88 : 0.97; if (V[i] < 1e-4) V[i] = 0; }
   // the field the land and the towns feel: the veil (thin) plus every hot zone
   for (let y = 0; y < H; y++) { const cy = Math.min(CH - 1, (y / CS) | 0); for (let x = 0; x < W; x++) { const v = V[cy * CW + ((x / CS) | 0)] * 0.35; fo[y * W + x] = v > 0.004 ? Math.min(0.12, v) : 0; } }
-  for (let k = Z.length - 1; k >= 0; k--) { const z = Z[k], o = w.owner[z.y * W + z.x];
+  for (let k = Z.length - 1; k >= 0; k--) { const z = Z[k], o = ownerCult(w, z.y * W + z.x);
     z.age += o >= 0 && clean.has(o) ? 3 : 1; if (o >= 0 && clean.has(o)) z.cleanedBy = o;
     const s = z.a * Math.exp(-z.age / 30) + z.b * Math.exp(-z.age / 250);
     if (s < 0.012) { if (z.cleanedBy != null && w.cults[z.cleanedBy] && z.place) { const c = w.cults[z.cleanedBy]; ev(w, `The ${c.name} have scraped the last of the poison out of the country around ${z.place}. Children may play there again.`, z.x, z.y, c.color, 0); discover(w, 'cleaned', z.x, z.y); } Z.splice(k, 1); shapes.delete(z); continue; }
