@@ -5,7 +5,9 @@ import fs from 'node:fs';
 import { execSync } from 'node:child_process';
 const rev = (() => { try { return execSync('git rev-parse --short HEAD').toString().trim(); } catch (_) { return 'dev'; } })();
 const root = new URL('..', import.meta.url).pathname;  // v1/
-const out = await build({ entryPoints: [root + 'src/app.js'], bundle: true, format: 'iife', minify: false, write: false, target: 'es2020', legalComments: 'none', external: ['node:zlib'], define: { __BUILD__: JSON.stringify(rev + '+' + new Date().toISOString().slice(0, 10)) } });
+// the worker first: its whole bundle rides inside the page as a string, started from a blob
+const wk = await build({ entryPoints: [root + 'src/worker.js'], bundle: true, format: 'iife', minify: false, write: false, target: 'es2020', legalComments: 'none', external: ['node:zlib'], define: { __BUILD__: '"worker"' } });
+const out = await build({ entryPoints: [root + 'src/app.js'], bundle: true, format: 'iife', minify: false, write: false, target: 'es2020', legalComments: 'none', external: ['node:zlib'], define: { __WORKER_SRC__: JSON.stringify(wk.outputFiles[0].text), __BUILD__: JSON.stringify(rev + '+' + new Date().toISOString().slice(0, 10)) } });
 const html = fs.readFileSync(root + 'index.html', 'utf8'), css = fs.readFileSync(root + 'style.css', 'utf8');
 const title = html.match(/<title>[^]*?<\/title>/)[0], fonts = html.match(/<link rel="stylesheet" href="https:\/\/fonts[^>]*>/)[0];
 const app = html.split('<!--APP-->')[1].split('<!--/APP-->')[0];

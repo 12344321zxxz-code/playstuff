@@ -1,6 +1,6 @@
 import { chromium } from 'playwright'; import fs from 'node:fs';
 const dist = process.argv[2], seed = +(process.argv[3] || 1), yrs = +(process.argv[4] || 1000);
-fs.writeFileSync('/tmp/claude-0/sc/bp.html', `<!doctype html><html><head><meta charset="utf-8"><style>[hidden]{display:none!important}</style></head><body>${fs.readFileSync(dist, 'utf8')}</body></html>`);
+fs.writeFileSync('/tmp/claude-0/sc/bp.html', `<!doctype html><html><head><meta charset="utf-8"><script>window.FORMI_LOCAL=1</script><style>[hidden]{display:none!important}</style></head><body>${fs.readFileSync(dist, 'utf8')}</body></html>`);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }); page.on('pageerror', (e) => console.log('ERR', e.message));
 await page.goto('file:///tmp/claude-0/sc/bp.html'); await page.waitForFunction(() => window.__f);

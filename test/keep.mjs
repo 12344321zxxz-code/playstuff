@@ -6,7 +6,7 @@ import { TPY } from '../src/core.js';
 import { makeWorld, tick } from '../src/world.js';
 import { readSave } from '../src/save.js';
 const page0 = fs.readFileSync('dist/formicarium.html', 'utf8'); fs.mkdirSync('.cache', { recursive: true });
-fs.writeFileSync('.cache/page.html', `<!doctype html><html><head><meta charset="utf-8"><style>[hidden]{display:none!important}</style></head><body>${page0}</body></html>`);
+fs.writeFileSync('.cache/page.html', `<!doctype html><html><head><meta charset="utf-8"><script>window.FORMI_LOCAL=1</script><style>[hidden]{display:none!important}</style></head><body>${page0}</body></html>`);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }); const errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));

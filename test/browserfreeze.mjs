@@ -1,6 +1,6 @@
 import { chromium } from 'playwright'; import fs from 'node:fs';
 const dist = process.argv[2], seed = +process.argv[3], yrs = +process.argv[4];
-const page0 = fs.readFileSync(dist, 'utf8'); fs.writeFileSync('/tmp/claude-0/sc/brz.html', `<!doctype html><html><head><meta charset="utf-8"><style>[hidden]{display:none!important}</style></head><body>${page0}</body></html>`);
+const page0 = fs.readFileSync(dist, 'utf8'); fs.writeFileSync('/tmp/claude-0/sc/brz.html', `<!doctype html><html><head><meta charset="utf-8"><script>window.FORMI_LOCAL=1</script><style>[hidden]{display:none!important}</style></head><body>${page0}</body></html>`);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }); const errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 6).join('\n'))); page.on('console', (m) => { if (m.type() === 'error' && !/ERR_TUNNEL/.test(m.text())) errs.push(m.text()); });

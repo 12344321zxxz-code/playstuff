@@ -15,6 +15,7 @@ const LOST = { tribute: ['A tribute caravan', 'goes'], settlers: ['Settlers', 'g
 export function send(w, m) {
   if (w.movers.length >= MAXM && (m.kind === 'trade' || m.kind === 'home')) return null;
   if (w.movers.length >= MAXM + 60) return null;
+  m.id = w.moverN = (w.moverN || 0) + 1;   /* so the page can follow it from copy to copy */
   m.px = m.x; m.py = m.y; m.born = w.tickN; m.pi = 0; m.land = m.land || 0.75; m.sea = m.sea || 1.7; w.movers.push(m); return m;
 }
 

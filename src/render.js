@@ -3,7 +3,8 @@ import { W, H, N, clamp, hash2, wrapDx } from './core.js';
 import { VERT, FRAG } from './shader.js';
 import { FAITH_COLORS } from './faith.js';
 import { SPECIES } from './fauna.js';
-import { ZONES, zoneMap } from './zones.js';
+import { ZONES } from './zones.js';
+import { makeTexState, buildTex } from './texbuild.js';
 import { KINDS, STANCES } from './memory.js';
 import { PLANTS } from './origins.js';
 export const ERA_COL = ['#8a7a6a', '#6aa84f', '#d4a03a', '#c0503a', '#4a8ad4', '#9a5ad4', '#e8e8e8', '#5ad4c8', '#ff4a4a', '#4affb0', '#ffffff'];
@@ -26,27 +27,17 @@ export function createRenderer(glc) {
   const rgb = (list) => { const a = new Float32Array(list.length * 3); list.forEach((c, k) => { if (!c) return; a[k * 3] = parseInt(c.slice(1, 3), 16) / 255; a[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; a[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; }); return a; };
   gl.uniform3fv(U.uFaith, rgb(FAITH_COLORS)); gl.uniform3fv(U.uSpec, rgb(SPECIES.map((s) => s.col).concat(['#7a6a5a']))); gl.uniform3fv(U.uSpecL, rgb(SPECIES.map((s) => s.lc).concat(new Array(20 - SPECIES.length).fill('#777777')))); gl.uniform1fv(U.uTame, new Float32Array(20).map((_, k) => (SPECIES[k] && SPECIES[k].tame ? 1 : 0))); gl.uniform3fv(U.uZone, rgb(ZONES.map((z) => (z ? z.col : '#000000')))); gl.uniform3fv(U.uKind, rgb(KINDS.map((k) => k.col))); gl.uniform3fv(U.uFlora, rgb(PLANTS.map((q) => q.col).concat(['#555555'])));
   const stanceRGB = new Float32Array(96);
-  const bD = new Uint8Array(CW * CH * 2); let mapStamp = -1, mapW = null;
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  const bA = new Uint8Array(N * 4), bB = new Uint8Array(N * 4), bC = new Uint8Array(N * 4), bF = new Uint8Array(N * 4), zones = new Uint8Array(N);
-  let landStamp = -1, lastW = null, zoneStamp = -1;
+  const TS = makeTexState();
+  const up = (unit, tex, data) => { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, data); };
   const R = {
     gl,
-    upload(w, lens) {
-      if (w.stamp.land !== landStamp || w !== lastW) { landStamp = w.stamp.land; gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tE); gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16F, W, H, 0, gl.RED, gl.FLOAT, w.h); }
-      if (w.climateStamp !== zoneStamp || w !== lastW) { zoneStamp = w.climateStamp; zoneMap(w, zones); }
-      lastW = w;
-      const { owner, mi, g, t, water, filled, h, tMean, ocult, farm, urban, fireT, ash, ice, lava, plate, soil, magic, river, road, graze, hunt, spAt, mem, ley, memLock, flora, wildCrop, down } = w;
-      for (let i = 0, j = 0; i < N; i++, j += 4) {
-        let v = (tMean[i] + 40) * 3.1875; bA[j] = v < 0 ? 0 : v > 255 ? 255 : v; v = mi[i] * 102; bA[j + 1] = v > 255 ? 255 : v; bA[j + 2] = g[i] * 255; bA[j + 3] = t[i] * 255;
-        bB[j] = water[i] === 2 ? clamp(20 + (filled[i] - h[i]) * 2500, 20, 255) : 0; bB[j + 1] = river[i] * 60; bB[j + 2] = 0; if (river[i]) { const d = down[i]; if (d >= 0) { let dx = (d % W) - (i % W); if (dx > 1) dx = -1; else if (dx < -1) dx = 1; const dy = ((d / W) | 0) - ((i / W) | 0); bB[j + 2] = (dx + 1) + (dy + 1) * 3 + 1; } } let kd = 0, kv = 0.15; const mb = i * 6; for (let q = 0; q < 6; q++) if (mem[mb + q] > kv) { kv = mem[mb + q]; kd = q + 1; } bB[j + 3] = kd | (ley[i] > 0.15 ? 8 : 0) | (memLock[i] ? 16 : 0) | ((flora[i] === 255 ? 7 : flora[i]) << 5);
-        bC[j] = ocult[i] + 1; bC[j + 1] = (farm[i] ? 1 : 0) | (urban[i] ? 2 : 0) | (fireT[i] ? 4 : 0) | (ash[i] > 0.3 ? 8 : 0) | (ice[i] ? 16 : 0) | (lava[i] ? 64 : 0) | (road[i] ? 32 : 0) | (w.wall && w.wall[i] ? 128 : 0); bC[j + 2] = plate[i] | (w.canal && w.canal[i] === 2 ? 128 : 0) | (road[i] && owner[i] >= 0 && w.sets[owner[i]] && w.cults[w.sets[owner[i]].cult].tech >= 6 ? 64 : 0);
-        v = lens === 12 ? wildCrop[i] * 255 : lens === 3 ? soil[i] * 170 : magic[i] * 255; bC[j + 3] = v > 255 ? 255 : v;
-        v = graze[i] * 127; bF[j] = v > 255 ? 255 : v; bF[j + 1] = hunt[i] * 255; bF[j + 2] = spAt[i]; bF[j + 3] = zones[i] | (w.fallout && w.fallout[i] > 0.12 ? Math.min(7, 1 + Math.round((w.fallout[i] - 0.12) * 5)) << 5 : 0);
-      }
-      const up = (unit, tex, data) => { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, data); };
-      up(1, tA, bA); up(2, tB, bB); up(3, tC, bC); up(5, tF, bF);
-      if (w.realm && (w.mapStamp !== mapStamp || w !== mapW)) { mapStamp = w.mapStamp; mapW = w; for (let i = 0; i < CW * CH; i++) { bD[i * 2] = w.realm[i]; bD[i * 2 + 1] = w.faithMap[i]; } gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, tD); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, CW, CH, 0, gl.RG, gl.UNSIGNED_BYTE, bD); }
+    // the map textures, worked out from the world here (or handed over ready-made by the worker)
+    upload(w, lens) { R.uploadTex(buildTex(w, lens, TS)); },
+    uploadTex(t) {
+      if (t.elev) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tE); gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16F, W, H, 0, gl.RED, gl.FLOAT, t.elev); }
+      up(1, tA, t.A); up(2, tB, t.B); up(3, tC, t.C); up(5, tF, t.F);
+      if (t.D) { gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, tD); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, CW, CH, 0, gl.RG, gl.UNSIGNED_BYTE, t.D); }
     },
     draw(w, cam, lens, time, pal, q) {
       gl.viewport(0, 0, glc.width, glc.height);

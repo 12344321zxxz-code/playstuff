@@ -13,7 +13,7 @@ import { toScreen } from './render.js';
 import { SPECIES } from './fauna.js';
 import { blit, pixScale } from './pixels.js';
 import { COLORS, TIER, ART, ORES, colorOf, near } from './people.js';
-import { hook, palette } from './main.js';
+import { hook, palette, state } from './main.js';
 import { TENET, MAGIC } from './faith.js';
 
 const setPal = (k, c) => { palette[k * 3] = parseInt(c.slice(1, 3), 16) / 255; palette[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; palette[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; };
@@ -21,7 +21,7 @@ for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]);
 // a realm of the dead borrows a colour slot but is drawn grey while it lasts
 let palKey = '';
 const deadPal = (w) => { let key = ''; for (const c of w.cults) if (c.alive && (c.power || (c.over && c.over.kind === 'dragon'))) key += c.slot + (c.power ? ',' : 'd,'); if (key === palKey) return; palKey = key; for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]); for (const c of w.cults) if (c.alive && c.power) { setPal(c.slot, c.color); setPal(c.slot + 24 < 32 ? c.slot + 24 : c.slot, c.color); } else if (c.alive && c.over && c.over.kind === 'dragon') setPal(c.slot, '#e8962c'); };   /* a dragon kingdom is drawn in the dragon's gold */
-hook('tick', (w) => { if ((w.tickN & 7) === 0) deadPal(w); }); hook('newWorld', (w) => { palKey = '?'; deadPal(w); });
+hook('tick', (w) => { deadPal(w); }); hook('newWorld', (w) => { palKey = '?'; deadPal(w); });
 
 const A = [0, 0], B = [0, 0];
 const ORE_COL = ['', '#d9843b', '#cfd6dc', '#7b4a3a', '#ffd23a', '#ffffff', '#2a2a2e', '#7aff5a'];
@@ -102,7 +102,7 @@ function drawMovers(ctx, w, cam, z, frac) {
   if (z < 2.2) return; const k = pixScale(z, cam.dpr, 0.85);
   for (const m of w.movers) {
     if (m.done) continue; const x = m.px + wrapDx(m.x - m.px) * frac + 0.5, y = m.py + (m.y - m.py) * frac + 0.8; if (!seen(x, y, 2)) continue; const p = at(cam, x, y);
-    const c = w.cults[m.cult], col = m.kind === 'tribute' ? '#f2c94c' : m.kind === 'trade' && m.goods >= 0 ? GOODS[m.goods].col : c.color, flip = wrapDx(m.x - m.px) < 0;
+    const c = w.cults[m.cult]; if (!c) continue; const col = m.kind === 'tribute' ? '#f2c94c' : m.kind === 'trade' && m.goods >= 0 ? GOODS[m.goods].col : c.color, flip = wrapDx(m.x - m.px) < 0;
     if (m.dead || (c && c.power === 'dead' && m.kind === 'army')) { blit(ctx, 'shamblers', p[0], p[1], k, '#9fb59a', flip); continue; }
     if (m.kind === 'missile') { const t = (wrapDx(m.tx - m.x) < 0); blit(ctx, 'missile', p[0], p[1] - 6 * k, k, null, t); continue; }
     const era = c.tech;
@@ -359,9 +359,13 @@ const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fis
     if (ex.length) L.push(`It sells ${list(ex)}.`); if (im.length) L.push(`It buys ${list(im)}.`);
     const named = [...w.routes.values()].filter((r) => r.name && (r.a === s || r.b === s)).map((r) => r.name); if (s.entrepot) L.push(`Goods change hands here: far carriers stop, sell and turn back, and its merchants carry them on (${Math.round(s.relayE)} loads a year lately).`); else if (s.relayE > 0.5) L.push(`Now and then goods change hands here on their way somewhere else.`);
     if (s.market) L.push(`It is a great market${named.length ? ', on ' + list(named) : ''}.`); else if (named.length) L.push(`It lies on ${list(named)}.`); }
-  return { title: s.name || `A band of the ${c.name}`, sub: s.nomad ? c.kind : `${TIER[s.tier]} of the ${c.name}`, color: colorOf(c), bar, lines: L.concat(cultLines(w, c)), split: L.length, splitTitle: 'The ' + c.name, follow: { pos: () => (s.dead ? null : [s.x, s.y, s.R + 0.6]), info: () => (s.dead ? null : setInfo(w, s)) } };
+  return { title: s.name || `A band of the ${c.name}`, sub: s.nomad ? c.kind : `${TIER[s.tier]} of the ${c.name}`, color: colorOf(c), bar, lines: L.concat(cultLines(w, c)), split: L.length, splitTitle: 'The ' + c.name, follow: { pos: () => { const t = liveSet(s); return !t || t.dead ? null : [t.x, t.y, t.R + 0.6]; }, info: () => { const t = liveSet(s); return !t || t.dead ? null : setInfo(state.w, t); } } };
 }
 export const describeSet = setInfo;
+// When the world runs in the worker, the page's copy is replaced twice a second: a followed thing is
+// found again by its id in the newest copy.
+const liveIn = (list, o, key) => (list && list.includes(o) ? o : (list || []).find((q) => q[key] === o[key]) || null);
+const liveSet = (s) => { const w = state.w; if (!w || w.sets.includes(s)) return s; return w.sets.find((q) => q.id === s.id) || null; };
 const MOVE = { settlers: (w, m, c) => [`Settlers of the ${c.name}`, `${Math.round(m.n)} people with everything they own, looking for a place to stop.`], army: (w, m, c) => [`A war band of the ${c.name}`, `About ${Math.round(m.n)} spears${m.to && !m.to.dead && m.to.name ? ', marching on ' + m.to.name : ''}.`], home: (w, m, c) => [`A war band of the ${c.name}`, 'On the way home.'], trade: (w, m, c) => [m.wet0 ? `A trading ship of the ${c.name}` : `A caravan of the ${c.name}`, `${m.from && m.from.name ? 'From ' + m.from.name : 'On its way'}${m.to && m.to.name ? ' to ' + m.to.name : ''}. It carries goods, news, and whatever else is going around.`], refugees: (w, m, c) => [`People of the ${c.name}, fleeing`, `${Math.round(m.n)} people walking away from hunger or worse.`] };
 const RUIN_SAY = { abandoned: 'Its people left, or died out.', sacked: 'It was sacked and burned.', drowned: 'The sea took it.', buried: 'Ash and lava buried it.', burned: 'Fire took it.', plague: 'Plague emptied it.', frozen: 'The ice closed over it.', overgrown: 'The forest swallowed it.', crater: 'A falling star erased it.', swallowed: 'The earth opened under it.', dragon: 'A dragon made it a roost.' };
 const WORK_SAY = { dam: ['A dam', 'A wall across the river. The lake behind it waters the fields below.'], canal: ['A canal', 'Dug through the land so ships can pass from one sea to the other.'], ditch: ['Irrigation canals', 'River water carried out into dry country.'], polder: ['Polders', 'Fields on what used to be the sea floor, behind dikes.'], wall: ['A great wall', 'Built across the grass to keep the riders out. Most raids stop at it.'], pass: ['A blasted pass', 'A mountain cut through for a road.'], raised: ['Raised land', 'Called up out of the sea by sorcerers.'] };
@@ -370,7 +374,7 @@ function looker(w, x, y, i, r) {
   if (lens0 === 17) { const t = tongueCard(w, x, y); if (t) return t; }
   let hit = null, bd = r * r;
   for (const d of w.dragons) { for (const p of [[d.x, d.y], [d.lx, d.ly]]) { const q = wrapDx(p[0] - x) ** 2 + (p[1] - y) ** 2; if (q <= bd * 2.5) hit = d; } }
-  if (hit) { const d = hit; return { title: d.name, color: '#b3201c', lines: [`A dragon, ${d.age} years on this mountain.`, d.st === 'sleep' ? 'It is asleep on its hoard.' : d.st === 'fly' ? 'It is hunting.' : d.st === 'home' ? 'It is flying home, fed.' : 'It is awake, and looking around.', d.hoard > 20 ? 'Its hoard is the richest thing in the world.' : d.hoard > 6 ? 'It has a respectable hoard.' : 'It has not gathered much yet.'], follow: { pos: () => (d.dead ? null : [d.x, d.y, 2]) } }; }
+  if (hit) { const d = hit; return { title: d.name, color: '#b3201c', lines: [`A dragon, ${d.age} years on this mountain.`, d.st === 'sleep' ? 'It is asleep on its hoard.' : d.st === 'fly' ? 'It is hunting.' : d.st === 'home' ? 'It is flying home, fed.' : 'It is awake, and looking around.', d.hoard > 20 ? 'Its hoard is the richest thing in the world.' : d.hoard > 6 ? 'It has a respectable hoard.' : 'It has not gathered much yet.'], follow: { pos: () => { const q = liveIn(state.w.dragons, d, 'name'); return !q || q.dead ? null : [q.x, q.y, 2]; } } }; }
   for (const sp of w.spirits) if (wrapDx(sp.x - x) ** 2 + (sp.y - y) ** 2 <= Math.max(4, bd * 1.5)) { const pc = sp.pact != null ? w.cults[sp.pact] : null;
     return { title: cap(sp.name), color: KINDS[SPIRIT_KINDS[sp.kind].mem].col, lines: [SP_SAY[sp.kind], `It rose in year ${sp.born}. What it remembers: ${sp.why}.`, pc ? `The ${pc.name} have a bargain with it.` : '', 'It will fade if this place forgets. Peoples who know iron and letters wear memory away; Hush and Forget do it faster.'].filter(Boolean) }; }
   for (const m of w.machines || []) if (wrapDx(m.x - x) ** 2 + (m.y - y) ** 2 <= Math.max(9, bd * 2)) return { title: cap(m.name), color: '#4affd0', lines: ['A mind its makers built and lost. It holds a country of dark towns, eats the old magic out of the ground, and fights the old powers where they meet.', `It woke in year ${m.born}.`, 'Only many peoples together, or time, will end it.'] };
@@ -378,7 +382,7 @@ function looker(w, x, y, i, r) {
   for (const q of w.wells) if (wrapDx(q.x - x) ** 2 + (q.y - y) ** 2 <= Math.max(4, bd)) return { title: q.name ? cap(q.name) : 'A wellspring', color: KINDS[q.kind || 0].col, lines: ['The ley lines run here, carrying what the world remembers.', `It is ${q.fill > 10 ? 'nearly full' : q.fill > 4 ? 'filling' : 'low'}, mostly with ${KINDS[q.kind || 0].name}.`, q.spilt ? `It has spilled over ${q.spilt === 1 ? 'once' : q.spilt + ' times'}.` : 'When it is full it will spill a storm back up the lines.'] };
   if (w.great && wrapDx(w.great.x - x) ** 2 + (w.great.y - y) ** 2 <= 64) { const g = w.great; return { title: cap(g.name), color: '#6a3f86', lines: [`Called up from the deep in year ${g.born} by the cult of ${g.port}. It will sleep again in about ${Math.max(0, 1000 - (w.year - g.born))} years.`, `Within its reach ships go down a third of the time; steam halves that, modern navies cut it to a fifth. It has taken ${g.sunk} ${g.sunk === 1 ? 'ship' : 'ships'}.`, `${g.hp} more ${g.hp === 1 ? 'bomb' : 'bombs'} would kill it, and its death would raise the sea everywhere.`] }; }
   for (const k of w.krakens) if (wrapDx(k.x - x) ** 2 + (k.y - y) ** 2 <= Math.max(9, bd)) return { title: cap(k.name), color: '#6a3f86', lines: [`Something very large, in this water since year ${k.born}.`, k.sunk ? `It has taken ${k.sunk} ${k.sunk === 1 ? 'ship' : 'ships'}.` : 'No ship has come close enough yet.'] };
-  for (const m of w.movers) if (!m.done && wrapDx(m.x - x) ** 2 + (m.y - y) ** 2 <= bd * 1.5) { const c = w.cults[m.cult], t = MOVE[m.kind](w, m, c); return { title: t[0], color: c.color, lines: [t[1]], follow: { pos: () => (m.done ? null : [m.x, m.y, 1.4]) } }; }
+  for (const m of w.movers) if (!m.done && w.cults[m.cult] && MOVE[m.kind] && wrapDx(m.x - x) ** 2 + (m.y - y) ** 2 <= bd * 1.5) { const c = w.cults[m.cult], t = MOVE[m.kind](w, m, c); return { title: t[0], color: c.color, lines: [t[1]], follow: { pos: () => { const q = m.id != null ? liveIn(state.w.movers, m, 'id') : m; return !q || q.done ? null : [q.x, q.y, 1.4]; } } }; }
   for (const sw of w.swarms) if (wrapDx(sw.x - x) ** 2 + (sw.y - y) ** 2 <= 12) return { title: 'Locusts', lines: ['A swarm on the wind. It eats grass and grain down to the dirt and moves on.'] };
   const s = near(w, x, y, Math.max(1.6, r), null, false); if (s) return setInfo(w, s);
   for (const ru of w.ruins) if (wrapDx(ru.x - x) ** 2 + (ru.y - y) ** 2 <= bd) return { title: `Ruins of ${ru.name}`, color: null, lines: [`A ${TIER[ru.tier]} of the ${ru.cult}. ${RUIN_SAY[ru.kind] || ''} Year ${ru.year}.`, typeof ru.haunt === 'string' ? ru.haunt.replace('%', ru.cult) : '', ru.wonder ? 'Something enormous still stands among the stones.' : '', ru.layers > 1 ? `It has been built and lost ${ru.layers} times. There are older walls under these.` : '', ru.haunt ? 'Nobody goes near it now. The air is wrong.' : ru.looted ? 'Diggers have been through it.' : 'Nobody has dug here yet. Whatever its people knew is still in the ground.'].filter(Boolean) };
