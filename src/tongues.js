@@ -189,7 +189,8 @@ export function tongueHsl(w, id) {
 }
 export function tongueColor(w, id) { const [h, s, l] = tongueHsl(w, id); return `hsl(${h},${s}%,${l}%)`; }
 
-// A family is every tongue that split off within the last 600 years from one ancestor (Romance from
+// A family is every tongue that split off within the last 1500 years from one ancestor (Romance from
 // Latin); branches that parted longer ago than that are separate families of one origin (Romance and
 // Germanic under Indo-European). Early in a world every tongue is still in its origin's family.
-export function familyOf(w, id) { let L = w.langs[id]; while (L && L.parent != null && w.year - L.born < 600) L = w.langs[L.parent]; return L ? L.id : id; }
+export const FAMILY_DEPTH = 1500;   /* (22 Oct) families hold together about as long as Romance has since Latin */
+export function familyOf(w, id) { let L = w.langs[id]; while (L && L.parent != null && w.year - L.born < FAMILY_DEPTH) L = w.langs[L.parent]; return L ? L.id : id; }

@@ -29,7 +29,7 @@ export const NP = PLANTS.length;
 // what herd animals give the people who keep them: food, a plough, a cart, and their sicknesses
 export const LIVESTOCK = {
   cattle: { plough: 1, germs: 1 }, buffalo: { plough: 1, germs: 0.6 }, horse: { plough: 0.6, cart: 1, germs: 0.3 }, pig: { germs: 0.9 },
-  goat: { germs: 0.4 }, camel: { cart: 1, germs: 0.2 }, reindeer: { cart: 0.4, germs: 0.1 }, llama: { cart: 0.6, germs: 0.1 },
+  goat: { germs: 0.4 }, camel: { plough: 0.5, cart: 1, germs: 0.2 },   /* camels pull ploughs in the Maghreb and India */ reindeer: { cart: 0.4, germs: 0.1 }, llama: { cart: 0.6, germs: 0.1 },
 };
 
 // Life is dealt by continent, not by patch of ground: each kind of plant or beast has one or two

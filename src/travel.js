@@ -207,6 +207,13 @@ export function planLand(w, a, b) {
   }
   return i === nodes.length - 1 ? legs : null;
 }
+// every town reachable from a over the ways within a cost budget (one bounded Dijkstra), as id -> cost
+export function reachFrom(w, a, budget) {
+  ensure(w); const out = new Map(); if (!T.adj.has(a.id)) return out; const dist = new Map([[a.id, 0]]); _gh.clear(); _gh.push(0, a.id); let n = 0;
+  while (_gh.n && n++ < 3000) { const u = _gh.pop(), d = dist.get(u); if (_gh.key > d + 1e-3) continue; if (u !== a.id) out.set(u, d);
+    for (const e of T.adj.get(u) || []) { if (e.block) continue; const v = e.a === u ? e.b : e.a, nd = d + Math.max(0.5, e.cost) * (e.war ? 3 : 1) * (1 + (e.fo || 0)); if (nd > budget) continue; const old = dist.get(v); if (old === undefined || nd < old - 1e-6) { dist.set(v, nd); _gh.push(nd, v); } } }
+  return out;
+}
 // the land path of one leg, as cells (for the moving picture)
 export function legCells(w, a, b) {
   ensure(w);

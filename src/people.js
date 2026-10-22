@@ -367,7 +367,7 @@ export function* peopleSteps(w) {
     // tallies that decide what this people can learn
     const e = c.env; if (landN && cropS / landN > 0.35) e.crop++; if (seaN >= 3) e.coast++; if (farms && mi[i0] < 0.55 && fresh[i0] <= 2) e.dryRiver++; if (h[i0] - sea > 0.24) e.hill++; if (fresh[i0] <= 2 && !s.nomad) e.river++; if (seaN >= 2 && h[i0] - sea < 0.05 && !s.nomad) e.lowcoast++; if (s.market) c.markets++; if (s.plague > 0) c.plagued = (c.plagued || 0) + 1;
     if (s.nomad) e.nomads++; else { e.sed++; if (s.tier >= 2) e.towns++; if (s.tier >= 3) e.cities++; }
-    const cap = Math.max(1, food);
+    const cap = Math.max(1, food); s.cap = cap;
     if (s.pop < cap) { s.pop += s.pop * (s.nomad ? 0.036 : 0.025) * (1 - s.pop / cap); s.note = s.pop > cap * 0.92 ? 'full' : 'grow'; if (s.note === 'full' && !s.nomad) c._full++; }
     else {
       const loss = (s.pop - cap) * (A.granaries ? 0.1 : 0.18), farmer = s.way === 'farm' || (farms > 0 && fA + 1 >= mx * 0.6);
@@ -619,7 +619,7 @@ function colonize(w, s, c) {
     if (w.water[i] || w.h[i] - sea > (A.terraces ? 0.5 : 0.36) || w.gCap[i] < 0.24 || w.ice[i] || w.magic[i] > 0.75 || near(w, x, y, 8.5, null, true)) continue;
     const wet = crossesWater(w, s.x, s.y, x, y); if (wet > 1 && !A.boats) continue; if (wet > 5 && !A.sailing) continue;
     let sc = 0; for (const o of DISC[2]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(x + o[0]); if (w.water[j]) sc += A.boats ? 0.6 : 0.15; else sc += 0.12 * w.gCap[j] + (A.farming ? Math.min(1, cropYield(w, c, j) + (w.fresh[j] <= (A.irrigation ? 3 : 1) ? 0.5 : 0)) : 0) + (c.grazer ? 0.25 * w.g[j] : 0); }
-    if (ruinAt(w, x, y) && !w.ruins.some((r) => r.haunt && Math.abs(wrapDx(r.x - x)) <= 2 && Math.abs(r.y - y) <= 2)) sc += 2;
+    if (ruinAt(w, x, y) && !w.ruins.some((r) => r.haunt && Math.abs(wrapDx(r.x - x)) <= 2 && Math.abs(r.y - y) <= 2) && (!A.farming || cropYield(w, c, i) > 0.3)) sc += 2;   /* old stones draw settlers only where their crops would grow */
     sc *= 0.85 + 0.3 * rnd(); if (sc > bs) cands.push({ x, y, wet, sc, far: w.mass[i] !== w.mass[s.y * W + s.x] });
   }
   // the best site they can actually reach wins; across water only a shore a ship can land on, so the colony is a port

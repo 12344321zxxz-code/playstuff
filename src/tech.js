@@ -17,7 +17,7 @@ export const ART = {
   wheel: { say: 'the wheel', tier: 1, req: ['pottery'], can: (c, e) => e.sed >= 3 && !!(c.tame.cattle || c.tame.horse || c.tame.buffalo || c.tame.llama || c.tame.camel) },
   granaries: { say: 'granaries', tier: 1, req: ['farming', 'pottery'], push: (c) => (c.hungry ? 3 : 0) + (c._dry ? 2 : 0) },
   // the first states
-  plough: { say: 'the plough', tier: 2, req: ['farming'], can: (c) => !!(c.tame.cattle || c.tame.buffalo || c.tame.horse) },
+  plough: { say: 'the plough', tier: 2, req: ['farming'], can: (c) => !!(c.tame.cattle || c.tame.buffalo || c.tame.horse || c.tame.camel || c.tame.donkey) },
   irrigation: { say: 'irrigation', tier: 2, req: ['farming'], can: (c, e) => e.dryRiver > 0, push: (c) => (c._dry ? 2 : 0) },
   terraces: { say: 'terraced fields', tier: 2, req: ['farming'], can: (c, e) => e.hill > 0 },
   bronze: { say: 'bronze', tier: 2, req: ['copper'], can: (c, e) => e.sed >= 3 && (c.metals & 2) !== 0 && (c.metals & 4) !== 0, push: (c) => (c.war ? 1 : 0) },
@@ -112,12 +112,12 @@ export function nextInvention(c, rnd) {
   return { k: cand[cand.length - 1][0], push: cand[cand.length - 1][1] };
 }
 // Why a people cannot learn something yet, in words, for the Look panel.
-const WHY = { atomic: 'they have no uranium, mined or bought', bomb: 'they have too few cities',  farming: 'nothing they could sow grows near them', riding: 'they have no horses or camels', copper: 'there is no copper in their ground', bronze: 'they lack copper or tin', iron: 'they have no iron', sailing: 'they have no timber for ships', wheel: 'they have no draft animals', plough: 'they have no ox or horse to pull it', engines: 'they have no coal', gunpowder: 'they have no saltpetre or coal', steel: 'they have no iron or coal', coinage: 'they have no gold, and too little trade', banking: 'they have no great market' };
+const WHY = { atomic: 'they have no uranium, mined or bought', bomb: 'they have too few cities',  farming: 'nothing they could sow grows near them', riding: 'they have no horses or camels', copper: 'there is no copper in their ground', bronze: 'they lack copper or tin', iron: 'they have no iron', sailing: 'they have no timber for ships', wheel: 'they have no draft animals', plough: 'they have no animal strong enough to pull one', engines: 'they have no coal', gunpowder: 'they have no saltpetre or coal', steel: 'they have no iron or coal', coinage: 'they have no gold, and too little trade', banking: 'they have no great market' };
 export function blockedReasons(c) {
   const out = [];
   for (const k of ['farming', 'riding', 'bronze', 'iron', 'sailing', 'wheel', 'plough', 'engines', 'atomic']) {
     const T = ART[k]; if (c.arts[k] || !T.can || c.tech + 1 < T.tier || T.req.some((r) => !c.arts[r])) continue;
-    if (!T.can(c, c.env, true) && WHY[k]) out.push(`no ${T.say}: ${WHY[k]}`);
+    if (!T.can(c, c.env, true) && WHY[k]) out.push(`no ${T.say.replace(/^the /, '')}: ${WHY[k]}`);
   }
   return out;
 }
