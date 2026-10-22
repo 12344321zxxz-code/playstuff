@@ -92,7 +92,7 @@ export function tick(w) {
     const y = w.year;
     for (let i = 0; i < N; i += 4) { const b = w.wetBias[i]; if (b !== 0) { w.wetBias[i] = b * 0.996; w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } else { w.wetBias[i + 1] *= 0.996; w.wetBias[i + 2] *= 0.996; w.wetBias[i + 3] *= 0.996; } }
     if (w.census) for (const _ of w.census); w.census = peopleSteps(w);
-    if (y % 20 === 6) { erode(w, 0.001); w.need.water = true; }
+    if (y % 40 === 3) { erode(w, 0.002); w.need.water = true; }   /* with the climate refresh below, so the rivers are worked out once for both */
     if (!w.job && (w.need.climate || y % 40 === 3)) w.job = { k: 'climate', g: climateSteps(w) }; else if (!w.job && w.need.water) w.job = { k: 'water', g: hydroSteps(w) };
   }
   // Background work is cut into a fixed number of steps per tick, never by the clock, so the same

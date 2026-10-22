@@ -112,13 +112,18 @@ function flows(w) {
   }
 }
 // Dijkstra over the town graph (a few hundred towns), with a heap
-const _gh = new Heap(1 << 15), _gdist = new Map(), _gprev = new Map();
+const _gh = new Heap(1 << 15), _gpv = [];
+// distances by town id, stamped so nothing is cleared between searches
+let _rd = new Float64Array(4096), _rs = new Int32Array(4096), _rst = 0;
+function reachGrow(id) { if (id < _rd.length) return; let L = _rd.length; while (L <= id) L *= 2; const d2 = new Float64Array(L), s2 = new Int32Array(L); d2.set(_rd); s2.set(_rs); _rd = d2; _rs = s2; }
+function reachStamp(id) { reachGrow(id); if (++_rst > 2e9) { _rst = 1; _rs.fill(0); } return _rst; }
 function graphPath(a, b) {
-  if (a === b || !T.adj.has(a) || !T.adj.has(b)) return null; _gdist.clear(); _gprev.clear(); _gh.clear(); _gdist.set(a, 0); _gh.push(0, a); let n = 0;
+  if (a === b || !T.adj.has(a) || !T.adj.has(b)) return null; const st = reachStamp(Math.max(a, b)); _rs[a] = st; _rd[a] = 0; _gh.clear(); _gh.push(0, a); let n = 0;
   while (_gh.n) {
-    const u = _gh.pop(), d = _gdist.get(u); if (_gh.key > d + 1e-3) continue; if (u === b) { const out = []; for (let v = b; v !== a; ) { const e = _gprev.get(v); if (!e || out.length > 600) return null; out.push(e); v = e.a === v ? e.b : e.a; } return out; }
+    const u = _gh.pop(), d = _rd[u]; if (_gh.key > d + 1e-3) continue; if (u === b) { const out = []; for (let v = b; v !== a; ) { const e = _gpv[v]; if (!e || out.length > 600) return null; out.push(e); v = e.a === v ? e.b : e.a; } return out; }
     if (++n > 2500 || _gh.n > 30000) return null;
-    for (const e of T.adj.get(u) || []) { const v = e.a === u ? e.b : e.a; if (e.block || v === a) continue; const nd = d + Math.max(0.5, e.cost) * (e.war ? 3 : 1) * (1 + (e.fo || 0)); const old = _gdist.get(v); if (old === undefined || nd < old - 1e-6) {   /* exact distances (not the heap's rounded keys) and no free edges, or the chain can loop */ _gdist.set(v, nd); _gprev.set(v, e); _gh.push(nd, v); } }
+    const es = T.adj.get(u); if (!es) continue;
+    for (let k = 0; k < es.length; k++) { const e = es[k], v = e.a === u ? e.b : e.a; if (e.block || v === a) continue; const nd = d + Math.max(0.5, e.cost) * (e.war ? 3 : 1) * (1 + (e.fo || 0)); reachGrow(v); if (_rs[v] !== st || nd < _rd[v] - 1e-6) {   /* exact distances (not the heap's rounded keys) and no free edges, or the chain can loop */ _rs[v] = st; _rd[v] = nd; _gpv[v] = e; _gh.push(nd, v); } }
   }
   return null;
 }
@@ -223,7 +228,7 @@ export function planLand(w, a, b) {
   return i === nodes.length - 1 ? legs : null;
 }
 // every town reachable from a over the ways within a cost budget (one bounded Dijkstra), as id -> cost
-let _rd = new Float64Array(4096), _rs = new Int32Array(4096), _rst = 0;   /* reach distances by town id, stamped so nothing is cleared */
+
 // towns reachable along the ways within budget, nearest first; with visit(id, cost) it streams them
 // instead and stops as soon as visit returns true
 export function reachFrom(w, a, budget, visit) {
