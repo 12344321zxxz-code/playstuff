@@ -11,7 +11,7 @@
 //   What it does there depends on the land (Acemoglu, Johnson and Robinson): fever country gets
 //   only trading forts; a dense native realm is taken at the top and keeps its tongue; thin or
 //   emptied land gets settler colonies. Colonies drift and break away when the take runs high.
-import { strength, newCult, addSet, endSet, near, whereAbouts } from './people.js';
+import { strength, newCult, addSet, endSet, near, whereAbouts, routeToCell } from './people.js';
 import { send, arrive } from './movers.js';
 import { record } from './ledger.js';
 import { ev, discover, once } from './story.js';
@@ -162,7 +162,7 @@ function settle(w, o, x, y, natives) {
   const ob = o.big, n = 2 + ((w.rnd() * 3) | 0); let made = 0;
   for (let k = 0; k < n * 8 && made < n; k++) { const a = w.rnd() * 6.283, r = w.rnd() * 14, xx = wx(Math.round(x + Math.cos(a) * r)), yy = Math.round(y + Math.sin(a) * r); if (yy < 3 || yy > 252) continue; const i = yy * W + xx;
     if (w.water[i] || w.gCap[i] < 0.25 || near(w, xx, yy, 5, null, true)) continue;
-    send(w, { kind: 'settlers', cult: o.id, x: ob.x, y: ob.y, tx: xx, ty: yy, n: 40, from: ob, wetN: 3, ocean: true, far: true, split: false, land: 0.75 }); made++; }
+    const route = routeToCell(w, ob, xx, yy, true); if (!route) continue; send(w, { kind: 'settlers', cult: o.id, x: ob.x, y: ob.y, tx: xx, ty: yy, n: 40, from: ob, wetN: 3, ocean: true, far: true, split: false, path: route.path, step: 4 }); made++; }
   if (!made) return;
   record(w, 'settle', [o.id].concat(natives ? [natives.id] : []), { note: `${made} ships`, x, y });
   if (once(w, 'settle-' + o.id + '-' + Math.floor(w.year / 100))) ev(w, natives ? `Ships of the ${o.name} land settlers ${whereAbouts(w, x, y)}, among the scattered camps of the ${natives.name}. They bring their own seed and their own beasts.` : `Ships of the ${o.name} carry settlers to empty country ${whereAbouts(w, x, y)}.`, x, y, o.color, 1);

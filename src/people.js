@@ -162,7 +162,9 @@ export function flee(w, s, n, sick) {
   n = Math.round(n); if (n < 12 || s.dead) return; const c = w.cults[s.cult]; let to = null, bs = 0;
   near(w, s.x, s.y, 34, s, true, (o, q) => { if (o.cult !== s.cult && w.rnd() < 0.7) return; const sc = (o.note === 'grow' ? 2 : 1) * (o.cult === s.cult ? 2 : 1) / (6 + Math.sqrt(q)); if (sc > bs) { bs = sc; to = o; } });
   let tx, ty; if (to) { tx = to.x; ty = to.y; } else { const a = w.rnd() * 6.283, d = 8 + w.rnd() * 10; tx = wx(Math.round(s.x + Math.cos(a) * d)); ty = clamp(Math.round(s.y + Math.sin(a) * d), 3, H - 4); }
-  send(w, { kind: 'refugees', cult: s.cult, x: s.x, y: s.y, tx, ty, n, to, sick: s.plague > 0 ? s.pid : null, faith: s.faith, lang: s.lang, cul: s.cul, land: c.arts.riding ? 1.2 : 0.7 });
+  const path = to ? routeCells(w, s, to) : (() => { const r = landPath(w, s.y * W + s.x, ty * W + tx, 2500); return r && r.path.length > 1 ? Array.from(r.path) : null; })();
+  if (!path) { if (to) { to.pop += n * 0.9; if (s.plague > 0) infect(w, to, s.pid); } return; }   /* no road to walk: they reach their kin the hard way, or are lost */
+  send(w, { kind: 'refugees', cult: s.cult, x: s.x, y: s.y, tx, ty, n, to, sick: s.plague > 0 ? s.pid : null, faith: s.faith, lang: s.lang, cul: s.cul, path, step: c.arts.riding ? 2 : 1 });
 }
 arrive.refugees = (w, m) => {
   const c = w.cults[m.cult];
@@ -185,6 +187,12 @@ arrive.settlers = (w, m) => {
   if (m.ocean && m.far && (w.massSize[w.mass[i]] || 0) > 150 && discover(w, 'oversea', x, y)) ev(w, `Ships of the ${c.name} cross the open sea and land ${whereAbouts(w, x, y)}.`, x, y, c.color, 2);
 };
 arrive.home = (w, m) => { if (m.to && !m.to.dead) m.to.pop += m.n; };
+// a route from a town to a cell: over land, or (with boats) by sea lane and ashore
+export function routeToCell(w, s, x, y, boats) {
+  const r = landPath(w, s.y * W + s.x, y * W + wx(x), 4000); if (r && r.path.length > 1) return { path: Array.from(r.path), wet: false };
+  if (boats) { const lane = seaLane(w, s.x, s.y, x, y); if (lane) return { path: lane.concat([y * W + wx(x)]), wet: true }; }
+  return null;
+}
 // The only way anyone goes anywhere on land: by the ways between towns, or (for camps and bands,
 // which are not on the graph) by the cheapest path over the cells. No straight lines.
 export function routeCells(w, a, b) {
@@ -603,8 +611,9 @@ function colonize(w, s, c) {
     if (ruinAt(w, x, y) && !w.ruins.some((r) => r.haunt && Math.abs(wrapDx(r.x - x)) <= 2 && Math.abs(r.y - y) <= 2)) sc += 2;
     sc *= 0.85 + 0.3 * rnd(); if (sc > bs) { bs = sc; best = { x, y, wet, far: w.mass[i] !== w.mass[s.y * W + s.x] }; }
   }
-  if (!best) { if (c.grazer && rnd() < 0.5) pasture(w, s, c); return; } s.pop -= 26; const ocean = best.wet > 5;
-  send(w, { kind: 'settlers', cult: s.cult, x: s.x, y: s.y, tx: best.x, ty: best.y, n: 26, from: s, wetN: best.wet, ocean, far: best.far, split: rnd() < (ocean ? 0.4 : best.wet > 1 ? 0.12 : 0.02), land: A.riding ? 1.2 : 0.75 });
+  if (!best) { if (c.grazer && rnd() < 0.5) pasture(w, s, c); return; } const ocean = best.wet > 5;
+  const route = routeToCell(w, s, best.x, best.y, A.boats); if (!route) return;   /* no way there, by land or sea: nobody goes */
+  s.pop -= 26; send(w, { kind: 'settlers', cult: s.cult, x: s.x, y: s.y, tx: best.x, ty: best.y, n: 26, from: s, wetN: best.wet, ocean, far: best.far, split: rnd() < (ocean ? 0.4 : best.wet > 1 ? 0.12 : 0.02), path: route.path, step: route.wet ? stepOf(c, true) : A.riding ? 2 : 1 });
 }
 
 // Farmers with animals, living next to grass that will not grow grain: sooner or later some of
