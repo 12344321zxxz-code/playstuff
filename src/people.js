@@ -16,7 +16,7 @@ import { SPECIES, takeGame, habRaw as habitat, introduce } from './fauna.js';
 import { wetAt } from './weather.js';
 import { catchFish } from './sea.js';
 import { send, arrive, onRoad } from './movers.js';
-import { planLand, planSea, legCells, stepOf, relayAt, clearRelay, seaLane } from './travel.js';
+import { planLand, planSea, legCells, stepOf, relayAt, clearRelay, seaLane, landPath } from './travel.js';
 export { send };
 import { holySite, carry, convert, faithYear, sameFaith, tenetOf, docsOf } from './faith.js';
 import { pickGoods, deliver, importedMetals, leagued, G as GD, GOODS } from './trade.js';
@@ -185,6 +185,12 @@ arrive.settlers = (w, m) => {
   if (m.ocean && m.far && (w.massSize[w.mass[i]] || 0) > 150 && discover(w, 'oversea', x, y)) ev(w, `Ships of the ${c.name} cross the open sea and land ${whereAbouts(w, x, y)}.`, x, y, c.color, 2);
 };
 arrive.home = (w, m) => { if (m.to && !m.to.dead) m.to.pop += m.n; };
+// The only way anyone goes anywhere on land: by the ways between towns, or (for camps and bands,
+// which are not on the graph) by the cheapest path over the cells. No straight lines.
+export function routeCells(w, a, b) {
+  if (!a.nomad && !b.nomad) { const c = legCells(w, a, b); if (c && c.length > 1) return c; }
+  const r = landPath(w, a.y * W + a.x, b.y * W + b.x, 4000); return r && r.path.length > 1 ? Array.from(r.path) : null;
+}
 // A trade trip (slice 16): planned over the ways between towns, or the sea lanes. If the carrier's
 // range runs out, the tongue changes or the next people is unknown, the goods change hands on the
 // way; only the first leg is a moving picture, the rest follow as yearly flow.
@@ -197,7 +203,7 @@ export function tradeTrip(w, from, to, g, wet) {
   // the moving picture is a sample: loads going the same way together share one caravan, and a town
   // shows at most three on the road; the rest goes as flow, unseen but the same in every other way
   let out = 0; for (const m of w.movers) { if (m.done || m.kind !== 'trade' || m.from !== from) continue; out++; if (m.final === to && m.goods === g && m.to === first) { m.loads = (m.loads || 1) + 1; return true; } }
-  if (out >= 3) { const d = Math.hypot(wrapDx(first.x - from.x), first.y - from.y); (w.flowQ || (w.flowQ = [])).push({ due: w.tickN + Math.max(2, Math.round(d / (wet ? 6 : 3))), from, to: first, origin: from, final: to, legs: legs.slice(1), goods: g, wet0: !!wet }); return true; }
+  if (out >= 3 || !path || path.length < 2) { const d = Math.hypot(wrapDx(first.x - from.x), first.y - from.y); (w.flowQ || (w.flowQ = [])).push({ due: w.tickN + Math.max(2, Math.round(d / (wet ? 6 : 3))), from, to: first, origin: from, final: to, legs: legs.slice(1), goods: g, wet0: !!wet }); return true; }
   send(w, { kind: 'trade', cult: from.cult, x: from.x, y: from.y, tx: first.x, ty: first.y, n: wet ? 8 : 6, from, to: first, origin: from, final: to, legs: legs.slice(1), goods: g, wet0: !!wet, path: path && path.length > 1 ? path : null, step: stepOf(c, !!wet), land: 1 });
   return true;
 }
@@ -246,7 +252,7 @@ arrive.trade = (w, m) => {
 };
 export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * warMult(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1) * (c.q ? 1 + 0.15 * c.q.war : 1); }
 arrive.army = (w, m) => {
-  const o = m.to, c = w.cults[m.cult], home = m.from, rnd = w.rnd; const back = (frac) => { if (home && !home.dead && m.n * frac > 3) send(w, { kind: 'home', cult: m.cult, x: m.x, y: m.y, tx: home.x, ty: home.y, n: m.n * frac, to: home, land: m.land }); };
+  const o = m.to, c = w.cults[m.cult], home = m.from, rnd = w.rnd; const back = (frac) => { if (home && !home.dead && m.n * frac > 3) { const back = m.path ? Array.from(m.path).slice(0, Math.min(m.path.length, (m.pi || 0) + 1)).reverse() : null; if (back && back.length > 1) send(w, { kind: 'home', cult: m.cult, x: m.x, y: m.y, tx: home.x, ty: home.y, n: m.n * frac, to: home, path: back, step: m.step || 1 }); else home.pop += m.n * frac; } };   /* home the way they came */
   if (!c.alive) return; if (!o || o.dead || o.cult === m.cult) { back(1); return; }
   const oc = w.cults[o.cult], war = c.war && c.war.foe === oc.id ? c.war : null;
   contact(w, c, o, 'Warriors'); if (m.nomad) oc.raided = (oc.raided || 0) + 1;
@@ -622,17 +628,17 @@ function raid(w, s, c) {
   if (!o) return; const oc = w.cults[o.cult], foe = war && war.foe === oc.id;
   const wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet > 1 && !A.boats) return; if (wet > 5 && !A.sailing) return;
   if (s.nomad && w.wall && wallBetween(w, s.x, s.y, o.x, o.y) && rnd() < 0.75) return;   // the wall holds
-  if (oc.power) { if (c.oath !== oc.id && w.rnd() < 0.5) return; } else if (!foe && (oc.war || (!!(c.docs && c.docs.peace) && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) { const gg = pickGoods(w, s, o); if (s.nomad || !tradeTrip(w, s, o, gg, false)) { if (wet === 0) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, land: A.riding ? 1.3 : 0.8, goods: gg }); } } else meet(w, c, oc, 0.15); return; }
+  if (oc.power) { if (c.oath !== oc.id && w.rnd() < 0.5) return; } else if (!foe && (oc.war || (!!(c.docs && c.docs.peace) && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) { const gg = pickGoods(w, s, o); if (s.nomad || !tradeTrip(w, s, o, gg, false)) { if (wet === 0) { const cells = routeCells(w, s, o); if (cells) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, goods: gg, path: cells, step: A.riding ? 2 : 1 }); } } }   /* herders' and short trips: still along a real path */ else meet(w, c, oc, 0.15); return; }
   if (!oc.power) meet(w, c, oc, 0.1);
   const men = Math.max(6, s.pop * (s.nomad ? 0.3 : A.bureaucracy ? 0.2 : 0.14)); s.pop -= men; s.busy = w.year + (A.bureaucracy ? 2 : 3);
   if (wet > 5 && foe && once(w, 'invasion-' + c.id + '-' + oc.id)) ev(w, `A fleet of the ${c.name} crosses the sea to make war on the ${oc.name}.`, s.x, s.y, c.color, 0);
   // (slice 17) settled armies march by the ways, or sail a lane and land on the enemy's coast; they
   // carry food for so far, then live off the land they cross
   const army = { kind: 'army', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: men, n0: men, from: s, to: o, nomad: s.nomad, land: A.railways ? 2.4 : A.riding ? 1.5 : 0.8, sea: A.navigation ? 2.4 : 1.7 };
-  if (!s.nomad && !o.nomad) {
-    if (wet > 5) { const lane = seaLane(w, s.x, s.y, o.x, o.y); if (lane) { army.path = lane; army.step = stepOf(c, true); army.food = Infinity; army.landing = true; } }
-    else { const cells = legCells(w, s, o); if (cells && cells.length > 1) { army.path = cells; army.step = A.railways ? 4 : A.riding ? 2 : 1; army.food = A.railways ? Infinity : 18 + (A.wheel ? 15 : 0) + (A.riding ? 10 : 0) + (A.roads ? 10 : 0); } }
-  }
+  const byLand = wet > 5 ? null : routeCells(w, s, o);
+  if (!byLand && A.boats) { const lane = seaLane(w, s.x, s.y, o.x, o.y); if (lane) { army.path = lane; army.step = stepOf(c, true); army.food = Infinity; army.landing = true; } }   /* across water: by sea and a landing */
+  else { const cells = byLand; if (cells) { army.path = cells; army.step = A.railways ? 4 : A.riding ? 2 : 1; army.food = s.nomad || A.railways ? Infinity : 18 + (A.wheel ? 15 : 0) + (A.riding ? 10 : 0) + (A.roads ? 10 : 0); } }   /* riders live off their herds */
+  if (!army.path) { s.pop += men; s.busy = w.year; return; }   /* no way there: the war band stays home */
   send(w, army);
 }
 // on the march: food runs out with distance; then the army takes what the land has, which hurts the
@@ -673,7 +679,7 @@ function roads(w) {
   }
 }
 function caravans(w) {
-  const rnd = w.rnd; for (const L of w.links.values()) { if (rnd() > 0.3 || L.a.dead || L.b.dead) continue; const rev = rnd() < 0.5, a = rev ? L.a : L.b, b = rev ? L.b : L.a; send(w, { kind: 'trade', cult: a.cult, x: a.x, y: a.y, tx: b.x, ty: b.y, n: 6, from: a, to: b, path: L.path, rev, goods: pickGoods(w, a, b) }); }
+  const rnd = w.rnd; for (const L of w.links.values()) { if (rnd() > 0.3 || L.a.dead || L.b.dead) continue; const rev = rnd() < 0.5, a = rev ? L.a : L.b, b = rev ? L.b : L.a; tradeTrip(w, a, b, pickGoods(w, a, b), false); }   /* caravans on the state's roads go through the same planner as all trade */
 }
 
 /* ---------- start, and the god's hand ---------- */

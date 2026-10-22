@@ -18,7 +18,7 @@
 //     peoples' wars and from the living it kills slows the decay, but never stops it;
 //   - it fades when its cohesion is spent, when its capital is taken, or at a hard cap of ~1000 years.
 import { W, H, wrapDx, wx, clamp } from './core.js';
-import { newCult, addSet, endSet, near, send, strength, endOathWar } from './people.js';
+import { newCult, addSet, endSet, near, send, strength, endOathWar, routeCells } from './people.js';
 import { POWER, POWER_TOWN } from './registry.js';
 import { memAt } from './memory.js';
 import { ev, discover } from './story.js';
@@ -87,7 +87,7 @@ POWER.dead = function deadYear(w, c) {
     near(w, s.x, s.y, 30, s, false, (u, q) => { const oc = w.cults[u.cult]; if (oc.power || u.nomad) return; any = true; const sc = q / (1 + (p && p.grudge && oc.name === p.grudge ? 3 : 0)); if (sc < bd) { bd = sc; tg = u; } });
     if (!tg || s.pop < full || bd > 22 * 22) continue;
     const men = s.pop - full * 0.5; s.pop -= men;
-    send(w, { kind: 'army', cult: c.id, x: s.x, y: s.y, tx: tg.x, ty: tg.y, n: men, from: s, to: tg, land: 0.8, dead: true });
+    const cells = routeCells(w, s, tg); if (!cells) { s.pop += men; continue; } send(w, { kind: 'army', cult: c.id, x: s.x, y: s.y, tx: tg.x, ty: tg.y, n: men, from: s, to: tg, dead: true, path: cells, step: 1 });   /* the dead walk the land too */
     if (w.year - (c.lastSay || -99) > 30 && tg.tier >= 2) { c.lastSay = w.year; ev(w, `The dead of ${s.name} march on ${tg.name}.`, tg.x, tg.y, c.color, 1); }
   }
   // burn out: nothing living left in reach for twenty years
