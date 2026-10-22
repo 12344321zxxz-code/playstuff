@@ -21,6 +21,11 @@ import { ev, discover, once } from './story.js';
 
 const HUNGER = new Set(['drought', 'flood', 'soil', 'locusts', 'fish', 'game', 'ash']);
 const open = (w, c) => { const q = cultureOf(w, c); return q ? q.open : 0.4; };
+// pull is cached per town for the year and refreshed when migrants change it; _pmax bounds every pull,
+// so the reach search can stop where even the best town would score under the cut
+let _pyear = -1, _pmax = 0;
+function pullC(w, t, tc) { if (t._pk === _pyear) return t._pv; const v = pullOf(w, t, tc); t._pv = v; t._pk = _pyear; if (v > _pmax) _pmax = v; return v; }
+const dirty = (w, t) => { t._pk = -1; pullC(w, t, w.cults[t.cult]); };   /* recompute now, so _pmax stays a true bound */
 
 function pushOf(w, s, c) {
   const h = c.hub, L = h ? h.L : 1, cap = s.cap || s.pop, i = s.y * W + s.x;
@@ -46,32 +51,36 @@ function pullOf(w, t, c) {
 export function migrateYear(w) {
   const towns = w.sets.filter((s) => !s.dead && !s.nomad && !w.cults[s.cult].power && !s.undead);
   for (const s of towns) { s.migE = (s.migE || 0) * 0.85; if (s.mix) { for (const k in s.mix) { s.mix[k] *= 0.97; if (s.mix[k] < 0.02) delete s.mix[k]; } } }
+  _pyear = w.year * 2 + 1; _pmax = 0; for (const t of towns) pullC(w, t, w.cults[t.cult]);
   const byId = new Map(towns.map((s) => [s.id, s])), streams = w.streams || (w.streams = new Map()); let moved = 0;
   for (const s of towns) {
     const c = w.cults[s.cult], P = pushOf(w, s, c);
     s.pushE = (s.pushE || 0) + (P.p - (s.pushE || 0)) / 5;   /* it takes a few years before people pack up */
     if (s.pushE < 0.1 || s.pop < 60) continue;
     let n = Math.round(s.pop * 0.02 * (s.pushE - 0.1) / 0.9); if (n < 3 && !(s.pushE > 0.3 && s.pop >= 90)) continue;
-    let top = 'crowding', tv = 0; for (const k in P.t) if (P.t[k] > tv) { tv = P.t[k]; top = k; }
+    let why = 'crowding', tv = 0; for (const k in P.t) if (P.t[k] > tv) { tv = P.t[k]; why = k; }
     // where they could go: by the ways within their reach, or by sea from their own port
     const modern = c.tech >= 6, cands = [];
-    const reach = reachFrom(w, s, rangeOf(c, false));
-    for (const [id, cost] of reach) { const t = byId.get(id); if (!t) continue; const tc = w.cults[t.cult];
-      if (t.cult !== s.cult && (!modern || open(w, tc) < 0.5 || !(c.met && c.met[tc.id]))) continue;   /* other realms: modern eras and open societies only */
-      const sc = pullOf(w, t, tc) * (t.lang === s.lang ? 1.3 : 1) / (1 + cost / 40); if (sc > 0.05) cands.push({ t, sc, sea: false }); }
+    // nearest first: once even the strongest pull at this distance can't beat the third best, stop looking
+    let s1 = 0, s2 = 0, s3 = 0; const top = _pmax * 1.3;
+    reachFrom(w, s, rangeOf(c, false), (id, cost) => { if (s3 > 0 && top / (1 + (cost - 1e-3) / 40) < s3) return true;
+      const t = byId.get(id); if (!t) return false; const tc = w.cults[t.cult];
+      if (t.cult !== s.cult && (!modern || open(w, tc) < 0.5 || !(c.met && c.met[tc.id]))) return false;   /* other realms: modern eras and open societies only */
+      const sc = pullC(w, t, tc) * (t.lang === s.lang ? 1.3 : 1) / (1 + cost / 40); if (sc > 0.05) { cands.push({ t, sc, sea: false });
+        if (sc > s1) { s3 = s2; s2 = s1; s1 = sc; } else if (sc > s2) { s3 = s2; s2 = sc; } else if (sc > s3) s3 = sc; } return false; });
     if (c.arts.boats && cands.length < 3) { const dp = departPort(w, s); if (dp) { const R0 = rangeOf(c, true);
       near(w, dp.port.x, dp.port.y, Math.min(140, R0 * 2), dp.port, true, (t) => { if (!t.port || cands.length > 8 || !byId.has(t.id)) return; const tc = w.cults[t.cult]; if (t.cult !== s.cult && (!modern || open(w, tc) < 0.5 || !(c.met && c.met[tc.id]))) return;
-        const lane = seaLane(w, dp.port.x, dp.port.y, t.x, t.y); if (!lane || lane.length > R0) return; const sc = pullOf(w, t, tc) * 0.7 / (1 + lane.length / 80); if (sc > 0.05) cands.push({ t, sc, sea: true }); }); } }
+        const lane = seaLane(w, dp.port.x, dp.port.y, t.x, t.y); if (!lane || lane.length > R0) return; const sc = pullC(w, t, tc) * 0.7 / (1 + lane.length / 80); if (sc > 0.05) cands.push({ t, sc, sea: true }); }); } }
     cands.sort((a, b) => b.sc - a.sc);
     // pioneers: open land nearby that suits them beats every town they could reach
     if ((!cands.length || cands[0].sc < 0.5) && s.pushE > 0.3 && s.pop >= 90 && w.year - (s.pioneerAt || -99) > 12 && (w.nTown || 0) < 500) { const site = openLand(w, s, c); if (site) { n = Math.max(n, 15);
-      s.pioneerAt = w.year; const v = addSet(w, s.cult, site.x, site.y, n, false); v.lang = s.lang; v.cul = s.cul; v.faith = s.faith; s.pop -= n; moved += n;
-      record(w, 'pioneers', [c.id], { x: v.x, y: v.y, note: `pioneers from ${s.name} found ${v.name} (${top})` });
+      s.pioneerAt = w.year; const v = addSet(w, s.cult, site.x, site.y, n, false); v.lang = s.lang; v.cul = s.cul; v.faith = s.faith; s.pop -= n; dirty(w, s); moved += n;
+      record(w, 'pioneers', [c.id], { x: v.x, y: v.y, note: `pioneers from ${s.name} found ${v.name} (${why})` });
       if (once(w, 'pioneer-' + c.id + '-' + Math.floor(w.year / 60))) ev(w, `Families from ${s.name} go looking for land of their own and found ${v.name}.`, v.x, v.y, c.color, 1);
       discover(w, 'pioneers', v.x, v.y); continue; } }
     if (!cands.length) continue;
     const pick = cands.slice(0, 3), tot = pick.reduce((a, q) => a + q.sc, 0);
-    for (const q of pick) { const k = Math.round(n * q.sc / tot); if (k < 2) continue; arrive(w, s, q.t, k, q.sea, top, streams); moved += k; }
+    for (const q of pick) { const k = Math.round(n * q.sc / tot); if (k < 2) continue; arrive(w, s, q.t, k, q.sea, why, streams); moved += k; }
   }
   for (const [key, st] of streams) { st.n *= 0.9; if (st.n < 1) streams.delete(key); }
   backlash(w, towns);
@@ -79,7 +88,7 @@ export function migrateYear(w) {
 }
 
 function arrive(w, s, t, k, sea, why, streams) {
-  const c = w.cults[s.cult], tc = w.cults[t.cult]; s.pop -= k; t.pop += k * 0.97; t.migE = (t.migE || 0) + k;
+  const c = w.cults[s.cult], tc = w.cults[t.cult]; s.pop -= k; t.pop += k * 0.97; t.migE = (t.migE || 0) + k; dirty(w, s); dirty(w, t);
   if (s.lang != null && t.lang != null && s.lang !== t.lang) { const m = t.mix || (t.mix = {}); m[s.lang] = Math.min(1, (m[s.lang] || 0) + k / Math.max(30, t.pop));
     if (m[s.lang] > 0.5) { const was = t.lang; t.lang = s.lang; delete m[s.lang]; m[was] = 0.3; record(w, 'tongue-flip', [t.cult], { x: t.x, y: t.y, note: `${t.name} now speaks the newcomers' tongue` }); if (w.langs && t.tier >= 2) ev(w, `In ${t.name} the newcomers outnumber the old families. Within a generation the town speaks ${w.langs[s.lang].name}.`, t.x, t.y, tc.color, 1); } }
   if (w.rnd() < k / 200) carry(w, s, t, 'refugees');

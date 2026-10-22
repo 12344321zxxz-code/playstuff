@@ -208,10 +208,17 @@ export function planLand(w, a, b) {
   return i === nodes.length - 1 ? legs : null;
 }
 // every town reachable from a over the ways within a cost budget (one bounded Dijkstra), as id -> cost
-export function reachFrom(w, a, budget) {
-  ensure(w); const out = new Map(); if (!T.adj.has(a.id)) return out; const dist = new Map([[a.id, 0]]); _gh.clear(); _gh.push(0, a.id); let n = 0;
-  while (_gh.n && n++ < 3000) { const u = _gh.pop(), d = dist.get(u); if (_gh.key > d + 1e-3) continue; if (u !== a.id) out.set(u, d);
-    for (const e of T.adj.get(u) || []) { if (e.block) continue; const v = e.a === u ? e.b : e.a, nd = d + Math.max(0.5, e.cost) * (e.war ? 3 : 1) * (1 + (e.fo || 0)); if (nd > budget) continue; const old = dist.get(v); if (old === undefined || nd < old - 1e-6) { dist.set(v, nd); _gh.push(nd, v); } } }
+let _rd = new Float64Array(4096), _rs = new Int32Array(4096), _rst = 0;   /* reach distances by town id, stamped so nothing is cleared */
+// towns reachable along the ways within budget, nearest first; with visit(id, cost) it streams them
+// instead and stops as soon as visit returns true
+export function reachFrom(w, a, budget, visit) {
+  ensure(w); const out = new Map(); if (!T.adj.has(a.id)) return out;
+  if (++_rst > 2e9) { _rst = 1; _rs.fill(0); }
+  const st = _rst, A = a.id; let rd = _rd, rs = _rs; const dOf = (id) => { if (id >= rd.length) { let L = rd.length; while (L <= id) L *= 2; const d2 = new Float64Array(L), s2 = new Int32Array(L); d2.set(rd); s2.set(rs); _rd = rd = d2; _rs = rs = s2; } return rs[id] === st || rs[id] === -st ? rd[id] : undefined; };
+  dOf(A); rs[A] = st; rd[A] = 0; _gh.clear(); _gh.push(0, A); let n = 0;
+  while (_gh.n && n++ < 3000) { const u = _gh.pop(), d = rd[u]; if (_gh.key > d + 1e-3) continue; if (u !== A) { if (!visit) out.set(u, d); else if (rs[u] === st) { rs[u] = -st; if (visit(u, d)) break; } }
+    const es = T.adj.get(u); if (!es) continue;
+    for (let k = 0; k < es.length; k++) { const e = es[k]; if (e.block) continue; const v = e.a === u ? e.b : e.a, nd = d + Math.max(0.5, e.cost) * (e.war ? 3 : 1) * (1 + (e.fo || 0)); if (nd > budget) continue; const old = dOf(v); if (old === undefined || nd < old - 1e-6) { if (rs[v] !== -st) rs[v] = st; rd[v] = nd; _gh.push(nd, v); } } }
   return out;
 }
 // the land path of one leg, as cells (for the moving picture)
