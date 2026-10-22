@@ -17,7 +17,8 @@ async function offer(filename, data) {
 const stem = (w) => `formicarium-seed${w.seed}-year${w.year}`;
 
 async function showReport() {
-  const w = state.w; if (!w) return; let text = remote() ? await simAsk('report', { build: BUILD }) : report(w, BUILD); if (errors.length) text = errors.map((e) => `ERROR (${e.where}, year ${e.year}, tick ${e.tick}): ${e.msg}\n  ${e.stack}`).join('\n') + '\n\n' + text;
+  const w = state.w; if (!w) return; let text = remote() ? await simAsk('report', { build: BUILD }) : report(w, BUILD);
+  text = `Runs in: ${remote() ? 'a background worker' : 'the page'} (${navigator.hardwareConcurrency || '?'} cores)\n` + text; if (errors.length) text = errors.map((e) => `ERROR (${e.where}, year ${e.year}, tick ${e.tick}): ${e.msg}\n  ${e.stack}`).join('\n') + '\n\n' + text;
   let box = $('reportbox');
   if (!box) {
     box = document.createElement('div'); box.id = 'reportbox'; box.className = 'reportbox'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'World report');
