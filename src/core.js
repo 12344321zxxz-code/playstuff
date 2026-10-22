@@ -7,7 +7,7 @@ export const TPY = 8;                           // sim ticks per year
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const smooth = (a, b, x) => { x = clamp((x - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); };
-export const wx = (x) => ((x % W) + W) % W;
+export const wx = (x) => ((x | 0) === x ? x & (W - 1) : ((x % W) + W) % W);   /* W is a power of two: whole numbers just mask */
 export const idx = (x, y) => y * W + wx(x);
 export const LATS = 156;                        // degrees of latitude the map spans
 export const latOf = (y) => (0.5 - (y + 0.5) / H) * LATS;   // degrees, +north

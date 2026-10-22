@@ -131,10 +131,11 @@ export const RUIN_KIND = { nuked: DEATH, sacked: DEATH, plague: DEATH, starved: 
 function wearAway(w) {
   const { mem, memLock } = w, nw = Math.max(1, w.wells.length), pw = w.pushedW && w.pushedW.length === nw * NK ? w.pushedW : (w.pushedW = new Float64Array(nw * NK));
   for (const s of w.sets) {
-    if (s.dead) continue; const wi = w.wellOf ? Math.max(0, w.wellOf[s.y * W + s.x]) : 0, pushed = pw.subarray(wi * NK, wi * NK + NK); const c = w.cults[s.cult], A = c.arts, st = STANCES[c.stance || 'revere'];
+    if (s.dead) continue; const wi = w.wellOf ? Math.max(0, w.wellOf[s.y * W + s.x]) : 0; const c = w.cults[s.cult], A = c.arts, st = STANCES[c.stance || 'revere'];
     const d = (0.002 * c.tech + drainOf(A)) * (s.nomad ? 0.3 : 0.5 + 0.5 * s.tier) * st.drain;
     if (d <= 0) continue; const R = Math.min(12, s.R + 2);
-    for (const o of DISC[R]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(s.x + o[0]); if (memLock[j]) continue; const k = 1 - d * (1 - o[2] / (R + 1)), b = j * NK; for (let q = 0; q < NK; q++) pushed[q] += mem[b + q] * (1 - k); for (let q = 0; q < NK; q++) mem[b + q] *= k; }
+    const D = DISC[R], pb = wi * NK; for (let m = 0; m < D.length; m++) { const o = D[m], yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + ((s.x + o[0]) & (W - 1)); if (memLock[j]) continue; const b = j * NK; if (mem[b] === 0 && mem[b + 1] === 0 && mem[b + 2] === 0 && mem[b + 3] === 0 && mem[b + 4] === 0 && mem[b + 5] === 0) continue;   /* most of the world holds no memory at all */
+      const k = 1 - d * (1 - o[2] / (R + 1)), k1 = 1 - k; for (let q = 0; q < NK; q++) { const v = mem[b + q]; if (v === 0) continue; pw[pb + q] += v * k1; mem[b + q] = v * k; } }
     if (s.tower) for (const o of DISC[6]) { const yy = s.y + o[1]; if (yy < 0 || yy >= H) continue; const b = (yy * W + wx(s.x + o[0])) * NK; for (let q = 0; q < NK; q++) mem[b + q] *= 0.97; }   // sorcerers draw the place dry
   }
 }

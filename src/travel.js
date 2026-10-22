@@ -34,15 +34,17 @@ export function stepCost(w, c, n, diag) {
   return diag ? k * 1.42 : k;
 }
 // cheapest land path between two cells (A*), or null; budget in cells expanded
+const LDX = [-1, 0, 1, -1, 1, -1, 0, 1];
 export function landPath(w, src, dst, budget, greedy) {
   const hw = greedy ? 1.2 : 0.35;   /* a greedier search for walkers off the town graph: near-cheapest, found fast */
-  const water = w.water; _s++; _hp.clear(); _d[src] = 0; _st[src] = _s; _pv[src] = -1; const tx = dst % W, ty = (dst / W) | 0;
+  const water = w.water, hh = w.h, tt = w.t, river = w.river, road = w.road, ice = w.ice, court = w.courtOf, sea = w.params.sea; _s++; _hp.clear(); _d[src] = 0; _st[src] = _s; _pv[src] = -1; const tx = dst % W, ty = (dst / W) | 0;
   _hp.push(Math.hypot(wrapDx(src % W - tx), ((src / W) | 0) - ty) * hw, src); budget = budget || 6000;
   while (_hp.n && budget-- > 0) {
     const c = _hp.pop(); if (c === dst) { let n = 0; for (let k = c; k >= 0; k = _pv[k]) n++; const p = new Int32Array(n); for (let k = c, j = n - 1; k >= 0; k = _pv[k]) p[j--] = k; return { path: p, cost: _d[c] }; }
-    const dc = _d[c], x = c % W, y = (c / W) | 0;
-    for (let d = 0; d < 8; d++) { const dy = d < 3 ? -1 : d < 5 ? 0 : 1, dx = [-1, 0, 1, -1, 1, -1, 0, 1][d], yy = y + dy; if (yy < 1 || yy >= H - 1) continue; const n = yy * W + wx(x + dx); if (water[n] && n !== dst) continue;
-      const nd = dc + stepCost(w, c, n, dx && dy); if (_st[n] !== _s || nd < _d[n]) { _st[n] = _s; _d[n] = nd; _pv[n] = c; _hp.push(nd + Math.hypot(wrapDx(x + dx - tx), yy - ty) * hw, n); } }
+    const dc = _d[c], x = c % W, y = (c / W) | 0, hc = hh[c];
+    for (let d = 0; d < 8; d++) { const dy = d < 3 ? -1 : d < 5 ? 0 : 1, dx = LDX[d], yy = y + dy; if (yy < 1 || yy >= H - 1) continue; const n = yy * W + wx(x + dx); if (water[n] && n !== dst) continue;
+      let k = 1 + Math.abs(hh[n] - hc) * 55 + tt[n] * 1.3 + (river[n] && !road[n] ? 1.5 : 0) + (ice[n] ? 3 : 0) + (hh[n] - sea > 0.35 ? 2 : 0);   /* stepCost, inlined */
+      if (court && court[n]) k *= 4; if (road[n]) k *= 0.35; const nd = dc + (dx && dy ? k * 1.42 : k); if (_st[n] !== _s || nd < _d[n]) { _st[n] = _s; _d[n] = nd; _pv[n] = c; _hp.push(nd + Math.hypot(wrapDx(x + dx - tx), yy - ty) * hw, n); } }
   }
   return null;
 }
@@ -141,14 +143,16 @@ function wetMap(w) {
 // field to the port. Lanes are listed as fine cells chosen on open water.
 const fineOf = (w, c) => { const i = ((c / HW) | 0) * 2 * W + (c % HW) * 2; for (const j of [i, i + 1, i + W, i + W + 1]) if (w.water[j] === 1 && !w.ice[j]) return j; return i; };
 function fieldTo(w, dst) {
-  const F = T.fields || (T.fields = new Map()); const have = F.get(dst); if (have && w.year - have.year < SEA_EVERY) { F.delete(dst); F.set(dst, have); return have.dir; }   /* most recently used last: the least used go first */
+  const F = T.fields || (T.fields = new Map()); const have = F.get(dst), sk = w.stamp.land * 1000 + (w.climateStamp || 0) % 1000;
+  if (have && w.year - have.year >= SEA_EVERY && have.sk === sk) have.year = w.year;   /* nothing changed on the water since it was made: the same map would come out */
+  if (have && w.year - have.year < SEA_EVERY) { F.delete(dst); F.set(dst, have); return have.dir; }   /* most recently used last: the least used go first */
   const dir = new Uint8Array(HN).fill(255); dir[dst] = 254; _cst++; _ch.clear(); _cd[dst] = 0; _cs[dst] = _cst; _ch.push(0, dst);
   while (_ch.n) {
     const v = _ch.pop(), dv = _cd[v]; if (_ch.key > dv + 1e-4) continue; const vx = v % HW, vy = (v / HW) | 0;
     for (let d = 0; d < 8; d++) { const uy = vy - DIRS[d][1]; if (uy < 0 || uy >= HH) continue; const u = uy * HW + (vx - DIRS[d][0] + HW) % HW; if (!_wet[u] || u === dst) continue;
       const nd = dv + _lc[u * 8 + d]; if (_cs[u] !== _cst || nd < _cd[u]) { _cs[u] = _cst; _cd[u] = nd; dir[u] = d; _ch.push(nd, u); } }
   }
-  F.delete(dst); F.set(dst, { year: w.year, dir }); if (F.size > 300) F.delete(F.keys().next().value);   /* the oldest go first */
+  F.delete(dst); F.set(dst, { year: w.year, dir, sk }); if (F.size > 300) F.delete(F.keys().next().value);   /* the oldest go first */
   return dir;
 }
 export function seaLane(w, ax, ay, bx, by) {
