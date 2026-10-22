@@ -79,6 +79,7 @@ export function refreshWater(w) { if (w.job && w.job.k === 'water') w.job = null
 export function refreshClimate(w) { w.job = null; computeClimate(w); derive(w); computeHydro(w); derive(w); w.need.climate = false; w.need.water = false; w.stamp.land++; landChanged(w); }
 export function movePlates(w) { replate(w); w.plateStamp = (w.plateStamp || 0) + 1; refreshClimate(w); }
 
+const CENSUS_STEPS = [5, 6, 4, 1, 4, 1, 1, 6];
 export function tick(w) {
   w.tickN++; w.phase = (w.tickN % TPY) / TPY; w.year = Math.floor(w.tickN / TPY);
   if (w.aerosol > 0.001) w.aerosol *= 0.975; else w.aerosol = 0;
@@ -96,7 +97,7 @@ export function tick(w) {
   }
   // Background work is cut into a fixed number of steps per tick, never by the clock, so the same
   // seed gives the same world in the browser, in tests and when Claude replays a saved game.
-  if (w.census) for (let k = 0; k < 2; k++) if (w.census.next().done) { w.census = null; break; }
+  if (w.census) for (let k = 0, m = CENSUS_STEPS[ph]; k < m; k++) if (w.census.next().done) { w.census = null; break; }   /* fewer census steps on the ticks that carry heavy yearly work */
   if (w.job && (w.tickN & 1)) runJob(w, 1);   // every other tick, so a census step and a climate step rarely share one
 }
 // Finish everything in flight (before a save, so the saved world and the running one stay identical).

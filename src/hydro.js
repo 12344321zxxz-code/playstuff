@@ -33,13 +33,14 @@ export function* hydroSteps(w) {
       const yy = y + NB8[k][1]; if (yy < 0 || yy >= H) continue; const nb = yy * W + wx(x + NB8[k][0]); if (seen[nb]) continue;
       seen[nb] = 1; const f = Math.max(h[nb], key + 2e-5 * (1 + 3 * hash2(nb, c, 7))); fl2[nb] = f; dn2[nb] = c; heap.push(f, nb);
     }
-    if (++n === 12000) { n = 0; yield; if (my !== epoch) return; }
+    if (++n === 6000) { n = 0; yield; if (my !== epoch) return; }
   }
   yield; if (my !== epoch) return;
   flow2.fill(0);
   const { rMean, mi } = w;
   for (const sp of w.springs) flow2[sp.y * W + sp.x] += sp.q;
   for (let k = oc - 1; k >= 0; k--) {
+    if ((k & 32767) === 0) { yield; if (my !== epoch) return; }
     const c = order[k]; if (wat2[c] === 1) continue;
     const m = mi[c]; flow2[c] += rMean[c] * (0.12 + 0.88 * clamp((m - 0.15) / 1.1, 0, 1)) + 0.01;
     const d = dn2[c]; if (d >= 0) flow2[d] += flow2[c];
@@ -48,6 +49,7 @@ export function* hydroSteps(w) {
   // puddles are not lakes: keep only hollows a few cells across
   const q = order; seen.fill(0); let big = null;
   for (let i = 0; i < N; i++) {
+    if ((i & 32767) === 32767) { yield; if (my !== epoch) return; }
     if (wat2[i] !== 2 || seen[i]) continue; let qn = 0, deep = 0; q[qn++] = i; seen[i] = 1;
     for (let hd = 0; hd < qn; hd++) { const c = q[hd], x = c % W, y = (c / W) | 0; if (fl2[c] - h[c] > deep) deep = fl2[c] - h[c];
       for (let k = 0; k < 4; k++) { const yy = y + (k === 2 ? -1 : k === 3 ? 1 : 0); if (yy < 0 || yy >= H) continue; const nb = yy * W + wx(x + (k === 0 ? 1 : k === 1 ? -1 : 0)); if (wat2[nb] === 2 && !seen[nb]) { seen[nb] = 1; q[qn++] = nb; } } }
@@ -69,6 +71,7 @@ export function* hydroSteps(w) {
   // landmasses: which continent or island each land cell belongs to
   const sizes = [0]; mass2.fill(0); let id = 0;
   for (let i = 0; i < N; i++) {
+    if ((i & 16383) === 16383) { yield; if (my !== epoch) return; }
     if (wat2[i] === 1 || mass2[i]) continue; id++; let cnt = 0; qn = 0; q[qn++] = i; mass2[i] = id;
     for (let hd = 0; hd < qn; hd++) { const c = q[hd], x = c % W, y = (c / W) | 0; cnt++;
       for (let k = 0; k < 8; k++) { const yy = y + NB8[k][1]; if (yy < 0 || yy >= H) continue; const m = yy * W + wx(x + NB8[k][0]); if (wat2[m] !== 1 && !mass2[m]) { mass2[m] = id; q[qn++] = m; } } }
@@ -76,7 +79,8 @@ export function* hydroSteps(w) {
   }
   yield; if (my !== epoch) return;
   // all at once
-  w.down.set(dn2); w.filled.set(fl2); w.water.set(wat2); w.flow.set(flow2); w.river.set(riv2); w.fresh.set(fresh2); w.dSea.set(dSea2); for (const key of ['massKinds', 'floraKinds', 'arrived']) { const M = w[key]; if (!M) continue; const nk = {}; for (let i = 0; i < N; i += 3) { const a = mass2[i], b = w.mass[i]; if (!a || !b) continue; const o = M[b]; if (!o) continue; const t = nk[a] || (nk[a] = []); for (const s of o) if (!t.includes(s)) t.push(s); } w[key] = nk; }
+  w.down.set(dn2); w.filled.set(fl2); w.water.set(wat2); w.flow.set(flow2); w.river.set(riv2); w.fresh.set(fresh2); w.dSea.set(dSea2); const pairs = [], seenP = new Set(); for (let i = 0; i < N; i += 3) { const a = mass2[i], b = w.mass[i]; if (!a || !b) continue; const k = a * 1048576 + b; if (!seenP.has(k)) { seenP.add(k); pairs.push(a, b); } }   /* old landmass -> new, each pair once */
+  for (const key of ['massKinds', 'floraKinds', 'arrived']) { const M = w[key]; if (!M) continue; const nk = {}; for (let p = 0; p < pairs.length; p += 2) { const a = pairs[p], o = M[pairs[p + 1]]; if (!o) continue; const t = nk[a] || (nk[a] = []); for (const s of o) if (!t.includes(s)) t.push(s); } w[key] = nk; }
   w.mass.set(mass2);
   w.massSize = sizes; w.bigLake = big;
   const list = new Int32Array(rn); rn = 0; for (let i = 0; i < N; i++) if (riv2[i]) list[rn++] = i;

@@ -84,7 +84,7 @@ function* season(w, s, out, my) {
   yield; if (my !== epoch) return;
   // 4. sea temperature carried by the currents
   sst.set(base);
-  for (let it = 0; it < 30; it++) { advect(sst, A, cu, cv); for (let i = 0; i < CN; i++) sst[i] = land[i] ? base[i] : A[i] + (base[i] - A[i]) * 0.09; }
+  for (let it = 0; it < 30; it++) { if (it === 15) { yield; if (my !== epoch) return; } advect(sst, A, cu, cv); for (let i = 0; i < CN; i++) sst[i] = land[i] ? base[i] : A[i] + (base[i] - A[i]) * 0.09; }
   // 5. air temperature: the wind carries sea air inland
   for (let i = 0; i < CN; i++) { ts[i] = land[i] ? ts[i] : sst[i]; ta[i] = ts[i]; }
   for (let it = 0; it < 7; it++) { advect(ta, A, u, v); for (let i = 0; i < CN; i++) ta[i] = A[i] + (ts[i] - A[i]) * (land[i] ? 0.34 : 0.7); }
@@ -94,7 +94,7 @@ function* season(w, s, out, my) {
   for (let i = 0; i < CN; i++) { QS[i] = qsat(ta[i] - LAPSE * elev[i]); QO[i] = qsat(sst[i]); q[i] = (land[i] ? 0.25 : 0.6) * qsat(ta[i]); acc[i] = 0; }
   const SPIN = 18, ITS = 58;
   for (let it = 0; it < ITS; it++) {
-    if (it % 8 === 7) { yield; if (my !== epoch) return; }
+    if (it % 4 === 3) { yield; if (my !== epoch) return; }
     advect(q, A, u, v);
     for (let y = 0; y < CH; y++) {
       const eff = rainBelts(Math.abs(C.lat[y] - phiI)), ym = y > 0 ? y - 1 : 0, yp = y < CH - 1 ? y + 1 : CH - 1;

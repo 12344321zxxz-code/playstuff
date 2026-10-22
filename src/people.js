@@ -316,8 +316,9 @@ export function* peopleSteps(w) {
   const sets = w.sets, n0 = sets.length, rnd = w.rnd, { water, river, farm, soil, g, t, fresh, owner, fireT, ore, mi, crop, h } = w, sea = w.params.sea;
   for (const c of w.cults) { c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
   let total = 0, smoke = 0; const sun = 1 - Math.min(0.6, w.aerosol * 0.8);
+  const chunk = Math.max(6, Math.ceil(n0 / 22));   /* the towns in 22 even steps, then the peoples, faiths and tongues in three: the year fits in its eight ticks */
   for (let k = 0; k < n0; k++) {
-    if (k % 40 === 39) yield;
+    if (k % chunk === chunk - 1) yield;
     const s = sets[k]; if (s.dead) continue; const c = w.cults[s.cult], A = c.arts, i0 = s.y * W + s.x; s.age++;
     if (water[i0] === 1) { let to = -1, bd = 99; for (const o of DISC[4]) { const yy = s.y + o[1]; if (yy < 1 || yy >= H - 1) continue; const j = yy * W + wx(s.x + o[0]); if (!water[j] && !w.lava[j] && o[2] < bd) { bd = o[2]; to = j; } }
       if (to < 0 || s.pop < 30) { endSet(w, s, 'drowned'); continue; }   /* (slice 17) a rising sea moves a town uphill if there is land close by; only a town with nowhere to go drowns */
@@ -396,7 +397,10 @@ export function* peopleSteps(w) {
     if (c.count === 0) { if (!w.sets.some((s) => s.cult === c.id) && !w.movers.some((m) => m.cult === c.id && (m.kind === 'refugees' || m.kind === 'settlers'))) { c.alive = false; record(w, 'gone', [c.id], { note: 'the last of them' }); endWar(w, c, true); ev(w, `The ${c.name} are gone from the world.`, null, null, c.color, c.peak > 2000 ? 2 : c.peak > 300 ? 0 : 1); if (c.peak > 300) discover(w, 'gone', null, null); } continue; }
     alive++; if (c.power) { POWER[c.power](w, c); continue; } cultYear(w, c);
   }
-  ruinsYear(w); plaguesYear(w); faithYear(w); tonguesYear(w); captureYear(w); greatPowersYear(w); relicsYear(w);
+  yield;
+  ruinsYear(w); plaguesYear(w); faithYear(w);
+  yield;
+  tonguesYear(w); captureYear(w); greatPowersYear(w); relicsYear(w);
   w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop
   if (smoke > 0) { w.greenhouse = Math.min(7, w.greenhouse + smoke * 1.1e-7); if (!w.found.smoke) { const c = w.cults.find((q) => q.alive && q.arts.engines); if (c && c.big) discover(w, 'smoke', c.big.x, c.big.y); } }
   w.stats.people = Math.round(total); w.stats.places = w.sets.length; w.stats.peoples = alive;

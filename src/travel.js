@@ -81,6 +81,7 @@ function rebuild(w) {
 }
 // the trade on each route walks the cheapest chain of ways between its towns (land routes) or its
 // sea lane (wet routes); what walks a way wears it into a track
+let _deadNear = null;
 function flows(w) {
   const wear = w.tracks || (w.tracks = new Map()); const use = new Map();
   T.routeWays = new Map();
@@ -94,11 +95,14 @@ function flows(w) {
   for (const k of [...wear.keys()]) if (!T.edges.has(k)) wear.delete(k);
   for (const k of [...T.chains.keys()]) if (!w.routes.has(k)) T.chains.delete(k);
   // danger: a way through the land of the dead is closed; a way between realms at war costs three times as much
+  let deadNear = null;   /* every cell within 5 of a town of the dead, marked once */
+  if (w.anyPower !== false) for (const s of w.sets) { if (s.dead || s.nomad || w.cults[s.cult].power !== 'dead') continue; deadNear = deadNear || (_deadNear || (_deadNear = new Uint8Array(W * H))).fill(0);
+    for (let dy = -4; dy <= 4; dy++) { const y = s.y + dy; if (y < 0 || y >= H) continue; for (let dx = -4; dx <= 4; dx++) if (dx * dx + dy * dy < 25) deadNear[y * W + ((s.x + dx) & (W - 1))] = 1; } }
   for (const e of T.edges.values()) {
     e.block = false; e.war = false; if (!e.A || !e.B) continue; const ca = w.cults[e.A.cult], cb = w.cults[e.B.cult];
     e.war = !!((ca.war && ca.war.foe === cb.id) || (cb.war && cb.war.foe === ca.id));
     e.fo = 0; if (e.path && w.fallout) { let mx = 0, sm = 0; for (const i of e.path) { const v = w.fallout[i]; sm += v; if (v > mx) mx = v; } if (mx > 1) e.block = true; else e.fo = +(4 * sm / e.path.length + 2 * mx).toFixed(2); }   /* the worst fallout closes a way; lighter fallout makes it dearer */
-    if (e.path && w.anyPower !== false) for (let k = 0; k < e.path.length && !e.block; k += 4) { const i = e.path[k]; near(w, i % W, (i / W) | 0, 5, null, true, (s) => { if (w.cults[s.cult].power === 'dead') e.block = true; }); }
+    if (e.path && deadNear) for (let k = 0; k < e.path.length; k += 4) if (deadNear[e.path[k]]) { e.block = true; break; }
   }
   // grades
   for (const e of T.edges.values()) {
