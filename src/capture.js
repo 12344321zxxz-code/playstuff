@@ -20,7 +20,7 @@ import { dragonDies } from './fantasy.js';
 import { newHouse } from './relics.js';
 import { legCells, seaLane } from './travel.js';
 import { tagFrom, word, tongueGap } from './tongues.js';
-import { W, wx, wrapDx } from './core.js';
+import { W, H, DISC, wx, wrapDx } from './core.js';
 
 const dragonPower = (d) => (d.wyrm ? 60000 : 14000) * (1 + Math.min(2, d.age / 250));
 const houseName = (w, c) => `the House of ${word(w, c.lang, w.rnd() < 0.5 ? 1 : 2)}`;
@@ -162,6 +162,7 @@ function settle(w, o, x, y, natives) {
   const ob = o.big, n = 2 + ((w.rnd() * 3) | 0); let made = 0;
   for (let k = 0; k < n * 8 && made < n; k++) { const a = w.rnd() * 6.283, r = w.rnd() * 14, xx = wx(Math.round(x + Math.cos(a) * r)), yy = Math.round(y + Math.sin(a) * r); if (yy < 3 || yy > 252) continue; const i = yy * W + xx;
     if (w.water[i] || w.gCap[i] < 0.25 || near(w, xx, yy, 5, null, true)) continue;
+    { let seaN = 0; for (const o2 of DISC[2]) { const y2 = yy + o2[1]; if (y2 < 0 || y2 >= H) continue; const j = y2 * W + wx(xx + o2[0]); if (w.water[j] === 1 && !w.ice[j]) seaN++; } if (seaN < 3) continue; }   /* a colony across the sea is founded on a shore, as a port */
     const route = routeToCell(w, ob, xx, yy, true); if (!route) continue; send(w, { kind: 'settlers', cult: o.id, x: ob.x, y: ob.y, tx: xx, ty: yy, n: 40, from: ob, wetN: 3, ocean: true, far: true, split: false, path: route.path, step: 4 }); made++; }
   if (!made) return;
   record(w, 'settle', [o.id].concat(natives ? [natives.id] : []), { note: `${made} ships`, x, y });

@@ -162,7 +162,7 @@ export function flee(w, s, n, sick) {
   n = Math.round(n); if (n < 12 || s.dead) return; const c = w.cults[s.cult]; let to = null, bs = 0;
   near(w, s.x, s.y, 34, s, true, (o, q) => { if (o.cult !== s.cult && w.rnd() < 0.7) return; const sc = (o.note === 'grow' ? 2 : 1) * (o.cult === s.cult ? 2 : 1) / (6 + Math.sqrt(q)); if (sc > bs) { bs = sc; to = o; } });
   let tx, ty; if (to) { tx = to.x; ty = to.y; } else { const a = w.rnd() * 6.283, d = 8 + w.rnd() * 10; tx = wx(Math.round(s.x + Math.cos(a) * d)); ty = clamp(Math.round(s.y + Math.sin(a) * d), 3, H - 4); }
-  const path = to ? routeCells(w, s, to) : (() => { const r = landPath(w, s.y * W + s.x, ty * W + tx, 2500); return r && r.path.length > 1 ? Array.from(r.path) : null; })();
+  const path = to ? routeCells(w, s, to) : (() => { const r = landPath(w, s.y * W + s.x, ty * W + tx, 4000, true); return r && r.path.length > 1 ? Array.from(r.path) : null; })();
   if (!path) { if (to) { to.pop += n * 0.9; if (s.plague > 0) infect(w, to, s.pid); } return; }   /* no road to walk: they reach their kin the hard way, or are lost */
   send(w, { kind: 'refugees', cult: s.cult, x: s.x, y: s.y, tx, ty, n, to, sick: s.plague > 0 ? s.pid : null, faith: s.faith, lang: s.lang, cul: s.cul, path, step: c.arts.riding ? 2 : 1 });
 }
@@ -188,16 +188,27 @@ arrive.settlers = (w, m) => {
 };
 arrive.home = (w, m) => { if (m.to && !m.to.dead) m.to.pop += m.n; };
 // a route from a town to a cell: over land, or (with boats) by sea lane and ashore
-export function routeToCell(w, s, x, y, boats) {
-  const r = landPath(w, s.y * W + s.x, y * W + wx(x), 4000); if (r && r.path.length > 1) return { path: Array.from(r.path), wet: false };
-  if (boats) { const lane = seaLane(w, s.x, s.y, x, y); if (lane) return { path: lane.concat([y * W + wx(x)]), wet: true }; }
+export function routeToCell(w, s, x, y, boats, landOnly) {
+  const r = landPath(w, s.y * W + s.x, y * W + wx(x), 6000, true); if (r && r.path.length > 1) return { path: Array.from(r.path), wet: false };
+  if (boats && !landOnly) { const sea = byShip(w, s, x, y); if (sea) return { path: sea.concat([y * W + wx(x)]), wet: true }; }
   return null;
+}
+// Ships leave only from a port of one's own people: a band or an inland town walks to the nearest
+// such port first. Returns the whole route (walk, then lane), or null.
+export function departPort(w, s) {
+  if (s.port && !s.nomad) return { port: s, walk: null };
+  let best = null, bd = 1e9; near(w, s.x, s.y, 40, s, true, (o, q) => { if (o.port && !o.nomad && o.cult === s.cult && q < bd) { bd = q; best = o; } });
+  if (!best) return null; const walk = routeCells(w, s, best); return walk ? { port: best, walk } : null;
+}
+function byShip(w, s, x, y) {
+  const d = departPort(w, s); if (!d) return null; const lane = seaLane(w, d.port.x, d.port.y, x, y); if (!lane) return null;
+  return d.walk ? d.walk.concat(lane) : lane;
 }
 // The only way anyone goes anywhere on land: by the ways between towns, or (for camps and bands,
 // which are not on the graph) by the cheapest path over the cells. No straight lines.
 export function routeCells(w, a, b) {
   if (!a.nomad && !b.nomad) { const c = legCells(w, a, b); if (c && c.length > 1) return c; }
-  const r = landPath(w, a.y * W + a.x, b.y * W + b.x, 4000); return r && r.path.length > 1 ? Array.from(r.path) : null;
+  const r = landPath(w, a.y * W + a.x, b.y * W + b.x, 6000, true); return r && r.path.length > 1 ? Array.from(r.path) : null;
 }
 // A trade trip (slice 16): planned over the ways between towns, or the sea lanes. If the carrier's
 // range runs out, the tongue changes or the next people is unknown, the goods change hands on the
@@ -602,17 +613,20 @@ function townStep(w, s, c) {
 }
 
 function colonize(w, s, c) {
-  const rnd = w.rnd, A = c.arts, maxD = (A.navigation ? 120 : A.sailing ? 70 : A.railways ? 40 : A.boats || A.roads ? 22 : 12 + 4 * livestock(c).cart) * (c.q && (A.boats || A.sailing) ? 1 + 0.6 * c.q.sea : 1), sea = w.params.sea; let best = null, bs = 9.5;
+  const rnd = w.rnd, A = c.arts, maxD = (A.navigation ? 120 : A.sailing ? 70 : A.railways ? 40 : A.boats || A.roads ? 22 : 12 + 4 * livestock(c).cart) * (c.q && (A.boats || A.sailing) ? 1 + 0.6 * c.q.sea : 1), sea = w.params.sea; const bs = 9.5, cands = [];
   for (let q = 0; q < 12; q++) {
     const far = A.sailing && q < 3, a = rnd() * 6.2832, d = far ? 26 + rnd() * (maxD - 26) : 6 + rnd() * (Math.min(maxD, 22) - 6), x = wx(Math.round(s.x + Math.cos(a) * d)), y = Math.round(s.y + Math.sin(a) * d * 0.8); if (y < 3 || y >= H - 3) continue; const i = y * W + x;
     if (w.water[i] || w.h[i] - sea > (A.terraces ? 0.5 : 0.36) || w.gCap[i] < 0.24 || w.ice[i] || w.magic[i] > 0.75 || near(w, x, y, 8.5, null, true)) continue;
     const wet = crossesWater(w, s.x, s.y, x, y); if (wet > 1 && !A.boats) continue; if (wet > 5 && !A.sailing) continue;
     let sc = 0; for (const o of DISC[2]) { const yy = y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(x + o[0]); if (w.water[j]) sc += A.boats ? 0.6 : 0.15; else sc += 0.12 * w.gCap[j] + (A.farming ? Math.min(1, cropYield(w, c, j) + (w.fresh[j] <= (A.irrigation ? 3 : 1) ? 0.5 : 0)) : 0) + (c.grazer ? 0.25 * w.g[j] : 0); }
     if (ruinAt(w, x, y) && !w.ruins.some((r) => r.haunt && Math.abs(wrapDx(r.x - x)) <= 2 && Math.abs(r.y - y) <= 2)) sc += 2;
-    sc *= 0.85 + 0.3 * rnd(); if (sc > bs) { bs = sc; best = { x, y, wet, far: w.mass[i] !== w.mass[s.y * W + s.x] }; }
+    sc *= 0.85 + 0.3 * rnd(); if (sc > bs) cands.push({ x, y, wet, sc, far: w.mass[i] !== w.mass[s.y * W + s.x] });
   }
+  // the best site they can actually reach wins; across water only a shore a ship can land on, so the colony is a port
+  cands.sort((p, q) => q.sc - p.sc); let best = null, route = null;
+  for (const cd of cands.slice(0, 3)) { const across = cd.wet > 1; if (across) { let seaN = 0; for (const o of DISC[2]) { const yy = cd.y + o[1]; if (yy < 0 || yy >= H) continue; const j = yy * W + wx(cd.x + o[0]); if (w.water[j] === 1 && !w.ice[j]) seaN++; } if (seaN < 3) continue; }
+    const r = routeToCell(w, s, cd.x, cd.y, A.boats, !across); if (r) { best = cd; route = r; break; } }
   if (!best) { if (c.grazer && rnd() < 0.5) pasture(w, s, c); return; } const ocean = best.wet > 5;
-  const route = routeToCell(w, s, best.x, best.y, A.boats); if (!route) return;   /* no way there, by land or sea: nobody goes */
   s.pop -= 26; send(w, { kind: 'settlers', cult: s.cult, x: s.x, y: s.y, tx: best.x, ty: best.y, n: 26, from: s, wetN: best.wet, ocean, far: best.far, split: rnd() < (ocean ? 0.4 : best.wet > 1 ? 0.12 : 0.02), path: route.path, step: route.wet ? stepOf(c, true) : A.riding ? 2 : 1 });
 }
 
@@ -645,7 +659,7 @@ function raid(w, s, c) {
   // carry food for so far, then live off the land they cross
   const army = { kind: 'army', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: men, n0: men, from: s, to: o, nomad: s.nomad, land: A.railways ? 2.4 : A.riding ? 1.5 : 0.8, sea: A.navigation ? 2.4 : 1.7 };
   const byLand = wet > 5 ? null : routeCells(w, s, o);
-  if (!byLand && A.boats) { const lane = seaLane(w, s.x, s.y, o.x, o.y); if (lane) { army.path = lane; army.step = stepOf(c, true); army.food = Infinity; army.landing = true; } }   /* across water: by sea and a landing */
+  if (!byLand && A.boats) { const lane = byShip(w, s, o.x, o.y); if (lane) { army.path = lane; army.step = stepOf(c, true); army.food = Infinity; army.landing = true; } }   /* across water: by sea and a landing */
   else { const cells = byLand; if (cells) { army.path = cells; army.step = A.railways ? 4 : A.riding ? 2 : 1; army.food = s.nomad || A.railways ? Infinity : 18 + (A.wheel ? 15 : 0) + (A.riding ? 10 : 0) + (A.roads ? 10 : 0); } }   /* riders live off their herds */
   if (!army.path) { s.pop += men; s.busy = w.year; return; }   /* no way there: the war band stays home */
   send(w, army);
