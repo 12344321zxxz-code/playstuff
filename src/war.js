@@ -100,7 +100,7 @@ export function aimText(w, K) {
 export function bleed(w, c, n) { const K = conflictOf(w, c); if (!K || !K.lost) return; const s = sideOf(K, c.id); if (s >= 0) { K.lost[s] += n; K.last = w.year; } }
 function exhaustion(w, K, s) {
   const lead = w.cults[K.sides[s].lead]; let pop = 0, occ = 0; for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { pop += c.pop; occ += c._occP || 0; } }
-  const e = { lost: 3 * K.lost[s] / Math.max(1, K.pop0[s]), held: 1.5 * (pop ? occ / pop : 0), capital: lead.big && lead.big.occ ? 0.35 : 0, hunger: 0.4 * (lead.count ? Math.min(1, lead.hungry / lead.count) : 0), cohesion: 1.2 * Math.max(0, K.coh0[s] - lead.coh) };
+  const e = { lost: 3 * K.lost[s] / Math.max(1, K.pop0[s]), held: 1.5 * (pop ? occ / pop : 0), capital: lead.big && lead.big.occ ? 0.35 : 0, hunger: 0.4 * (lead.count ? Math.min(1, lead.hungry / lead.count) : 0), cohesion: 1.2 * Math.max(0, K.coh0[s] - lead.coh), serving: 0.01 * (w.year - K.since) };   /* years of men away from the fields */
   let t = 0; for (const k in e) t += e[k]; return { t, e };
 }
 // H: { endWar(w, lead, out), annex(w, town, to), subjugate(w, loser, winner), release(w, client, how) } from people.js and capture.js
@@ -117,7 +117,7 @@ export function warsYear(w, H) {
     const aimT = K.aim.towns.map((t) => byId.get(t)).filter((s) => s && sideOf(K, s.cult) === 1), N = aimT.length;
     let held = 0, long = 0; for (const s of aimT) if (s.occ && sideOf(K, s.occ.by) === 0) { held++; if (w.year - s.occ.since >= 2) long++; }
     const pA = N ? held / N : 0, xa = exhaustion(w, K, 0), xd = exhaustion(w, K, 1);
-    const willA = K.stakes[0] * (0.5 + pA) - xa.t, willD = K.stakes[1] * (1 - 0.5 * pA) + 0.1 - xd.t;
+    const willA = K.stakes[0] * (0.7 + pA) - xa.t, willD = K.stakes[1] * (1 - 0.5 * pA) + 0.1 - xd.t;
     K.will = [+willA.toFixed(2), +willD.toFixed(2)]; K.exh = [xa.e, xd.e]; K.prog = pA;
     let out = null, how = 'will';
     if (N && long === N) { out = 'won'; how = 'held'; }
@@ -145,7 +145,8 @@ function settle(w, K, out, how, aimT, H) {
   } else if (out === 'lost') {
     if (D.over && D.over.kind === 'realm' && D.over.id === A.id) { H.release(w, D, `the ${D.name} beat the ${A.name} and stop paying them`); r.kind = 'release'; }
     else if (K.aim.kind === 'restore' && K.aim.name && w.claims) { for (const cl of w.claims) if (cl.name === K.aim.name && !cl.done) cl.done = true; r.kind = 'frontier'; r.name = K.aim.name; }
-    else { A.owe = 0.04; A.oweTo = D.id; A.oweUntil = w.year + 20; r.kind = 'reparations'; }
+    else if (K.lost[0] / Math.max(1, K.pop0[0]) > K.lost[1] / Math.max(1, K.pop0[1]) || w.sets.some((s) => !s.dead && s.occ && s.occ.cid === K.id && sideOf(K, s.occ.by) === 1)) { A.owe = 0.04; A.oweTo = D.id; A.oweUntil = w.year + 20; r.kind = 'reparations'; }   /* the defenders made them pay for it */
+    else r.kind = 'status';
     D.wins = (D.wins || 0) + 2; A.wins = Math.max(0, (A.wins || 0) - 2);
   }
   for (const s of w.sets) if (s.occ && s.occ.cid === K.id) s.occ = null;   /* what the peace did not give away goes back */

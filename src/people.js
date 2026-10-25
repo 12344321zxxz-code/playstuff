@@ -273,7 +273,7 @@ arrive.trade = (w, m) => {
 export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * warMult(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1) * (c.q ? 1 + 0.15 * c.q.war : 1); }
 // (slice 1b) a town taken in a war is held, not annexed: it keeps its sovereign until the peace
 function occupy(w, o, c, oc, war, home) {
-  const K = conflictOf(w, c), wasCap = oc.big === o && oc.count > 2; o.occ = { by: c.id, cid: K ? K.id : null, since: w.year }; o.trade = 0; war.taken++; tally(w, 'occupied');
+  const K = conflictOf(w, c), wasCap = oc.big === o && oc.count > 2; o.occ = { by: c.id, cid: K ? K.id : null, since: w.year }; o.trade = 0; o.lastSack = w.year; war.taken++; tally(w, 'occupied');
   if (c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal) && w.rnd() < 0.5) scorch(w, o, c);
   if (wasCap) { war.capital = true; oc.coh = Math.max(0.05, oc.coh - 0.1); }
   corpses(w, o.x, o.y, o.pop * 0.05);
@@ -298,7 +298,7 @@ arrive.army = (w, m) => {
       if (A <= B) { bleed(w, c, m.n * 0.55); corpses(w, o.x, o.y, m.n * 0.55); back(0.45); return; }
       bleed(w, hc, o.pop * 0.03); bleed(w, c, m.n * 0.3); c.wins++;
       const ours = o.cult === c.id || !atWar(w, c, w.cults[o.cult]);
-      if (ours) { o.occ = null; tally(w, 'liberated'); ev(w, `The ${c.name} drive the ${hc.name} out of ${o.name}.`, o.x, o.y, c.color, 1); }
+      o.lastSack = w.year; if (ours) { o.occ = null; tally(w, 'liberated'); ev(w, `The ${c.name} drive the ${hc.name} out of ${o.name}.`, o.x, o.y, c.color, 1); }
       else { const K = conflictOf(w, c); o.occ = { by: c.id, cid: K ? K.id : null, since: w.year }; tally(w, 'occupied'); }
       back(0.7); return; }
     if (hc && hc.alive && (hc === c || !atWar(w, c, hc))) { back(1); return; } }
