@@ -15,6 +15,7 @@ import { near, endSet, flee, infect, collapse } from './people.js';
 import { remember, DEATH, FIRE } from './memory.js';
 import { ignite } from './life.js';
 import { send, arrive } from './movers.js';
+import { leagued } from './trade.js';
 import { ART, TECH } from './tech.js';
 
 export function initDoom(w) { w.fallout = new Float32Array(N); w.veil = new Float32Array(CN); w.hot = []; w.glassI = []; w.craters = []; w.soot = 0; w.nukes = 0; w.clock = 12 * 60; w.deadAge = null; }
@@ -44,9 +45,9 @@ export function doomYear(w) {
       if (c.zeal && foe.faith !== c.faith) p += 0.03;
       if (c.hurt > 3) p += 0.02;
       if (foe.arts.bomb) p *= 0.6;   // they would answer
-    } else if (nuclear.some((o) => o !== c && (c.nb[o.id] || 0) > 0.5)) p += 0.00015;   // a flock of geese on the screen, at night
-    if (w.exchange && w.year <= w.exchange.until) { if (war && foe && foe.alive && rnd() < 0.7) strike(w, c, foe, 'answer'); continue; }   // once it starts, everyone empties their silos
-    if (rnd() < p) { const target = foe && foe.alive ? foe : nuclear.find((o) => o !== c && (c.nb[o.id] || 0) > 0.5); if (target) strike(w, c, target, foe ? 'war' : 'alarm'); }
+    } else { const o = crisisWith(w, c, nuclear); if (o) p += 0.00015 * warning(c); }   // a flock of geese on the screen, at night: only in a crisis, and rarer with better warning
+    if (w.exchange && w.year <= w.exchange.until) { if (war && foe && foe.alive && (c.struck || -99) >= w.exchange.from && (foe.fired || -99) >= w.exchange.from && rnd() < 0.7) strike(w, c, foe, 'answer'); continue; }   // (slice 0) in an exchange, only those already trading blows go on firing at each other
+    if (rnd() < p) { const target = foe && foe.alive ? foe : crisisWith(w, c, nuclear); if (target) strike(w, c, target, foe ? 'war' : 'alarm'); }
   }
   // the clock: how close the world is to midnight
   const mins = armed === 0 ? 12 * 60 : Math.max(1, 12 * 60 - armed * 25 - tension * 30 - (w.nukes ? 120 : 0));
@@ -70,6 +71,15 @@ export function doomYear(w) {
 export const sootTick = (w) => { if (w.soot > w.aerosol) w.aerosol = w.soot; };
 
 // A launch: the attacker sends what it has at the enemy's largest cities. Their allies may answer.
+// (slice 0) A nuclear crisis, until the pairwise crisis state exists: a nuclear rival this realm fought
+// within a generation, or one that has fired in the last 30 years and is a rival. Without one, no false alarm.
+function crisisWith(w, c, nuclear) {
+  for (const o of nuclear) { if (o === c || !o.alive) continue; const riv = (c.nb[o.id] || 0) > 0.5;
+    if (riv && ((c.fought === o.id && w.year - (c.foughtAt || -999) < 25) || w.year - (o.fired || -999) < 30)) return o; }
+  return null;
+}
+// early warning makes mistakes rarer: radar and radio, satellites, computers
+const warning = (c) => (c.arts.radio ? 0.7 : 1) * (c.arts.satellites ? 0.5 : 1) * (c.arts.computers ? 0.6 : 1);
 function strike(w, c, f, why) {
   record(w, 'launch', [c.id, f.id], { note: why || 'retaliation', x: c.big ? c.big.x : null, y: c.big ? c.big.y : null });
   const n = Math.max(1, Math.min(c.bombs, why === 'alarm' ? 2 : 1 + Math.floor(c.bombs / 4)));
@@ -82,7 +92,7 @@ function strike(w, c, f, why) {
   // answers: the struck, and anyone who stands with them
   for (const o of w.cults) {
     if (!o.alive || o === c || !o.bombs || o.answered === w.year) continue;
-    const isAlly = o === f || (o.war && o.war.foe === c.id) || (f.nb[o.id] || 0) > 1 && o.faith === f.faith;
+    const isAlly = o === f || (o.war && o.war.foe === c.id && f.war && f.war.foe === c.id) || leagued(w, o.id, f.id);   /* (slice 0) the struck, a co-belligerent, or a league partner: not every friendly neighbour */
     if (isAlly && w.rnd() < (o === f ? 0.9 : 0.5)) { o.answered = w.year; o.war = o.war || { foe: c.id, since: w.year, until: w.year + 5, taken: 0, lost: 0, mine: true }; strikeLater(w, o, c); }
   }
 }

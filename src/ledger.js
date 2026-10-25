@@ -6,6 +6,8 @@ const KEEP = 5000;
 
 // who: ids of peoples involved (numbers) or tags like 'p:12' (a power) / 'well:3'
 // o: { p, roll, terms, x, y, note, cause } — cause is a ledger id this event directly follows from
+// running totals for the test harness (no effect on the world)
+export function tally(w, k, v) { const t = w.tally || (w.tally = {}); t[k] = (t[k] || 0) + (v == null ? 1 : v); }
 export function record(w, kind, who, o) {
   const h = w.hist || (w.hist = []); w.histN = (w.histN || 0) + 1;
   const ids = (who || []).filter((v) => v != null);

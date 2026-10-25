@@ -8,7 +8,7 @@ import { captureYear } from './capture.js';
 import { relicsYear, newHouse, crownGoal, claimGoal } from './relics.js';
 import { powersYear as greatPowersYear } from './greatpowers.js';
 import { word, makeSound, rootTags, tagFrom, soundOf, tonguesYear, tongueGap, cultureOf } from './tongues.js';
-import { record, triggerOf } from './ledger.js';
+import { record, triggerOf, tally } from './ledger.js';
 import { POWER, POWER_TOWN } from './registry.js';
 import { W, H, N, DISC, clamp, wx, wrapDx, Heap , peopleText } from './core.js';
 import { ev, discover, once } from './story.js';
@@ -280,21 +280,29 @@ arrive.army = (w, m) => {
   if (o.nomad) { if (rnd() < 0.7) { const a = rnd() * 6.283, x = wx(Math.round(o.x + Math.cos(a) * 7)), y = clamp(Math.round(o.y + Math.sin(a) * 7), 3, H - 4); if (!w.water[y * W + x]) { o.px = o.x; o.py = o.y; o.mt = w.tickN; o.x = x; o.y = y; } o.pop *= 0.92; back(0.95); } else if (o.pop < m.n * 2.5) { endSet(w, o, 'absorbed'); back(1.1); } else { o.pop *= 0.8; back(0.7); } return; }
   const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()) * (c.power ? 1.5 + 2 * c.coh : 1), B = strength(oc, o.pop) * (o.walls ? wallsAgainst(c) : 1.2) * (0.6 + 0.8 * rnd()) * (oc.power ? 1.2 + 1.5 * oc.coh : 1);   // the dead do not break and run
   if (A <= B) { oc.wins += 0.5; if (war) war.lost++; if (!c.power) corpses(w, o.x, o.y, m.n * 0.55); back(0.45); return; }
-  if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.28); o.pop *= 0.72; c.wins++; oc.coh = Math.max(0.05, oc.coh - (oc.power ? 0.008 : 0.03)); const hp = home && !home.dead ? home.pop : m.n * 6;
+  const p0 = o.pop, lost = (k) => { tally(w, k); tally(w, k + 'Loss', p0 - (o.dead ? 0 : o.pop)); tally(w, k + 'Frac', p0 > 0 ? 1 - (o.dead ? 0 : o.pop) / p0 : 0); };   /* test harness: what each outcome costs the town */
+  c.wins++; oc.coh = Math.max(0.05, oc.coh - (oc.power ? 0.008 : 0.03)); const hp = home && !home.dead ? home.pop : m.n * 6;
+  // (war & sovereignty, slice 0) the fight itself costs the town a little; what the winner does next decides the rest.
+  // A sack ruins a town, and only some do it: raiders, mad rulers, the dead. Ordinary conquest is mostly bloodless.
   const raider = m.nomad && !(war && war.horde);
-  if (raider || (c.ruler.trait === 'mad' && rnd() < 0.5)) {
-    if (o.pop < hp * 0.6 && rnd() < 0.4) { endSet(w, o, 'sacked', c.name); back(1.2); return; }
-    if (o.tier >= 2 && w.year - o.lastSack > 30) { o.lastSack = w.year; ev(w, `${m.nomad ? 'Riders' : 'Warriors'} of the ${c.name} sack ${o.name}.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1); }
-    flee(w, o, o.pop * 0.12); o.pop *= 0.88; back(1.15); return;
+  if ((raider || (c.ruler.trait === 'mad' && rnd() < 0.5)) && w.year - o.lastSack > 25) {   /* a town just sacked has nothing left to take: it is only plundered again (below) */
+    if (o.tier <= 1 || o.pop * 0.72 < hp * 0.6) { if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.5); flee(w, o, o.pop * 0.25); lost('razed'); endSet(w, o, 'sacked', c.name); back(1.2); return; }
+    o.lastSack = w.year; if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.45); flee(w, o, o.pop * 0.2); o.pop *= 0.25; o.tier = Math.max(1, o.tier - 1); if (o.walls && rnd() < 0.5) o.walls = false;
+    if (home && !home.dead) home.wealth = (home.wealth || 0) + 3 + o.tier;   /* the loot goes home */
+    remember(w, o.x, o.y, DEATH, 0.25, 3, 'sacked', `the ${c.name} sacked ${o.name}`);
+    ev(w, `${m.nomad ? 'Riders' : 'Warriors'} of the ${c.name} sack ${o.name}. Little is left standing.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1);
+    lost('sack'); back(1.15); return;
   }
-  if ((o.pop < hp * 0.5 || ((war || c.power || oc.power) && rnd() < 0.55)) && w.year - o.lastSack > (c.power ? 8 : 25)) {
+  if (!raider && (o.pop * 0.72 < hp * 0.5 || ((war || c.power || oc.power) && rnd() < 0.55)) && w.year - o.lastSack > (c.power ? 8 : 25)) {
     o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); const fromDead = oc.power; if (!c.power && !oc.power && oc.know > c.know) c.know += (oc.know - c.know) * (m.nomad ? 0.2 : 0.08);   /* conquerors learn from the conquered */ o.cult = m.cult; o.trade = 0; if (c.power || fromDead) deadConquest(w, o, c, oc); if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
     ev(w, wasCap ? `${o.name}, seat of the ${oc.name}, falls to the ${c.name}.` : `${o.name} falls to the ${c.name}.`, o.x, o.y, c.color, wasCap && oc.count > 24 ? 2 : wasCap || o.tier === 3 ? 0 : 1);
     if (wasCap) { oc.coh = Math.max(0.05, oc.coh - (oc.power ? 0.1 : 0.25)); oc.big = null; if (war) war.until = Math.min(war.until, w.year + 2); }
-    flee(w, o, o.pop * 0.08); o.pop *= 0.92; back(0.6); return;
+    if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.05); flee(w, o, o.pop * 0.03); o.pop *= 0.95; lost(war ? 'conquest' : 'peaceConquest'); back(0.6); return;
   }
-  if (o.tier >= 2 && w.year - o.lastSack > 30) { o.lastSack = w.year; ev(w, `Warriors from ${home && home.name ? home.name : 'the ' + c.name} sack ${o.name}.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1); }
-  back(1.1);
+  // beaten but not taken: the defenders lose men and the countryside is plundered, the town stands
+  if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.08); o.pop *= 0.92; if (home && !home.dead) home.wealth = (home.wealth || 0) + 1;
+  if (o.tier >= 2 && w.year - o.lastSack > 30) { o.lastSack = w.year; ev(w, `Warriors from ${home && home.name ? home.name : 'the ' + c.name} beat the defenders of ${o.name} and plunder the country around it.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1); }
+  lost('beaten'); back(1.1);
 };
 
 /* ---------- the year ---------- */
@@ -515,7 +523,7 @@ function startWar(w, c, f, horde, holy) {
   const allies = []; for (const o of w.cults) { if (!o.alive || o === c || o === f || o.war || c.war || o.count < 3) continue; const close = (o.nb[f.id] || 0) > 1 && (o.nb[c.id] || 0) < (o.nb[f.id] || 0); if ((leagued(w, o.id, f.id) || (sameFaith(o, f) && !sameFaith(o, c)) || (tongueGap(w, o.langId, f.langId) <= 2 && tongueGap(w, o.langId, c.langId) > 2) || close) && w.rnd() < 0.35) allies.push(o); }
   setTimeout0(() => { for (const o of allies) { if (o.war || !c.alive) continue; const u = w.year + 6 + ((w.rnd() * 12) | 0); o.war = { foe: c.id, since: w.year, until: u, taken: 0, lost: 0, mine: true }; if (o.big) ev(w, `The ${o.name} come into the war on the side of the ${f.name}.`, o.big.x, o.big.y, o.color, 1); }
     const n = 2 + allies.length; if (n >= 4 && c.tech >= 4) { const b = c.big; if (b && discover(w, 'worldwar', b.x, b.y)) ev(w, `${n} peoples are at war at once, and there is hardly a town in the known world that has not sent its sons. They will call it the Great War.`, b.x, b.y, null, 2); } });
-  const until = w.year + 6 + ((w.rnd() * 18) | 0), b = c.big, big = c.count >= 20 && f.count >= 16, again = c.fought === f.id; c.fought = f.id; f.fought = c.id;
+  const until = w.year + 6 + ((w.rnd() * 18) | 0), b = c.big, big = c.count >= 20 && f.count >= 16, again = c.fought === f.id; c.fought = f.id; f.fought = c.id; c.foughtAt = f.foughtAt = w.year;
   c.war = { foe: f.id, since: w.year, until, taken: 0, lost: 0, mine: true, horde }; f.war = { foe: c.id, since: w.year, until, taken: 0, lost: 0, mine: false };
   // big wars get a name the chronicle can come back to
   if (c.count + f.count >= 20 || c._relic) { const fb = f.big, nm = c._relic ? `the War for ${c._relic.name}` : horde ? `the Riding of ${c.ruler.name}` : holy ? `the War of ${w.faiths[c.faith].name}` : rnd3(w) === 0 && fb && fb.name ? `the ${fb.name.replace(/^New /, '')} War` : rnd3(w) === 1 ? `the War of the ${c.name} and the ${f.name}` : `the ${['Long', 'Red', 'Bitter', 'Iron', 'Hungry', 'Burning', 'Grey', 'Sorrowful'][(w.rnd() * 8) | 0]} War`; c.war.name = f.war.name = nm; }
@@ -560,7 +568,7 @@ export function collapse(w, c) {
   const b = c.big, old = c.tech, n0 = c.count, heirs = [];
   if (b && n0 >= 10) (w.claims || (w.claims = [])).push({ name: realmTitle(c), cult: c.id, cap: b.id, towns: w.sets.filter((s) => !s.dead && s.cult === c.id && !s.nomad).map((s) => s.id), year: w.year, done: false });   /* the old realm's lands, for whoever can claim them */
   c.fellAt = w.year; record(w, 'collapse', [c.id], c._why || { terms: c.press, x: b.x, y: b.y }); let went = 0; for (let k = 0; k < 3; k++) { const r = schism(w, c, true); if (r) { went += r.n; if (!heirs.includes(r.to)) heirs.push(r.to); } }
-  for (const s of w.sets) if (s.cult === c.id && !s.nomad) { const lost = s.pop * (0.15 + 0.3 * w.rnd()); flee(w, s, lost * 0.5); s.pop -= lost; if (s === b) continue; if (s.tier >= 2 && w.rnd() < 0.18) { endSet(w, s, 'abandoned'); continue; }
+  for (const s of w.sets) if (s.cult === c.id && !s.nomad) { /* (slice 0) a falling realm is a falling government: its towns and people go on (losses come from what follows: hunger, raids, plague, broken trade) */ if (s === b) continue;
     if (w.rnd() < 0.3) { let to = null; near(w, s.x, s.y, 22, s, true, (u, q) => { if (u.cult !== c.id && (!to || q < to.q)) to = { u, q }; }); if (to) { s.cult = to.u.cult; s.trade = 0; went++; const h = w.cults[to.u.cult]; if (!heirs.includes(h)) heirs.push(h); } } }
   const who = heirs.length ? ` ${went === 1 ? 'One' : went} of ${b.name ? 'its places' : 'their camps'} ${went === 1 ? 'goes' : 'go'} over to the ${heirs.slice(0, 2).map((h) => h.name).join(' and the ')}${heirs.length > 2 ? ' and others' : ''}.` : '';
   ev(w, b.name ? `${realmTitle(c).replace(/^the /, 'The ').replace(/^The (?!.*realm)/, 'The realm of the ')} comes apart.${who} ${b.name} holds what is left.` : `The ${c.name} fall to fighting among themselves.${who}`, b.x, b.y, c.color, n0 >= 30 || once(w, 'collapse') ? 2 : 0);
