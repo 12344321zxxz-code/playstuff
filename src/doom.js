@@ -16,6 +16,7 @@ import { remember, DEATH, FIRE } from './memory.js';
 import { ignite } from './life.js';
 import { send, arrive } from './movers.js';
 import { leagued } from './trade.js';
+import { atWar, conflictOf, sideOf, joinConflict, newConflict } from './war.js';
 import { ART, TECH } from './tech.js';
 
 export function initDoom(w) { w.fallout = new Float32Array(N); w.veil = new Float32Array(CN); w.hot = []; w.glassI = []; w.craters = []; w.soot = 0; w.nukes = 0; w.clock = 12 * 60; w.deadAge = null; }
@@ -92,8 +93,8 @@ function strike(w, c, f, why) {
   // answers: the struck, and anyone who stands with them
   for (const o of w.cults) {
     if (!o.alive || o === c || !o.bombs || o.answered === w.year) continue;
-    const isAlly = o === f || (o.war && o.war.foe === c.id && f.war && f.war.foe === c.id) || leagued(w, o.id, f.id);   /* (slice 0) the struck, a co-belligerent, or a league partner: not every friendly neighbour */
-    if (isAlly && w.rnd() < (o === f ? 0.9 : 0.5)) { o.answered = w.year; o.war = o.war || { foe: c.id, since: w.year, until: w.year + 5, taken: 0, lost: 0, mine: true }; strikeLater(w, o, c); }
+    const isAlly = o === f || (atWar(w, o, c) && atWar(w, f, c)) || leagued(w, o.id, f.id);   /* (slice 0) the struck, a co-belligerent, or a league partner: not every friendly neighbour */
+    if (isAlly && w.rnd() < (o === f ? 0.9 : 0.5)) { o.answered = w.year; if (!o.war) { const K = conflictOf(w, f), sf = K ? sideOf(K, f.id) : -1; if (K && sf >= 0 && sideOf(K, c.id) === 1 - sf) joinConflict(w, o, K, sf); else newConflict(w, o, c, w.year + 5); } strikeLater(w, o, c); }
   }
 }
 function strikeLater(w, o, c) { (w.pending || (w.pending = [])).push({ o: o.id, c: c.id, at: w.tickN + 6 }); }

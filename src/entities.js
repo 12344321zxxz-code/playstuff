@@ -3,7 +3,9 @@
 import { tongueColor, tongueHsl, familyOf, quirksOf } from './tongues.js';
 import { overlordOf } from './capture.js';
 import { KINDS, STANCES, memAt, kindAt } from './memory.js';
-import { GOODS } from './trade.js';
+import { GOODS, leagued } from './trade.js';
+import { conflictOf, enemiesOf, alliesOf, trucesOf } from './war.js';
+import { histById } from './ledger.js';
 import { travelOf, laneFor } from './travel.js';
 import { ERA, blockedReasons } from './tech.js';
 import { SPIRIT_KINDS } from './spirits.js';
@@ -322,6 +324,23 @@ const SRC = ['wild food', 'the hunt', 'fish', 'its fields', 'its herds'];
 const NOTE = { grow: 'It is growing.', full: 'It holds as many people as its land can feed.', drought: 'The rains have failed. People are going hungry, and some are leaving.', flood: 'The river took the fields this year.', soil: 'Its fields are worn out and give less every year.', fish: 'The sea here has been fished out.', locusts: 'Locusts ate the harvest.', ash: 'Ash in the sky; nothing ripens.', game: 'The animals it lived on are gone.', crowded: 'There are more mouths than food. Some will leave, or look at the neighbours.', plague: 'Sickness is doing the counting here.' };
 const list = (a) => (a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
 const cap = (t) => t[0].toUpperCase() + t.slice(1);
+// (slice 1a) the realm's place among the others: its wars (whom with, on whose side, why), its
+// truces, its leagues and its old rivals. A first version of the relations inspector.
+const nm = (w, id) => (w.cults[id] ? 'the ' + w.cults[id].name : 'a people now gone');
+const names = (w, ids) => list(ids.map((id) => nm(w, id)));
+function relationLines(w, c) {
+  const L = [];
+  if (c.war) {
+    const K = conflictOf(w, c), foes = enemiesOf(w, c), friends = alliesOf(w, c), cause = c.war.hid != null ? histById(w, c.war.hid) : null, title = c.war.name ? cap(c.war.name) : 'A war';
+    const why = cause && cause.note ? ` (${cause.note})` : '', since = K ? K.since : c.war.since;
+    L.push(`${title}, since year ${since}: ${c.war.mine ? 'they attacked' : 'they were attacked by'} ${names(w, foes)}${friends.length ? `, with ${names(w, friends)} on their side` : ''}${why}. Towns taken ${c.war.taken || 0}, lost ${c.war.lost || 0}.`);
+  }
+  const tr = trucesOf(w, c).filter((t) => w.cults[t.other] && w.cults[t.other].alive); if (tr.length) L.push(`At peace by treaty with ${list(tr.slice(0, 4).map((t) => `${nm(w, t.other)} (${t.until - w.year} more years)`))}.`);
+  const lg = (w.leagues || []).filter((g) => g.members.has(c.id)); if (lg.length) { const mates = [...new Set(lg.flatMap((g) => [...g.members]))].filter((id) => id !== c.id && w.cults[id] && w.cults[id].alive); if (mates.length) L.push(`In a league with ${names(w, mates.slice(0, 4))}.`); }
+  const foes = c.war ? enemiesOf(w, c) : []; const riv = Object.keys(c.nb || {}).map(Number).filter((id) => !foes.includes(id) && w.cults[id] && w.cults[id].alive && !w.cults[id].power && (c.nb[id] || 0) > 2).sort((a, b) => c.nb[b] - c.nb[a]).slice(0, 2);
+  if (riv.length) L.push(`Old rivals: ${names(w, riv)}${c.grudge && riv.some((id) => w.year - (c.grudge[id] || -999) < 30) ? ', whose raiders they have not forgiven' : ''}.`);
+  return L;
+}
 export function cultLines(w, c) {
   const L = [];
   L.push(`${c.kind[0].toUpperCase() + c.kind.slice(1)}. ${big(c.pop)} people in ${c.count} ${c.count === 1 ? 'place' : 'places'}.`);
@@ -339,7 +358,7 @@ export function cultLines(w, c) {
   const st = STANCES[c.stance || 'revere']; L.push(`${st.name}: they ${st.say}.${c.pacts ? ' They have made bargains with the old powers.' : ''}`);
   L.push(`${c.ruler.name} leads them. ${c.coh > 0.7 ? 'They hold together well.' : c.coh > 0.45 ? 'There are quarrels, but they hold.' : c.coh > 0.25 ? 'They are pulling apart.' : 'They are one people in name only.'}`);
   if (c.faith != null) { const f = w.faiths[c.faith]; const ds = Object.keys(f.docs || {}).filter((k) => k !== f.tenet).map((k) => TENET[k]); L.push(`They pray to ${f.name}, whose teaching ${TENET[f.tenet]}${ds.length ? ' and ' + ds.join(' and ') : ''}. It tells them to ${MAGIC[f.magic] || 'keep the old places'}.${c.faithShare < 0.6 ? ' Not all of them pray.' : ''}${c.faithHold != null && c.faithHold < 0.4 ? ' Faith sits lightly on them now.' : c.faithHold > 0.85 ? ' Faith rules their lives.' : ''}${c.temple > 0.5 ? ' The temples own much of the land.' : ''}`); }
-  if (c.war) { const f = w.cults[c.war.foe]; L.push(`At war with the ${f.name} since year ${c.war.since}.`); }
+  L.push(...relationLines(w, c));
   if (c.parent) L.push(`They split from the ${c.parent} in year ${c.born}.`);
   return L;
 }

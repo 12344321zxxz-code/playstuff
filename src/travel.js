@@ -18,6 +18,7 @@
 // leg ends at the best market in the last part of the range, so relays gather in front of deserts,
 // passes and straits. Everything here lives in the world (w.travel) and is saved, because trade
 // decides by it now.
+import { atWar } from './war.js';
 import { W, H, N, CW, CH, CS, wx, wrapDx, clamp, Heap } from './core.js';
 import { coarse } from './climate.js';
 import { near } from './people.js';
@@ -100,7 +101,7 @@ function flows(w) {
     for (let dy = -4; dy <= 4; dy++) { const y = s.y + dy; if (y < 0 || y >= H) continue; for (let dx = -4; dx <= 4; dx++) if (dx * dx + dy * dy < 25) deadNear[y * W + ((s.x + dx) & (W - 1))] = 1; } }
   for (const e of T.edges.values()) {
     e.block = false; e.war = false; if (!e.A || !e.B) continue; const ca = w.cults[e.A.cult], cb = w.cults[e.B.cult];
-    e.war = !!((ca.war && ca.war.foe === cb.id) || (cb.war && cb.war.foe === ca.id));
+    e.war = atWar(w, ca, cb);
     e.fo = 0; if (e.path && w.fallout) { let mx = 0, sm = 0; for (const i of e.path) { const v = w.fallout[i]; sm += v; if (v > mx) mx = v; } if (mx > 1) e.block = true; else e.fo = +(4 * sm / e.path.length + 2 * mx).toFixed(2); }   /* the worst fallout closes a way; lighter fallout makes it dearer */
     if (e.path && deadNear) for (let k = 0; k < e.path.length; k += 4) if (deadNear[e.path[k]]) { e.block = true; break; }
   }

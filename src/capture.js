@@ -11,6 +11,7 @@
 //   What it does there depends on the land (Acemoglu, Johnson and Robinson): fever country gets
 //   only trading forts; a dense native realm is taken at the top and keeps its tongue; thin or
 //   emptied land gets settler colonies. Colonies drift and break away when the take runs high.
+import { atWar } from './war.js';
 import { strength, newCult, addSet, endSet, near, whereAbouts, routeToCell } from './people.js';
 import { send, arrive } from './movers.js';
 import { record } from './ledger.js';
@@ -63,7 +64,7 @@ export function captureYear(w) {
       const id = record(w, 'dragonfight', [o.id, c.id], { p: pw, roll, note: `the ${o.name} against ${d.name} in ${seat.name}`, x: seat.x, y: seat.y, terms: { army: mine, dragon: dragonPower(d) } });
       if (roll < pw) { o.treasure = (o.treasure || 0) + d.hoard; const hoard = d.hoard; d.hoard = 0; dragonDies(w, d); holySite(w, seat.x, seat.y, 'slayer', 0.9); d.king = null; free(w, c, `the ${o.name} kill ${d.name} in ${seat.name}`, id);
         ev(w, `The ${o.name} take ${seat.name} street by street and find ${d.name} waiting on the palace roof. It takes them three days to kill it. ${hoard > 5 ? 'Its hoard goes home in their wagons.' : 'There is less gold under it than the songs said.'}`, seat.x, seat.y, o.color, 2); discover(w, 'dragonslain', seat.x, seat.y); continue; }
-      seat.cult = c.id; seat.trade = 0; seat.pop *= 0.6; o.hurt = (o.hurt || 0) + 3; if (o.war && o.war.foe === c.id) o.war.lost = (o.war.lost || 0) + 2;
+      seat.cult = c.id; seat.trade = 0; seat.pop *= 0.6; o.hurt = (o.hurt || 0) + 3; if (atWar(w, o, c)) o.war.lost = (o.war.lost || 0) + 2;
       ev(w, `The ${o.name} take ${seat.name}, and ${d.name} wakes on the palace roof. By morning the city belongs to the dragon again, and the army that took it is ash.`, seat.x, seat.y, c.color, 1);
     }
     const b = c.big; d.seat = b.id; d.lx = b.x; d.ly = b.y; if (d.st !== 'fly') { d.x = d.lx; d.y = d.ly; d.px = d.x; d.py = d.y; }
