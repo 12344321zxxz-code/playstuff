@@ -55,7 +55,7 @@ export function hubYear(w, c, hooks) {
   const F = FORMS[h.form];
   h.P = postsOf(c);
   const fed = 1 - Math.min(1, (c.hungry || 0) / Math.max(1, c.count));
-  h.X = clamp(F.x + 0.2 * Math.max(0, h.pi - 1) + (c.tribute || 0) + (c.q ? 0.03 * c.q.build : 0) + 0.04 * (c.temple || 0) - (w.year < h.eased ? 0.05 : 0), 0.05, 0.6);
+  h.X = clamp(F.x + 0.2 * Math.max(0, h.pi - 1) + (c.tribute || 0) + (c.owe || 0) + (c.q ? 0.03 * c.q.build : 0) + 0.04 * (c.temple || 0) - (w.year < h.eased ? 0.05 : 0), 0.05, 0.6);
   // living standard: what the common people keep, and how this year's surplus compares with what they are used to.
   // Every loss is tagged by source so the ledger can name it; the 40-year baseline adapts, so realms recover.
   const loss = { plague: 0.5 * Math.min(1, c.plagued || 0), fey: c.lostShare || 0, tribute: c.tribute || 0, hunger: 1 - fed, war: c.war && c.war.lost ? Math.min(0.4, 0.05 * c.war.lost) : 0, fallout: c.poisoned || 0 };
@@ -65,7 +65,7 @@ export function hubYear(w, c, hooks) {
   h.L = fed * (1 - h.X) / (1 - 0.12) * ratio;
   let lt = 'hunger', lv = 0; for (const k in loss) if (loss[k] > lv) { lv = loss[k]; lt = k; } h.lossTag = lv > 0.05 ? lt : null;
   // elite income follows surplus and take with a lag of about 40 years
-  const raw = (c.pop / (100 * (c.boomL || 1))) * (0.25 + (c.surplus || 0)) * Math.max(0.02, h.X - (c.tribute || 0)) * fed * (1 - (c.lostShare || 0)) + (c.tributeIn || 0) + (c.tollIn || 0) * 0.02;   /* entrepôt tolls feed the lords too */   /* tribute leaves for the overlord; what comes in from colonies feeds this realm's lords */
+  const raw = (c.pop / (100 * (c.boomL || 1))) * (0.25 + (c.surplus || 0)) * Math.max(0.02, h.X - (c.tribute || 0) - (c.owe || 0)) * fed * (1 - (c.lostShare || 0)) * (1 - (c.occShare || 0)) + (c.tributeIn || 0) + (c.tollIn || 0) * 0.02;   /* entrepôt tolls feed the lords too */   /* tribute leaves for the overlord; what comes in from colonies feeds this realm's lords */
   const tr = c.treasure > 0.01 ? c.treasure * 0.05 : 0; if (tr) c.treasure -= tr;   /* a released hoard drains into the court over a generation */
   h.inc = h.inc == null ? raw : h.inc + (raw + tr - h.inc) / 50;   /* elites follow income with a lag of two generations */
   const cap = Math.max(1, h.inc / HUB.K);

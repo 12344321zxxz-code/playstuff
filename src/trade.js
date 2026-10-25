@@ -123,7 +123,7 @@ function entrepots(w) {
   for (const s of w.sets) { if (s.dead) continue; s.relayE = (s.relayE || 0) * 0.85 + (s.relayN || 0) - (s._rN || 0); s._rN = s.relayN || 0; }
   const top = new Set(w.sets.filter((s) => !s.dead && !s.nomad && s.relayE > 6).sort((a, b) => b.relayE - a.relayE).slice(0, 12));   /* only the great ones: a dozen in the world at most */
   for (const s of w.sets) { if (s.dead) continue; const c = w.cults[s.cult];
-    if (s.toll) { c.tollIn += s.toll * 0.5; s.toll = 0; }
+    if (s.toll) { const tt = s.tollTo != null && w.year < s.tollUntil ? w.cults[s.tollTo] : null; if (tt && tt.alive && tt !== c) { tt.tollIn += s.toll * 0.25; c.tollIn += s.toll * 0.25; } else c.tollIn += s.toll * 0.5; s.toll = 0; }   /* (slice 1b) toll rights won in a war: half the lords' share goes to the winner */
     const was = s.entrepot; s.entrepot = top.has(s) || (was && s.relayE > 3); if (s.entrepot) c.merchantPosts += 1;
     if (s.entrepot && !was && w.year - (s.entAt || -999) > 100) { s.entAt = w.year; record(w, 'entrepot', [c.id], { x: s.x, y: s.y, note: `${s.name} becomes a place where goods change hands` });
       ev(w, once(w, 'entrepot') ? `${s.name} is the first entrepôt: caravans from far away stop there, sell, and go home, and the town's merchants carry the goods on.` : `${s.name} grows rich as the place where goods change hands.`, s.x, s.y, c.color, 1); discover(w, 'entrepot', s.x, s.y); }

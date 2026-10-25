@@ -38,11 +38,21 @@ function free(w, c, how, cause) {
   record(w, 'free', [c.id], { note: how, x: b ? b.x : 0, y: b ? b.y : 0, cause });
 }
 
+// (slice 1b) a war won for tribute, or a realm not worth ruling directly: the loser becomes a client,
+// paying through one of its own houses, under the same rules as any other overlordship
+export function subjugate(w, c, o, K) {
+  if (c.over || c.power || o.power || !c.big) return false;
+  take(w, c, { kind: 'realm', id: o.id }); c.over.take = 0.1; c.tribute = 0.1; (o.colonies || (o.colonies = [])).push(c.id);
+  record(w, 'capture', [c.id, o.id], { note: `the ${c.name} submit to the ${o.name}${K && K.name ? ' after ' + K.name : ''}`, x: c.big.x, y: c.big.y, terms: { theirs: strength(c, c.pop), overlord: strength(o, o.pop) } });
+  return true;
+}
+export const release = (w, c, how) => free(w, c, how);
 // arrive.tribute: a tribute caravan reaching the lair adds to the hoard
 arrive.tribute = (w, m) => { const d = w.dragons.find((q) => q.name === m.dragon); if (d) d.hoard += m.gold || 1; };
 
 export function captureYear(w) {
   const rnd = w.rnd; for (const c of w.cults) c.tributeIn = 0;
+  for (const c of w.cults) { if (!c.owe) continue; const to = w.cults[c.oweTo]; if (!c.alive || !to || !to.alive || w.year >= c.oweUntil) { c.owe = 0; continue; } to.tributeIn += c.owe * c.pop / 100; }   /* (slice 1b) reparations, owed for twenty years */
   for (const d of w.dragons) if (d.king != null && !(w.cults[d.king] && w.cults[d.king].alive && w.cults[d.king].over && w.cults[d.king].over.d === d.name)) d.king = null;   /* a kingdom has one dragon: the one named in its overlordship */
   // dragons looking for a kingdom
   for (const d of w.dragons) {
@@ -105,8 +115,8 @@ export function captureYear(w) {
       if (rnd() < p) {
         const rebels = strength(c, c.pop) * (1 + Math.min(1, ov.hw / 300)), held = strength(o, o.pop) * 0.35, roll = rnd(), pw = rebels / (rebels + held);
         const id = record(w, 'rising', [c.id, o.id], { p: pw, roll, note: `${ov.house} against the ${o.name}`, x: b.x, y: b.y, terms: { rebels, overlord: held } });
-        if (roll < pw) { free(w, c, `${ov.house} throws off the ${o.name}`, id); ev(w, `${ov.house} stops sending the ${o.name} their due and calls the ${c.name} free. The ships that come to collect go home empty.`, b.x, b.y, c.color, 2); discover(w, 'independence', b.x, b.y); }
-        else { ov.hw *= 0.5; ov.take = Math.min(0.35, ov.take + 0.03); ov.risings++; c.coh = Math.max(0.05, c.coh - 0.1); ev(w, `The ${c.name} rise against the ${o.name}. The ${o.name} send soldiers by sea, and the rising ends in hangings.`, b.x, b.y, c.color, 1); }
+        if (roll < pw) { free(w, c, `${ov.house} throws off the ${o.name}`, id); ev(w, `${ov.house} stops sending the ${o.name} their due and calls the ${c.name} free. ${overseas(w, o, b) ? 'The ships that come to collect go home empty.' : 'The collectors are sent home with nothing.'}`, b.x, b.y, c.color, 2); discover(w, 'independence', b.x, b.y); }
+        else { ov.hw *= 0.5; ov.take = Math.min(0.35, ov.take + 0.03); ov.risings++; c.coh = Math.max(0.05, c.coh - 0.1); ev(w, `The ${c.name} rise against the ${o.name}. The ${o.name} send soldiers${overseas(w, o, b) ? ' by sea' : ''}, and the rising ends in hangings.`, b.x, b.y, c.color, 1); }
       }
     }
   }
