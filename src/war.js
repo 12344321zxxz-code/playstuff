@@ -61,7 +61,7 @@ export function truceYears(got, lost, years, capital) { return Math.min(60, Math
 // keep the books tidy: wars whose realms are all gone, truces long past
 export function tidyWars(w) {
   for (const id in conflicts(w)) { const K = w.conflicts[id]; const alive = (s) => K.sides[s].members.some((m) => w.cults[m] && w.cults[m].alive && w.cults[m].war && w.cults[m].war.cid === K.id); if (!alive(0) || !alive(1)) closeConflict(w, K, 0); }
-  for (const k in rels(w)) { const r = w.rel[k]; if (!(r.truce > w.year - 50)) delete w.rel[k]; }
+  for (const k in rels(w)) { const r = w.rel[k]; if (!(r.truce > w.year - 50) && !(r.terms && r.terms.length)) delete w.rel[k]; }   /* standing terms keep their entry */
 }
 
 // ---------- (slice 1b) aims, occupation, the will to go on, and how wars end ----------

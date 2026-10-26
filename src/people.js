@@ -6,6 +6,7 @@
 import { hubYear, hubPush, hubReset, HUB } from './hub.js';
 import { captureYear, subjugate, release } from './capture.js';
 import { empireYear, regionSuccessors } from './empire.js';
+import { frontierYear, termsBetween, nomadic, bandCap } from './frontier.js';
 import { relicsYear, newHouse, crownGoal, claimGoal } from './relics.js';
 import { powersYear as greatPowersYear } from './greatpowers.js';
 import { word, makeSound, rootTags, tagFrom, soundOf, tonguesYear, tongueGap, cultureOf } from './tongues.js';
@@ -356,7 +357,7 @@ arrive.army = (w, m) => {
   if ((raider || (c.ruler.trait === 'mad' && rnd() < 0.5)) && w.year - o.lastSack > 25) {   /* a town just sacked has nothing left to take: it is only plundered again (below) */
     if (o.tier <= 1 || o.pop * 0.72 < hp * 0.6) { if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.5); flee(w, o, o.pop * 0.25); lost('razed'); endSet(w, o, 'sacked', c.name); back(1.2); return; }
     o.lastSack = w.year; if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.45); flee(w, o, o.pop * 0.2); o.pop *= 0.25; o.tier = Math.max(1, o.tier - 1); if (o.walls && rnd() < 0.5) o.walls = false;
-    if (home && !home.dead) home.wealth = (home.wealth || 0) + 3 + o.tier;   /* the loot goes home */
+    if (home && !home.dead) home.wealth = (home.wealth || 0) + 3 + o.tier; if (m.nomad) c.loot = (c.loot || 0) + 3 + o.tier;   /* the loot goes home */
     remember(w, o.x, o.y, DEATH, 0.25, 3, 'sacked', `the ${c.name} sacked ${o.name}`);
     ev(w, `${m.nomad ? 'Riders' : 'Warriors'} of the ${c.name} sack ${o.name}. Little is left standing.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1);
     lost('sack'); back(1.15); return;
@@ -370,7 +371,7 @@ arrive.army = (w, m) => {
   }
   // beaten but not taken: the defenders lose men and the countryside is plundered, the town stands; in peacetime it is remembered
   if (!war && !c.power && !oc.power) { oc.nb[c.id] = (oc.nb[c.id] || 0) + 1; oc.grudge = oc.grudge || {}; oc.grudge[c.id] = w.year; }
-  if (war) bleed(w, oc, o.pop * 0.08 + rein * 0.4); if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.08); o.pop *= 0.92; if (home && !home.dead) home.wealth = (home.wealth || 0) + 1;
+  if (war) bleed(w, oc, o.pop * 0.08 + rein * 0.4); if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.08); o.pop *= 0.92; if (home && !home.dead) home.wealth = (home.wealth || 0) + 1; if (m.nomad) c.loot = (c.loot || 0) + 1;
   if (o.tier >= 2 && w.year - o.lastSack > 30) { o.lastSack = w.year; ev(w, `Warriors from ${home && home.name ? home.name : 'the ' + c.name} beat the defenders of ${o.name} and plunder the country around it.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1); }
   lost('beaten'); back(1.1);
 };
@@ -484,7 +485,7 @@ export function* peopleSteps(w) {
   yield;
   armiesYear(w); warsYear(w, WAR_HOOKS); tidyWars(w); empireYear(w); ruinsYear(w); plaguesYear(w); faithYear(w);
   yield;
-  tonguesYear(w); captureYear(w); greatPowersYear(w); relicsYear(w);
+  tonguesYear(w); captureYear(w); frontierYear(w); greatPowersYear(w); relicsYear(w);
   w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop
   if (smoke > 0) { w.greenhouse = Math.min(7, w.greenhouse + smoke * 1.1e-7); if (!w.found.smoke) { const c = w.cults.find((q) => q.alive && q.arts.engines); if (c && c.big) discover(w, 'smoke', c.big.x, c.big.y); } }
   w.stats.people = Math.round(total); w.stats.places = w.sets.length; w.stats.peoples = alive;
@@ -565,7 +566,7 @@ function cultYear(w, c) {
     c.span = n ? sum / n / reach : 0; c.reachR = reach; }
   const HB = hubYear(w, c, HOOKS); if (!c.alive) return;
   const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / 300 - 0.35 * Math.min(2, Math.max(0, (c.span || 0) - 0.9)), claim: c.claimHeld ? 0.05 : 0, age: HUB.ageDiv ? -(w.year - c.born) / HUB.ageDiv : 0, elites: HB.elites, strife: HB.strife, living: HB.living, frontier: HB.frontier, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
-    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: ((c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) + (c.docs && c.docs.world ? 0.04 : 0) + (c.docs && c.docs.peace ? 0.04 : 0)) * (1 + (Q ? Q.pious : 0)) * (c.faithHold == null ? 1 : 0.4 + 0.6 * c.faithHold), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, peace: !!(c.docs && c.docs.peace) ? 0.04 : 0 };
+    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: ((c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) + (c.docs && c.docs.world ? 0.04 : 0) + (c.docs && c.docs.peace ? 0.04 : 0)) * (1 + (Q ? Q.pious : 0)) * (c.faithHold == null ? 1 : 0.4 + 0.6 * c.faithHold), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, steppe: nomadic(c) ? 0.25 * ((c.fi || 0) - 0.25) : 0, peace: !!(c.docs && c.docs.peace) ? 0.04 : 0 };
   let tsum = 0; for (const k in P) tsum += P[k]; const target = clamp(tsum, 0.05, 1); c.cohT = target;
   if (w.year % 10 === 0) { const ph = c.ph || (c.ph = []); ph.push([w.year, Object.assign({}, P)]); if (ph.length > 6) ph.shift(); }   /* snapshots for finding the trigger */
   c.coh += (target - c.coh) * 0.035; c.wins *= 0.97;
@@ -581,15 +582,16 @@ function cultYear(w, c) {
   if (c.war) { const f = w.cults[c.war.foe], K = conflictOf(w, c), lead = !K || K.sides[Math.max(0, sideOf(K, c.id))].lead === c.id; if (!f || !f.alive || (lead && !(K && K.aim) && w.year >= (K ? K.until : c.war.until))) endWar(w, c); }   /* the leads end a war; allies go when it ends. (slice 1b) a war with an aim ends by the will of its sides (warsYear) */
   else if (c.count >= 4 && b) {
     // (slice 1b) the foe is the rival best worth fighting: rivalry, what could be won, and the odds of winning it
-    let foe = null, fs = 0, feas = 0; const mine = strength(c, c.pop); for (const k in c.nb) { const o = w.cults[k]; if (!o.alive || o.war || c.nb[k] <= 1.5 || truceLeft(w, c.id, o.id) || leagued(w, c.id, o.id) || (c.oath != null && o.oath === c.oath)) continue;
+    let foe = null, fs = 0, feas = 0; const mine = strength(c, c.pop); for (const k in c.nb) { const o = w.cults[k]; if (!o.alive || o.war || c.nb[k] <= 1.5 || truceLeft(w, c.id, o.id) || termsBetween(w, c.id, o.id) || leagued(w, c.id, o.id) || (c.oath != null && o.oath === c.oath)) continue;
       const r = mine / Math.max(1, strength(o, o.pop)), fz = r / (r + 1), sc = c.nb[k] * fz * (1 + (claimGoal(w, c, o) || crownGoal(w, c, o) ? 1 : 0) + (c.over && c.over.kind === 'realm' && c.over.id === o.id ? 0.5 : 0)); if (sc > fs) { fs = sc; foe = o; feas = fz; } }
     const horde = c.env.nomads > c.env.sed && c.env.nomads >= 9 && A.riding && (tr === 'great' || (Q && Q.horse > 0.65)) && !c.ruler.rode;
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
     const deter = foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1;
     const kin = foe && foe._tp && (foe._tg[c.langId] || 0) > 0.25 * foe._tp && tongueGap(w, foe.langId, c.langId) > 0, relic = foe && crownGoal(w, c, foe), reclaim = foe && claimGoal(w, c, foe);   /* or to take back the crown of their tongue */   // "reunite the old tongue"
-    if (foe && rnd() < deter * Math.min(1.2, 2 * feas) * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * (relic ? 1.6 : 1) * (reclaim ? 1.6 : 1) * ((horde ? 0.3 : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (!!(c.docs && c.docs.peace) ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; c._relic = relic; c._reclaim = reclaim; startWar(w, c, foe, horde, holy); c._kin = false; c._relic = null; }
+    if (foe && rnd() < deter * Math.min(1.2, 2 * feas) * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * (relic ? 1.6 : 1) * (reclaim ? 1.6 : 1) * ((horde ? 0.3 * (0.5 + 2 * (c.fi || 0)) : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (!!(c.docs && c.docs.peace) ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; c._relic = relic; c._reclaim = reclaim; startWar(w, c, foe, horde, holy); c._kin = false; c._relic = null; }
   }
 }
+export function declareWar(w, c, f) { if (c.war || f.war || !c.big) return false; startWar(w, c, f, false, false); return true; }   /* (slice 4) for wars begun elsewhere: colonial conquest */
 function startWar(w, c, f, horde, holy) {
   // friends of the attacked come in: leagues, fellow believers, close neighbours; then the war is everyone's
   const allies = []; for (const o of w.cults) { if (!o.alive || o === c || o === f || o.war || c.war || o.count < 3) continue; const close = (o.nb[f.id] || 0) > 1 && (o.nb[c.id] || 0) < (o.nb[f.id] || 0); if ((leagued(w, o.id, f.id) || (sameFaith(o, f) && !sameFaith(o, c)) || (tongueGap(w, o.langId, f.langId) <= 2 && tongueGap(w, o.langId, c.langId) > 2) || close) && w.rnd() < 0.35) allies.push(o); }
@@ -698,7 +700,7 @@ function nomadStep(w, s, c, seaN, fishGap) {
     for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2) continue; const i = y * W + x; if (w.water[i] || w.h[i] - w.params.sea > 0.42 || w.ice[i]) continue;
       let sc = siteScore(w, x, y, A.farming, herding, c) * (0.9 + 0.2 * rnd()); if (near(w, x, y, 4, s)) sc *= 0.4; if (sc > best) { best = sc; bx = x; by = y; } }
     s.x = bx; s.y = by; }
-  if (!(c.tech >= 4 && (c.sedLast || 0) >= 3) && !(c.tech >= 5) && (s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : 26) : 10) && (w.nBand || 0) < MAXB) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
+  if (!(c.tech >= 4 && (c.sedLast || 0) >= 3) && !(c.tech >= 5) && (s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : bandCap(c)) : 10) && (w.nBand || 0) < MAXB) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
   if (A.farming && !herding && s.age > 20 && rnd() < 0.08) { const b = near(w, s.x, s.y, 14, s, true); if (b) { b.pop += s.pop * 0.8; s.dead = true; w.anyDead = true; return; } if (s.age > 60) { s.dead = true; w.anyDead = true; return; } }
   const war = c.war;
   if (herder && s.pop > 70 && w.year >= s.busy && rnd() < (A.riding ? 0.07 : 0.02) * (war ? (war.horde ? 6 : 3) : 1)) raid(w, s, c);
@@ -769,7 +771,10 @@ function raid(w, s, c) {
   const far = aims ? 15 : 0;   /* (slice 2) a war's aim draws bands from further off */
   near(w, s.x, s.y, reach + 9 + far, s, false, (u, q) => { const sg = u.siege && u.cult === s.cult && war ? w.cults[u.siege.by] : null, hc = u.occ ? w.cults[u.occ.by] : sg, mine = u.occ && hc && (hc === c || (war && !atWar(w, c, hc) && atWar(w, c, w.cults[u.cult]))), free = hc && war && atWar(w, c, hc); if (mine) return;   /* (slice 2) and our besieged towns are there to be relieved */   /* (slice 1b) held by our side already; our own towns held by the enemy are there to be freed */
     const en = free || (war && atWar(w, c, w.cults[u.cult])); if ((u.cult === s.cult && !free) || (u.nomad && !s.nomad && !en)) return; const lim = (reach + u.R + (aims && aims.includes(u.id) ? far : 0)) ** 2, pref = (en ? 0.35 : 1) * (free ? 0.5 : 1) * (aims && aims.includes(u.id) ? 0.4 : 1) * (u.entrepot && en ? 0.5 : 1) * (c.oath != null && u.cult === c.oath ? 0.3 : 1);   /* at war, the enemy's entrepôts first */ if (q < lim && q * pref < bd) { bd = q * pref; o = u; } });
-  if (!o) return; const oc = w.cults[o.occ && w.cults[o.occ.by] ? o.occ.by : o.cult === c.id && o.siege && w.cults[o.siege.by] ? o.siege.by : o.cult], foe = !!war && atWar(w, c, oc), truce = !foe && truceLeft(w, c.id, oc.id) > 0;   /* (slice 1a) under a truce there are no raids: only trade */
+  // (slice 4) the aim itself may lie over the sea: a fleet can carry the war that far
+  if (aims && A.sailing) { if (K._atY !== w.year) { K._atY = w.year; K._at = w.sets.filter((u) => !u.dead && aims.includes(u.id)); } const sea = A.navigation ? 200 : 80;
+    for (const u of K._at) { if (u.dead || u.cult === c.id || (u.occ && !atWar(w, c, w.cults[u.occ.by] || c))) continue; const q = wrapDx(u.x - s.x) ** 2 + (u.y - s.y) ** 2; if (q < (reach + u.R + sea) ** 2 && q * 0.14 < bd) { bd = q * 0.14; o = u; } } }
+  if (!o) return; const oc = w.cults[o.occ && w.cults[o.occ.by] ? o.occ.by : o.cult === c.id && o.siege && w.cults[o.siege.by] ? o.siege.by : o.cult], foe = !!war && atWar(w, c, oc), truce = !foe && (truceLeft(w, c.id, oc.id) > 0 || !!termsBetween(w, c.id, oc.id));   /* (slice 1a) under a truce there are no raids: only trade */
   const wet = crossesWater(w, s.x, s.y, o.x, o.y); if (wet > 1 && !A.boats) return; if (wet > 5 && !A.sailing) return;
   if (s.nomad && w.wall && wallBetween(w, s.x, s.y, o.x, o.y) && rnd() < 0.75) return;   // the wall holds
   if (oc.power) { if (c.oath !== oc.id && w.rnd() < 0.5) return; } else if (!foe && (truce || oc.war || (!!(c.docs && c.docs.peace) && sameFaith(c, oc)) || rnd() < (s.nomad ? 0.45 : 0.72))) { if (!o.nomad) { const gg = pickGoods(w, s, o); if (s.nomad || !tradeTrip(w, s, o, gg, false)) { if (wet === 0) { const cells = routeCells(w, s, o); if (cells) send(w, { kind: 'trade', cult: s.cult, x: s.x, y: s.y, tx: o.x, ty: o.y, n: 6, from: s, to: o, goods: gg, path: cells, step: A.riding ? 2 : 1 }); } } }   /* herders' and short trips: still along a real path */ else meet(w, c, oc, 0.15); return; }
