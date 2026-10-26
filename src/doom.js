@@ -7,7 +7,7 @@
 // never seen. The smoke dims the sun for years. Whoever is left forgets the engines and the wires,
 // and in the quiet the old powers come back. Then someone digs in a ruin and finds a bomb that works.
 import { nukeDeep } from './greatpowers.js';
-import { record } from './ledger.js';
+import { record, tally } from './ledger.js';
 import { W, H, N, DISC, wx, wrapDx, clamp, CS, CW, CH, CN , peopleText } from './core.js';
 import { coarse } from './climate.js';
 import { ev, discover, once } from './story.js';
@@ -16,7 +16,7 @@ import { remember, DEATH, FIRE } from './memory.js';
 import { ignite } from './life.js';
 import { send, arrive } from './movers.js';
 import { leagued } from './trade.js';
-import { atWar, conflictOf, sideOf, joinConflict, newConflict } from './war.js';
+import { atWar, conflictOf, sideOf, joinConflict, newConflict, truceLeft, enemiesOf } from './war.js';
 import { ART, TECH } from './tech.js';
 
 export function initDoom(w) { w.fallout = new Float32Array(N); w.veil = new Float32Array(CN); w.hot = []; w.glassI = []; w.craters = []; w.soot = 0; w.nukes = 0; w.clock = 12 * 60; w.deadAge = null; }
@@ -26,27 +26,28 @@ const big = (n) => peopleText(n);
 export function doomYear(w) {
   const rnd = w.rnd; let armed = 0, tension = 0;
   const nuclear = w.cults.filter((c) => c.alive && c.arts.bomb);
+  crisisYear(w, nuclear);
   for (const c of w.cults) { if (c.power) continue;
     if (!c.alive) continue;
     // a neighbour with the bomb is a reason to want one
     c.threat = nuclear.some((o) => o !== c && (c.nb[o.id] || 0) > 0.2) ? 1 : 0;
     if (!c.arts.bomb) continue; armed++;
     if (c.bombs == null) { c.bombs = 0; if (once(w, 'firstbomb') && c.big) { ev(w, `In a desert far from ${c.big.name}, the ${c.name} light a second sun. It is brighter than anything anyone has seen, and for a moment it is completely silent.`, c.big.x, c.big.y, c.color, 2); discover(w, 'bomb', c.big.x, c.big.y); } }
-    if (c.bombs < 40 && (c.metals & 128) && rnd() < 0.3) c.bombs += 1 + (c.arts.missiles ? 1 : 0);
+    const view = lessonOf(w, c);   /* (slice 5) what this people took from the last exchange, if its forebears lived through one */
+    if (c.bombs < (view === 'never' ? 60 : 40) && view !== 'disarm' && (c.metals & 128) && rnd() < 0.3) c.bombs += 1 + (c.arts.missiles ? 1 : 0);
+    if (view === 'disarm' && c.bombs > 0 && rnd() < 0.2) c.bombs--;
     const war = c.war, foe = war ? w.cults[war.foe] : null;
     if (war) tension += foe && foe.arts.bomb ? 3 : 1;
     if (!c.bombs || !c.big) continue;
     // what might make them use it
-    let p = 0;
+    // (slice 5) the odds follow the crisis between this realm and the other: steeply, so a world
+    // full of bombs mostly does not use them, and a cornered, losing, frightened one might
+    let p = 0; const alarmAt = crisisWith(w, c, nuclear);
     if (war && foe && foe.alive) {
-      p += 0.0008;
-      if (c.ruler.trait === 'mad') p += 0.04;
-      if (w.year - (c.lostCapAt || -99) < 8) p += 0.1;
-      if (war.lost > war.taken + 2) p += 0.03;
-      if (c.zeal && foe.faith !== c.faith) p += 0.03;
-      if (c.hurt > 3) p += 0.02;
-      if (foe.arts.bomb) p *= 0.6;   // they would answer
-    } else { const o = crisisWith(w, c, nuclear); if (o) p += 0.00015 * warning(c); }   // a flock of geese on the screen, at night: only in a crisis, and rarer with better warning
+      const x = crisisOf(w, c.id, foe.id);
+      p = (0.0003 + 0.06 * x * x * x) * (c.ruler.trait === 'mad' ? 4 : 1) * (c.zeal && foe.faith !== c.faith ? 1.5 : 1) * (c.hurt > 3 ? 1.3 : 1) * (foe.arts.bomb ? 0.6 : 1);   // they would answer
+    } else if (alarmAt) p = 0.0004 * crisisOf(w, c.id, alarmAt.id) ** 2 * warning(c);   // a flock of geese on the screen, at night: only in a crisis, and rarer with better warning
+    p *= memoryOf(w, c);
     if (w.exchange && w.year <= w.exchange.until) { if (war && foe && foe.alive && (c.struck || -99) >= w.exchange.from && (foe.fired || -99) >= w.exchange.from && rnd() < 0.7) strike(w, c, foe, 'answer'); continue; }   // (slice 0) in an exchange, only those already trading blows go on firing at each other
     if (rnd() < p) { const target = foe && foe.alive ? foe : crisisWith(w, c, nuclear); if (target) strike(w, c, target, foe ? 'war' : 'alarm'); }
   }
@@ -75,9 +76,50 @@ export const sootTick = (w) => { if (w.soot > w.aerosol) w.aerosol = w.soot; };
 // (slice 0) A nuclear crisis, until the pairwise crisis state exists: a nuclear rival this realm fought
 // within a generation, or one that has fired in the last 30 years and is a rival. Without one, no false alarm.
 function crisisWith(w, c, nuclear) {
-  for (const o of nuclear) { if (o === c || !o.alive) continue; const riv = (c.nb[o.id] || 0) > 0.5;
-    if (riv && ((c.fought === o.id && w.year - (c.foughtAt || -999) < 25) || w.year - (o.fired || -999) < 30)) return o; }
-  return null;
+  let best = null, bx = 0.5; for (const o of nuclear) { if (o === c || !o.alive) continue; const x = crisisOf(w, c.id, o.id); if (x > bx) { bx = x; best = o; } }   /* (slice 5) a false alarm needs a real crisis */
+  return best;
+}
+// ---------- (slice 5) the crisis between two realms, and the memory of an exchange ----------
+// w.rel['a-b'].crisis, 0..1, for any pair where one side has the bomb. It rises with a war between
+// them, a capital taken or besieged, a side losing badly, a rival's new bomb next door, and any strike;
+// it cools with truces, trade and time.
+const pk = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
+export const crisisOf = (w, a, b) => { const r = w.rel && w.rel[pk(a, b)]; return r && r.crisis ? r.crisis : 0; };
+function crisisYear(w, nuclear) {
+  const R = w.rel || (w.rel = {}), seen = new Set();
+  for (const c of nuclear) { const ids = new Set(Object.keys(c.nb).map(Number)); if (c.war) for (const id of enemiesOf(w, c)) ids.add(id);   /* everyone in the war against it, near or far */
+    for (const k of ids) {
+    const o = w.cults[k]; if (!o || !o.alive || o.power || o === c) continue;
+    const key = pk(c.id, o.id); if (seen.has(key)) continue; seen.add(key); const r0 = R[key], was = r0 && r0.crisis ? r0.crisis : 0, war = atWar(w, c, o);
+    if (!war && !was && !(c.nb[o.id] > 0.5)) continue;
+    let x = was;
+    if (war) { x += 0.06; const K = conflictOf(w, c); if (K) { for (const id of [K.sides[0].lead, K.sides[1].lead]) { const b = w.cults[id] && w.cults[id].big; if (b && (b.occ || b.siege)) x += 0.15; } if (K.will && Math.min(K.will[0], K.will[1]) < 0.1) x += 0.05; } }
+    else { x *= truceLeft(w, c.id, o.id) ? 0.8 : 0.9; if ((c.ties && c.ties[o.id] > 1) || (o.ties && o.ties[c.id] > 1)) x *= 0.9; }
+    for (const [a, b] of [[c, o], [o, c]]) if (a.arts.bomb && w.year - a.arts.bomb < 15 && (b.nb[a.id] || 0) > 0.5) x += 0.04;   /* a rival's new bomb next door */
+    if (w.year - Math.max(c.fired || -99, o.fired || -99) < 2 && w.year - Math.max(c.struck || -99, o.struck || -99) < 2) x = 1;
+    x = Math.min(1, x); const r = r0 || (R[key] = {});
+    if (x >= 0.7 && !(was >= 0.7)) { tally(w, 'crisisHigh'); r.peakAt = w.year; r.fired = false; }
+    if (x < 0.3 && was >= 0.3 && r.peakAt != null && !r.fired) { tally(w, 'crisisCooled'); r.peakAt = null; }
+    if (x < 0.01) { delete r.crisis; if (!Object.keys(r).length) delete R[key]; } else r.crisis = x;
+  } }
+  for (const key in R) { const r = R[key]; if (r.crisis > 0 && !seen.has(key)) { r.crisis *= 0.9; if (r.crisis < 0.01) delete r.crisis; } }   /* pairs nobody looked at this year cool off */
+  // a crisis spills over to league partners, at half strength: an alliance can drag a partner toward the brink
+  for (const g of w.leagues || []) for (const a of g.members) { const A = w.cults[a]; if (!A || !A.alive || !A.arts.bomb) continue;
+    for (const b of g.members) { if (a === b) continue; for (const key in R) { const r = R[key]; if (!(r.crisis > 0.5)) continue; const [p, q] = key.split('-').map(Number); const other = p === b ? q : q === b ? p : null; if (other == null || other === a || g.members.has(other)) continue;
+      const e = R[pk(a, other)] || (R[pk(a, other)] = {}); e.crisis = Math.max(e.crisis || 0, 0.5 * r.crisis); } } }
+}
+// The memory of an exchange lives in the tongue families that fired or were struck. For centuries it
+// makes the bomb much harder to reach for. Each realm of those families takes its own lesson from it.
+function rootOf(w, c) { return w.langs && c.langId != null && w.langs[c.langId] ? w.langs[c.langId].root : null; }
+function memoryOf(w, c) {
+  const r = rootOf(w, c), M = w.nukeMem; if (r == null || !M || M[r] == null) return 1; const age = w.year - M[r];
+  const v = lessonOf(w, c), f = 0.08 + 0.92 * Math.min(1, age / 500); return v === 'deter' ? f : v === 'never' ? Math.min(1, f * 1.5) : f * 0.5;
+}
+function lessonOf(w, c) {
+  const r = rootOf(w, c), M = w.nukeMem; if (r == null || !M || M[r] == null || w.year - M[r] > 800) return null;
+  if (!c.lesson || c.lessonOf !== M[r]) { c.lessonOf = M[r]; const u = w.rnd(); c.lesson = u < 0.3 ? 'disarm' : u < 0.8 ? 'deter' : 'never';
+    if (c.big && w.year - M[r] > 30) { tally(w, 'lesson_' + c.lesson); ev(w, c.lesson === 'disarm' ? `The ${c.name} remember the burning, and break up their bombs. Never again, they say, and mean: never by our hand.` : c.lesson === 'deter' ? `The ${c.name} keep their bombs and the old stories of the burning, and hope the second keeps the first in their silos.` : `The ${c.name} remember who burned them. Never again, they say, and mean: never again defenceless.`, c.big.x, c.big.y, c.color, 1); } }
+  return c.lesson;
 }
 // early warning makes mistakes rarer: radar and radio, satellites, computers
 const warning = (c) => (c.arts.radio ? 0.7 : 1) * (c.arts.satellites ? 0.5 : 1) * (c.arts.computers ? 0.6 : 1);
@@ -86,6 +128,7 @@ function strike(w, c, f, why) {
   const n = Math.max(1, Math.min(c.bombs, why === 'alarm' ? 2 : 1 + Math.floor(c.bombs / 4)));
   const targets = w.sets.filter((s) => !s.dead && s.cult === f.id && !s.nomad).sort((a, b) => b.pop - a.pop).slice(0, n); if (!targets.length) return;
   c.bombs -= targets.length; const b = c.big; c.fired = w.year; f.struck = w.year;
+  { const M = w.nukeMem || (w.nukeMem = {}); for (const q of [c, f]) { const r = rootOf(w, q); if (r != null) M[r] = w.year; } const rr = w.rel || (w.rel = {}), e = rr[pk(c.id, f.id)] || (rr[pk(c.id, f.id)] = {}); e.crisis = 1; e.fired = true; }   /* (slice 5) the crisis peaks; the memory begins */
   if (!w.exchange || w.year > w.exchange.until) { w.exchange = { from: w.year, until: w.year + 3 }; }
   const first = !w.nukes;
   ev(w, first ? (why === 'alarm' ? `Something shows on the screens of the ${c.name} that looks like an attack. There are four minutes to decide. They decide.` : c.ruler.trait === 'mad' ? `${c.ruler.name} orders the bombs. Nobody stops him.` : `With the war lost, the ${c.name} use the bomb.`) : `The ${c.name} launch at the cities of the ${f.name}.`, b.x, b.y, c.color, 2);

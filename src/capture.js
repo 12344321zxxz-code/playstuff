@@ -15,6 +15,7 @@ import { atWar } from './war.js';
 import { strength, newCult, addSet, endSet, near, whereAbouts, routeToCell, declareWar } from './people.js';
 import { send, arrive } from './movers.js';
 import { record, tally } from './ledger.js';
+import { relicCrown } from './relics.js';
 import { ev, discover, once } from './story.js';
 import { holySite } from './faith.js';
 import { dragonDies } from './fantasy.js';
@@ -32,7 +33,9 @@ function take(w, c, o) {
   c.tribute = c.over.take;
 }
 function free(w, c, how, cause) {
-  const ov = c.over; if (!ov) return; if (/kills|throws off/.test(how)) newHouse(w, c, ov.house);   /* the collecting house takes the throne */ c.over = null; c.tribute = 0; c.overPush = 1;
+  const ov = c.over; if (!ov) return; if (/kills|throws off/.test(how)) newHouse(w, c, ov.house);
+  if (ov.kind === 'dragon') { c.lostDragonAt = w.year; const d = w.dragons.find((q) => q.name === ov.d); const lx = d ? (d.home ? d.home.x : d.lx) : null, ly = d ? (d.home ? d.home.y : d.ly) : null;
+    if (d && w.year - ov.since >= 150 && lx != null) { holySite(w, lx, ly, 'dragonking', 0.6); record(w, 'dragon-legacy', [c.id], { x: lx, y: ly, note: `${ov.d} ruled the ${c.name} for ${w.year - ov.since} years; its lair is a holy place now` }); tally(w, 'dragonLegacy'); } }   /* (slice 5) a long reign leaves a holy lair; its clients are no longer held by fear */   /* the collecting house takes the throne */ c.over = null; c.tribute = 0; c.overPush = 1;
   if (ov.kind === 'realm') { const o = w.cults[ov.id]; if (o) o.colonies = (o.colonies || []).filter((id) => id !== c.id); }
   const b = c.big; c.coh = Math.min(1, c.coh + 0.3);
   record(w, 'free', [c.id], { note: how, x: b ? b.x : 0, y: b ? b.y : 0, cause });
@@ -72,7 +75,7 @@ export function captureYear(w) {
     if (seat && seat.cult !== c.id && w.cults[seat.cult] && !w.cults[seat.cult].power) {
       const o = w.cults[seat.cult], gun = (o.arts.gunpowder ? 3 : 1) * (o.arts.flight ? 2 : 1), mine = strength(o, o.pop) * gun, pw = mine / (mine + dragonPower(d)), roll = rnd();
       const id = record(w, 'dragonfight', [o.id, c.id], { p: pw, roll, note: `the ${o.name} against ${d.name} in ${seat.name}`, x: seat.x, y: seat.y, terms: { army: mine, dragon: dragonPower(d) } });
-      if (roll < pw) { o.treasure = (o.treasure || 0) + d.hoard; const hoard = d.hoard; d.hoard = 0; dragonDies(w, d); holySite(w, seat.x, seat.y, 'slayer', 0.9); d.king = null; free(w, c, `the ${o.name} kill ${d.name} in ${seat.name}`, id);
+      if (roll < pw) { o.treasure = (o.treasure || 0) + d.hoard; const hoard = d.hoard; d.hoard = 0; dragonDies(w, d); relicCrown(w, o, `the Hoard-Crown of ${d.name}`); holySite(w, seat.x, seat.y, 'slayer', 0.9); d.king = null; free(w, c, `the ${o.name} kill ${d.name} in ${seat.name}`, id);
         ev(w, `The ${o.name} take ${seat.name} street by street and find ${d.name} waiting on the palace roof. It takes them three days to kill it. ${hoard > 5 ? 'Its hoard goes home in their wagons.' : 'There is less gold under it than the songs said.'}`, seat.x, seat.y, o.color, 2); discover(w, 'dragonslain', seat.x, seat.y); continue; }
       seat.cult = c.id; seat.trade = 0; seat.pop *= 0.6; o.hurt = (o.hurt || 0) + 3; if (atWar(w, o, c)) o.war.lost = (o.war.lost || 0) + 2;
       ev(w, `The ${o.name} take ${seat.name}, and ${d.name} wakes on the palace roof. By morning the city belongs to the dragon again, and the army that took it is ash.`, seat.x, seat.y, c.color, 1);
@@ -88,19 +91,22 @@ export function captureYear(w) {
       const d = w.dragons.find((q) => q.name === ov.d && !q.dead);
       if (!d) { free(w, c, 'the dragon is gone'); if (b) ev(w, `With ${ov.d} gone, ${ov.house} rules the ${c.name} in its own name.`, b.x, b.y, c.color, 1); continue; }
       // hunger grows with age; tribute is the take on what the realm grows
-      const need = 1 + d.age / 150, got = ov.take * c.pop / 800;
+      const need = 1 + d.age / 150, got = ov.take * c.pop / 800 + 0.5 * (c.tributeIn || 0) / 8;   /* (slice 5) the host's own clients pay too, and half of it goes up the mountain */
       if (got < need) { ov.take = Math.min(0.4, ov.take + 0.01); c.overPush = 2.5; } else { ov.take = Math.max(0.12, ov.take - 0.003); c.overPush = 1; d.hoard += 0.2; }
       c.tribute = ov.take; d.hunger = 0;
       if (rnd() < 0.3) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 1 && s !== b && (!from || rnd() < 0.2)) from = s; if (from) { const cells = legCells(w, from, b); if (cells && cells.length > 1) send(w, { kind: 'tribute', cult: c.id, x: from.x, y: from.y, tx: d.lx, ty: d.ly, n: 8, gold: ov.take * 3, dragon: d.name, path: cells, step: 2 }); else d.hoard += ov.take * 3; }   /* the tribute goes up the ways to the capital */ }
       // a town that will not pay is burned
-      if (L < 0.8 && rnd() < 0.12 && d.st === 'wake') { let far = null, fd = 0; for (const s of w.sets) { if (s.cult !== c.id || s.nomad || s === b) continue; const q = wrapDx(s.x - b.x) ** 2 + (s.y - b.y) ** 2; if (q > fd) { fd = q; far = s; } }
+      // (slice 5) danger, graded: a realm that cannot pay is first frightened, then squeezed, and only then burned
+      if (L < 0.8 && rnd() < 0.12 && d.st === 'wake' && L >= 0.68) { ov.take = Math.min(0.4, ov.take + 0.02); tally(w, 'dragonIntimidates'); if (once(w, 'fly-' + c.id + '-' + Math.floor(w.year / 40))) ev(w, `${ov.d} circles low over ${b.name} for a whole afternoon and lands nowhere. The tribute is paid early this year.`, b.x, b.y, c.color, 1); }
+      else if (L < 0.68 && rnd() < 0.12 && d.st === 'wake' && L >= 0.58) { ov.take = Math.min(0.4, ov.take + 0.04); c.coh = Math.max(0.05, c.coh - 0.03); tally(w, 'dragonEnforces'); if (once(w, 'squeeze-' + c.id + '-' + Math.floor(w.year / 40))) ev(w, `${ov.house.replace(/^t/, 'T')} sends its collectors out with soldiers. What ${ov.d} is owed will be paid, whatever is left after.`, b.x, b.y, c.color, 1); }
+      else if (L < 0.58 && rnd() < 0.12 && d.st === 'wake') { tally(w, 'dragonBurns'); let far = null, fd = 0; for (const s of w.sets) { if (s.cult !== c.id || s.nomad || s === b) continue; const q = wrapDx(s.x - b.x) ** 2 + (s.y - b.y) ** 2; if (q > fd) { fd = q; far = s; } }
         if (far) { d.pacts.delete(c.id); d.st = 'fly'; d.target = { kind: 'town', s: far }; d.tx = far.x; d.ty = far.y; d.repact = c.id; if (once(w, 'refuse-' + c.id + '-' + Math.floor(w.year / 60))) ev(w, `${far.name} will not pay ${ov.d}. Everyone knows what happens next.`, far.x, far.y, c.color, 1); } }
       // the rising: from below when the people are squeezed, led by the house that grew rich collecting
       const p = 0.004 + 0.03 * Math.max(0, 0.8 - L) + Math.min(0.02, ov.hw / 4000);
       if (rnd() < p) {
         const gun = c.arts.gunpowder ? 3 : 1, rebels = strength(c, c.pop) * gun * (1 + Math.min(1, ov.hw / 300)), power = dragonPower(d), roll = rnd();
         const pw = rebels / (rebels + power), id = record(w, 'rising', [c.id], { p: pw, roll, note: `${ov.house} against ${d.name}`, x: b.x, y: b.y, terms: { rebels, dragon: power } });
-        if (roll < pw) { c.treasure = (c.treasure || 0) + d.hoard; dragonDies(w, d); holySite(w, b.x, b.y, 'slayer', 0.9); d.king = null; free(w, c, `${ov.house} kills ${d.name}`, id);
+        if (roll < pw) { c.treasure = (c.treasure || 0) + d.hoard; dragonDies(w, d); relicCrown(w, c, `the Hoard-Crown of ${d.name}`); holySite(w, b.x, b.y, 'slayer', 0.9); d.king = null; free(w, c, `${ov.house} kills ${d.name}`, id);
           ev(w, `${ov.house} raises the ${c.name}${gun > 1 ? ' with guns' : ''} against ${d.name}. The dragon falls in the hills above ${b.name}, and the house that collected its gold wears its crown.`, b.x, b.y, c.color, 2); discover(w, 'dragonslain', b.x, b.y); }
         else { ov.hw *= 0.4; ov.take = Math.min(0.4, ov.take + 0.05); ov.risings++; c.coh = Math.max(0.05, c.coh - 0.15);
           ev(w, `The ${c.name} rise against ${d.name}, and the dragon burns the rising out of the land. ${ov.house} pays double this year.`, b.x, b.y, c.color, 1); }
@@ -110,7 +116,7 @@ export function captureYear(w) {
       if (!o || !o.alive) { free(w, c, 'the overlord is gone'); ev(w, `There is no one left to send the tribute to. The ${c.name} are their own masters again.`, b.x, b.y, c.color, 1); continue; }
       c.tribute = ov.take; o.tributeIn = (o.tributeIn || 0) + ov.take * c.pop / 100;
       if (rnd() < 0.15) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 2) { from = s; break; } if (from && o.big) { const lane = seaLane(w, from.x, from.y, o.big.x, o.big.y), cells = lane ? null : legCells(w, from, o.big); if (lane || (cells && cells.length > 1)) send(w, { kind: 'trade', cult: o.id, x: from.x, y: from.y, tx: o.big.x, ty: o.big.y, n: 10, goods: -1, land: 0.8, path: lane || cells, wet0: !!lane, step: lane ? 4 : 2 }); }   /* the colony's tribute sails a lane home, or goes by the ways */; }
-      const gap = tongueGap(w, c.langId, o.langId), weak = o.hub && (o.hub.st === 'civil' || o.hub.st === 'factions') ? 0.03 : 0;
+      const gap = tongueGap(w, c.langId, o.langId), weak = (o.hub && (o.hub.st === 'civil' || o.hub.st === 'factions') ? 0.03 : 0) + (o.lostDragonAt != null && w.year - o.lostDragonAt < 25 ? 0.04 : 0);   /* (slice 5) a host that has lost its dragon holds its own clients more loosely */
       const p = 0.003 + 0.03 * Math.max(0, 0.8 - L) + weak + (gap === Infinity ? 0.004 : 0) + Math.min(0.02, ov.hw / 4000);
       if (rnd() < p) {
         const rebels = strength(c, c.pop) * (1 + Math.min(1, ov.hw / 300)), held = strength(o, o.pop) * 0.35, roll = rnd(), pw = rebels / (rebels + held);

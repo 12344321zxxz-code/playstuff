@@ -566,7 +566,7 @@ function cultYear(w, c) {
     c.span = n ? sum / n / reach : 0; c.reachR = reach; }
   const HB = hubYear(w, c, HOOKS); if (!c.alive) return;
   const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / 300 - 0.35 * Math.min(2, Math.max(0, (c.span || 0) - 0.9)), claim: c.claimHeld ? 0.05 : 0, age: HUB.ageDiv ? -(w.year - c.born) / HUB.ageDiv : 0, elites: HB.elites, strife: HB.strife, living: HB.living, frontier: HB.frontier, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
-    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: ((c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) + (c.docs && c.docs.world ? 0.04 : 0) + (c.docs && c.docs.peace ? 0.04 : 0)) * (1 + (Q ? Q.pious : 0)) * (c.faithHold == null ? 1 : 0.4 + 0.6 * c.faithHold), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, steppe: nomadic(c) ? 0.25 * ((c.fi || 0) - 0.25) : 0, peace: !!(c.docs && c.docs.peace) ? 0.04 : 0 };
+    ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: ((c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) + (c.docs && c.docs.world ? 0.04 : 0) + (c.docs && c.docs.peace ? 0.04 : 0)) * (1 + (Q ? Q.pious : 0)) * (c.faithHold == null ? 1 : 0.4 + 0.6 * c.faithHold), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, dread: c.over && c.over.kind === 'dragon' ? 0.12 : 0, steppe: nomadic(c) ? 0.25 * ((c.fi || 0) - 0.25) : 0, peace: !!(c.docs && c.docs.peace) ? 0.04 : 0 };
   let tsum = 0; for (const k in P) tsum += P[k]; const target = clamp(tsum, 0.05, 1); c.cohT = target;
   if (w.year % 10 === 0) { const ph = c.ph || (c.ph = []); ph.push([w.year, Object.assign({}, P)]); if (ph.length > 6) ph.shift(); }   /* snapshots for finding the trigger */
   c.coh += (target - c.coh) * 0.035; c.wins *= 0.97;
@@ -601,7 +601,7 @@ function startWar(w, c, f, horde, holy) {
   const K = newConflict(w, c, f, until, { horde });   /* (slice 1a) one shared record for the whole war */
   // (slice 1b) what the war is for, and what each side stands to lose
   const ratio = strength(c, c.pop) / Math.max(1, strength(f, f.pop)), far = !!(c.big && f.big && Math.hypot(wrapDx(c.big.x - f.big.x), c.big.y - f.big.y) > 45), press = hubPush(c) > 1, hungry = c.hungry > c.count * 0.25;
-  K.aim = c.over && c.over.kind === 'realm' && c.over.id === f.id ? { kind: 'free', towns: [] } : pickAim(w, c, f, { relic: c._relic, reclaim: c._reclaim, horde, ratio, far, press, hungry, trade: !!((c.q && c.q.trade > 0.5) || (c.markets || 0) >= 2) });
+  K.aim = c.over && c.over.kind === 'realm' && c.over.id === f.id ? { kind: 'free', towns: [] } : pickAim(w, c, f, { relic: c._relic, reclaim: c._reclaim, horde, ratio, far, press, hungry, dragon: !!(c.over && c.over.kind === 'dragon'), trade: !!((c.q && c.q.trade > 0.5) || (c.markets || 0) >= 2) });
   let share = 0, cap = false; for (const s of w.sets) if (!s.dead && K.aim.towns.includes(s.id)) { share += s.pop; if (s === f.big) cap = true; } share /= Math.max(1, f.pop);
   K.stakes = [clamp(0.35 + (press ? 0.2 : 0) + (K.aim.kind === 'restore' || K.aim.kind === 'free' ? 0.25 : 0) + (horde ? 0.2 : 0) + (holy ? 0.15 : 0) + (hungry ? 0.15 : 0), 0.2, 1), clamp(0.35 + 1.5 * share + (cap ? 0.4 : 0) + (K.aim.kind === 'tribute' || K.aim.kind === 'free' ? 0.25 : 0), 0.3, 1.2)];
   K.lost = [0, 0]; K.pop0 = [c.pop, f.pop]; K.coh0 = [c.coh, f.coh]; K.last = w.year; K.odds = +ratio.toFixed(2);
@@ -658,6 +658,7 @@ function schism(w, c, quiet) {
   nc.count = n; nc.coh = 0.9; c.coh = Math.min(1, c.coh + 0.2); if (c.hub && c.count > 0) c.hub.E *= Math.max(0.3, 1 - n / c.count); hubReset(w, nc, 0.7); if (!quiet) record(w, 'breakaway', [c.id, nc.id], Object.assign({ note: `${n} towns` }, c._why || { x: far.x, y: far.y }));
   const dx = wrapDx(far.x - c.big.x), dy = far.y - c.big.y, dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'eastern' : 'western') : dy > 0 ? 'southern' : 'northern';
   if (!quiet) ev(w, `The ${dir} ${TIER[Math.max(1, far.tier)]}s of the ${c.name} break away. They call themselves the ${nc.name}.`, far.x, far.y, nc.color, n < 6 ? 1 : 0); discover(w, 'schism', far.x, far.y);
+  if (c.over && c.over.kind === 'dragon' && subjugate(w, nc, c)) { nc.over.house = c.over.house; tally(w, 'dragonKeeps'); }   /* (slice 5) what breaks off a dragon's realm still pays it, through the realm */
   return { n, to: nc, born: true };
 }
 // a trigger in living standard is named by what took the surplus
@@ -676,6 +677,7 @@ export function collapse(w, c) {
   ev(w, b.name ? `${realmTitle(c).replace(/^the /, 'The ').replace(/^The (?!.*realm)/, 'The realm of the ')} comes apart.${who} ${b.name} holds what is left.` : `The ${c.name} fall to fighting among themselves.${who}`, b.x, b.y, c.color, n0 >= 30 || once(w, 'collapse') ? 2 : 0);
   const keep = !!(c.docs && c.docs.ancestors);
   if (false && old >= 2 && w.rnd() < (keep ? 0.3 : 0.7)) {   /* no scripted dark age: each splinter re-checks its knowledge carriers */ c.know = TECH[old - 1] * (keep ? 0.85 : 0.55); c.tech = techOf(c.know); const lose = ['engines', 'sailing', 'writing', 'irrigation', 'roads'].find((k) => c.arts[k]); if (lose) { delete c.arts[lose]; ev(w, `The ${c.name} forget ${ART[lose].say}.`, b.x, b.y, c.color); } discover(w, 'darkage', b.x, b.y); }
+  if (c.over && c.over.kind === 'dragon') for (const h of heirs) if (h.born === w.year && !h.over && h !== c && subjugate(w, h, c)) tally(w, 'dragonKeeps');
   c.coh = 0.85; c.born = w.year; c.flags.empire = 0; hubReset(w, c, 0.6); newHouse(w, c); if (n0 >= 12) holySite(w, b.x, b.y, 'collapse', 0.25); c.realmN = (c.realmN || 1) + 1; endWar(w, c, true);
 }
 

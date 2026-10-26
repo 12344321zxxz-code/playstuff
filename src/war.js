@@ -61,7 +61,7 @@ export function truceYears(got, lost, years, capital) { return Math.min(60, Math
 // keep the books tidy: wars whose realms are all gone, truces long past
 export function tidyWars(w) {
   for (const id in conflicts(w)) { const K = w.conflicts[id]; const alive = (s) => K.sides[s].members.some((m) => w.cults[m] && w.cults[m].alive && w.cults[m].war && w.cults[m].war.cid === K.id); if (!alive(0) || !alive(1)) closeConflict(w, K, 0); }
-  for (const k in rels(w)) { const r = w.rel[k]; if (!(r.truce > w.year - 50) && !(r.terms && r.terms.length)) delete w.rel[k]; }   /* standing terms keep their entry */
+  for (const k in rels(w)) { const r = w.rel[k]; if (!(r.truce > w.year - 50) && !(r.terms && r.terms.length) && !(r.crisis > 0)) delete w.rel[k]; }   /* standing terms keep their entry */
 }
 
 // ---------- (slice 1b) aims, occupation, the will to go on, and how wars end ----------
@@ -87,6 +87,7 @@ export function pickAim(w, c, f, o) {
   if (o.reclaim) { const ts = nearest(theirs.filter((s) => o.reclaim.towns.includes(s.id))).slice(0, 6); if (ts.length) return { kind: 'restore', towns: ts.map((s) => s.id), name: o.reclaim.name }; }
   if (!theirs.length) return { kind: o.horde ? 'tribute' : 'land', towns: [] };
   if ((o.horde || (o.ratio > 3 && o.far)) && !f.over && f.big && !f.big.occ) return { kind: 'tribute', towns: [f.big.id] };   /* to make them pay: the court is the aim */
+  if (o.dragon) { const rich = nearest(theirs.filter((s) => s.entrepot || (s.ores & 16)))[0]; if (rich && gap.get(rich) < 50 * 50) return { kind: 'trade', towns: [rich.id], name: rich.name }; if (!f.over && f.big && !f.big.occ) return { kind: 'tribute', towns: [f.big.id] }; }   /* (slice 5) a dragon wants gold: a gold town or an entrepôt, or a rich court to pay it */
   if (o.trade) { const ent = nearest(theirs.filter((s) => s.entrepot))[0]; if (ent && gap.get(ent) < 45 * 45) return { kind: 'trade', towns: [ent.id], name: ent.name }; }
   const n = Math.max(1, Math.min(4, theirs.length - 1, 1 + (o.press ? 1 : 0) + (o.ratio > 2 ? 1 : 0) + (o.hungry ? 1 : 0)));
   return { kind: 'land', towns: nearest(theirs).slice(0, n).map((s) => s.id) };

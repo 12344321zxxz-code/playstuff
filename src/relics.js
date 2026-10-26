@@ -14,6 +14,12 @@ export function newHouse(w, c, name) {
   if (old) (c.houses || (c.houses = [])).push({ name: old.name, from: old.since, to: w.year });
   return old;
 }
+// (slice 5) a crown made for a deed: the slayer of a dragon king
+export function relicCrown(w, c, name) {
+  if (!c || !c.big) return null; const R = w.crowns || (w.crowns = []), L = w.langs && w.langs[c.langId];
+  const r = { id: R.length, name, maker: c.id, owner: c.id, at: c.big.id, root: L ? L.root : null, born: w.year, buried: null, moves: [], x: c.big.x, y: c.big.y, place: c.big.name };
+  R.push(r); record(w, 'crown', [c.id], { x: c.big.x, y: c.big.y, note: r.name }); return r;
+}
 const CROWN = ['the Crown of', 'the Iron Throne of', 'the Sun Disc of', 'the Seal of', 'the Spear of', 'the Gold Mask of', 'the Stone Chair of'];
 
 export function relicsYear(w) {
