@@ -57,4 +57,4 @@ export function frontierYear(w) {
   }
 }
 // how many bands a confederation can hold together: the more it draws from the settled world, the bigger
-export const bandCap = (c) => Math.round(14 + 22 * Math.min(1, (c.fi || 0) * 2));
+export const bandCap = (c) => Math.round(18 + 18 * Math.min(1, (c.fi || 0) * 2));
