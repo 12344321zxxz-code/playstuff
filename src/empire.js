@@ -17,7 +17,7 @@ import { tongueGap, word } from './tongues.js';
 import { atWar } from './war.js';
 import { W, wrapDx } from './core.js';
 
-const MAXC = 38;   /* the living cap is 30; a province breaking away may take it a little past, as colonies do */
+const MAXC = 36;   /* the living cap is 30; a province breaking away may take it a little past, as colonies do */
 const living = (w) => { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; return n; };
 const dist = (a, b) => Math.hypot(wrapDx(a.x - b.x), a.y - b.y);
 const houseName = (w, c) => `the House of ${word(w, c.lang, w.rnd() < 0.5 ? 1 : 2)}`;
