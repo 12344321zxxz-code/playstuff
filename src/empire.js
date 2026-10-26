@@ -17,7 +17,7 @@ import { tongueGap, word } from './tongues.js';
 import { atWar } from './war.js';
 import { W, wrapDx } from './core.js';
 
-const MAXC = 30;
+const MAXC = 38;   /* the living cap is 30; a province breaking away may take it a little past, as colonies do */
 const living = (w) => { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; return n; };
 const dist = (a, b) => Math.hypot(wrapDx(a.x - b.x), a.y - b.y);
 const houseName = (w, c) => `the House of ${word(w, c.lang, w.rnd() < 0.5 ? 1 : 2)}`;
@@ -26,7 +26,7 @@ const mass = (w, s) => w.mass[s.y * W + s.x];
 // how much of a town's dues reaches the court
 function effOf(w, c, s, b) {
   const over = mass(w, s) !== mass(w, b), cost = dist(s, b) * (s.links ? 0.7 : 1) * (over ? (c.arts.navigation ? 1.1 : c.arts.sailing ? 1.6 : 2.5) : 1) * (over && s.port ? 0.8 : 1);
-  const A = c.hub ? c.hub.A : 0.6; return Math.max(0.12, Math.min(1, 1.15 - (0.5 * cost) / Math.max(20, c.reachR || 30))) * (0.7 + 0.3 * A);
+  const A = c.hub ? c.hub.A : 0.6; return Math.max(0.12, Math.min(1, 1.1 - (0.9 * cost) / Math.max(20, c.reachR || 30))) * (0.7 + 0.3 * A);
 }
 
 export function empireYear(w) {
@@ -60,7 +60,7 @@ export function empireYear(w) {
       const p = 0.001 + 0.04 * Math.max(0, r.share - 0.3) + (h.A < 0.35 ? 0.008 : 0) + (h.st === 'civil' ? 0.02 : h.st === 'factions' ? 0.006 : 0) + (gap > 2 ? 0.004 : 0) + (far ? 0.004 : 0);
       if (w.rnd() >= p) continue;
       const why = { x: seat.x, y: seat.y, terms: { share: +r.share.toFixed(2), eff: +r.eff.toFixed(2), A: +h.A.toFixed(2), gap: gap === Infinity ? 99 : gap } };
-      if (h.A >= 0.45 && r.eff < 0.55) { if (living(w) >= MAXC) continue; const nc = secede(w, c, R, k, T, 'autonomy', why); if (nc) { subjugate(w, nc, c); nc.over.house = r.name; } break; }   /* the court can still make them pay, not govern them */
+      if (h.A >= 0.45 && r.eff < 0.55) { if (living(w) >= MAXC) continue; const nc = secede(w, c, R, k, T, 'autonomy', why); if (nc && subjugate(w, nc, c)) nc.over.house = r.name; break; }   /* the court can still make them pay, not govern them */
       const mine = strength(c, Math.max(1, c.pop - r.pop)) * (0.4 + 0.6 * h.A), theirs = strength(c, r.pop) * (1 + Math.min(1, r.share)), roll = w.rnd(), pw = theirs / (theirs + mine);
       const id = record(w, 'house-rising', [c.id], Object.assign({ p: pw, roll, note: `${r.name} of ${seat.name}` }, why));
       if (roll < pw && living(w) < MAXC) { secede(w, c, R, k, T, 'secession', Object.assign(why, { cause: id })); break; }
@@ -95,10 +95,10 @@ export function empireYear(w) {
 // a province goes: as a client (autonomy) or a realm of its own (secession), with its house on the throne
 export function secede(w, c, R, k, T, how, why) {
   const r = R[k], seat = w.sets.find((s) => s.id === r.seat && !s.dead); if (!seat) return null;
-  const nc = newCult(w, c); let n = 0;
+  const nc = newCult(w, c); let n = 0, big = null;
   if (seat.lang != null && seat.lang !== c.langId && w.langs && w.langs[seat.lang]) { nc.langId = seat.lang; nc.lang = w.langs[seat.lang].snd; }
-  for (const s of T || w.sets) if (!s.dead && s.cult === c.id && s._reg === r.id && !s.occ && !s.siege && s !== c.big) { s.cult = nc.id; n++; }
-  nc.count = n; nc.coh = 0.85; nc.house = { name: r.name, since: w.year }; hubReset(w, nc, 0.7);
+  for (const s of T || w.sets) if (!s.dead && s.cult === c.id && s._reg === r.id && !s.occ && !s.siege && s !== c.big) { s.cult = nc.id; n++; if (!big || s.pop > big.pop) big = s; }
+  nc.count = n; nc.big = seat.cult === nc.id ? seat : big; nc.coh = 0.85; if (!n) return null; nc.house = { name: r.name, since: w.year }; hubReset(w, nc, 0.7);
   if (c.hub && c.count > 0) c.hub.E *= Math.max(0.3, 1 - n / c.count); c.coh = Math.min(1, c.coh + 0.1);
   R.splice(k, 1); tally(w, how);
   record(w, how, [c.id, nc.id], Object.assign({ note: `${r.name} of ${seat.name}, ${n} towns` }, why || { x: seat.x, y: seat.y }));
