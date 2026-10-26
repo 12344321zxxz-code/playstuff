@@ -35,7 +35,7 @@ export function doomYear(w) {
     if (c.bombs == null) { c.bombs = 0; if (once(w, 'firstbomb') && c.big) { ev(w, `In a desert far from ${c.big.name}, the ${c.name} light a second sun. It is brighter than anything anyone has seen, and for a moment it is completely silent.`, c.big.x, c.big.y, c.color, 2); discover(w, 'bomb', c.big.x, c.big.y); } }
     const view = lessonOf(w, c);   /* (slice 5) what this people took from the last exchange, if its forebears lived through one */
     if (c.bombs < (view === 'never' ? 60 : 40) && view !== 'disarm' && (c.metals & 128) && rnd() < 0.3) c.bombs += 1 + (c.arts.missiles ? 1 : 0);
-    if (view === 'disarm' && c.bombs > 0 && rnd() < 0.2) c.bombs--;
+    if (view === 'disarm') c.bombs = 0;   /* they broke them up */
     const war = c.war, foe = war ? w.cults[war.foe] : null;
     if (war) tension += foe && foe.arts.bomb ? 3 : 1;
     if (!c.bombs || !c.big) continue;
@@ -112,11 +112,15 @@ function crisisYear(w, nuclear) {
 // makes the bomb much harder to reach for. Each realm of those families takes its own lesson from it.
 function rootOf(w, c) { return w.langs && c.langId != null && w.langs[c.langId] ? w.langs[c.langId].root : null; }
 function memoryOf(w, c) {
-  const r = rootOf(w, c), M = w.nukeMem; if (r == null || !M || M[r] == null) return 1; const age = w.year - M[r];
-  const v = lessonOf(w, c), f = 0.08 + 0.92 * Math.min(1, age / 500); return v === 'deter' ? f : v === 'never' ? Math.min(1, f * 1.5) : f * 0.5;
+  // the whole world learns something from any exchange: a taboo, weaker than the memory of those who lived it
+  const ta = w.lastExchange != null ? 0.25 + 0.75 * Math.min(1, (w.year - w.lastExchange) / 600) : 1;
+  const r = rootOf(w, c), M = w.nukeMem; if (r == null || !M || M[r] == null) return ta; const age = w.year - M[r];
+  const v = lessonOf(w, c), f = 0.03 + 0.97 * Math.min(1, age / 800) ** 2;
+  if (v === 'never') { const b = c.big; return b && (b.occ || b.siege) ? Math.min(ta, f * 3) : 0; }   /* never again defenceless: they fire only when the end is at the gates */
+  return Math.min(ta, v === 'disarm' ? f * 0.3 : f);
 }
 function lessonOf(w, c) {
-  const r = rootOf(w, c), M = w.nukeMem; if (r == null || !M || M[r] == null || w.year - M[r] > 800) return null;
+  const r = rootOf(w, c), M = w.nukeMem; if (r == null || !M || M[r] == null || w.year - M[r] > 800 || w.year - M[r] < 10) return null;   /* the lesson is drawn once the smoke clears */
   if (!c.lesson || c.lessonOf !== M[r]) { c.lessonOf = M[r]; const u = w.rnd(); c.lesson = u < 0.3 ? 'disarm' : u < 0.8 ? 'deter' : 'never';
     if (c.big && w.year - M[r] > 30) { tally(w, 'lesson_' + c.lesson); ev(w, c.lesson === 'disarm' ? `The ${c.name} remember the burning, and break up their bombs. Never again, they say, and mean: never by our hand.` : c.lesson === 'deter' ? `The ${c.name} keep their bombs and the old stories of the burning, and hope the second keeps the first in their silos.` : `The ${c.name} remember who burned them. Never again, they say, and mean: never again defenceless.`, c.big.x, c.big.y, c.color, 1); } }
   return c.lesson;
@@ -129,7 +133,7 @@ function strike(w, c, f, why) {
   const targets = w.sets.filter((s) => !s.dead && s.cult === f.id && !s.nomad).sort((a, b) => b.pop - a.pop).slice(0, n); if (!targets.length) return;
   c.bombs -= targets.length; const b = c.big; c.fired = w.year; f.struck = w.year;
   { const M = w.nukeMem || (w.nukeMem = {}); for (const q of [c, f]) { const r = rootOf(w, q); if (r != null) M[r] = w.year; } const rr = w.rel || (w.rel = {}), e = rr[pk(c.id, f.id)] || (rr[pk(c.id, f.id)] = {}); e.crisis = 1; e.fired = true; }   /* (slice 5) the crisis peaks; the memory begins */
-  if (!w.exchange || w.year > w.exchange.until) { w.exchange = { from: w.year, until: w.year + 3 }; }
+  if (!w.exchange || w.year > w.exchange.until) { w.exchange = { from: w.year, until: w.year + 3 }; } w.lastExchange = w.year;
   const first = !w.nukes;
   ev(w, first ? (why === 'alarm' ? `Something shows on the screens of the ${c.name} that looks like an attack. There are four minutes to decide. They decide.` : c.ruler.trait === 'mad' ? `${c.ruler.name} orders the bombs. Nobody stops him.` : `With the war lost, the ${c.name} use the bomb.`) : `The ${c.name} launch at the cities of the ${f.name}.`, b.x, b.y, c.color, 2);
   for (const s of targets) send(w, { kind: 'missile', cult: c.id, x: b.x, y: b.y, tx: s.x, ty: s.y, n: 1, to: s, land: c.arts.missiles ? 9 : 5, sea: c.arts.missiles ? 9 : 5 });
