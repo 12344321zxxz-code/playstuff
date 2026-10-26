@@ -5,6 +5,7 @@
 // wears down with size and ease; and what falls leaves ruins the next people build on.
 import { hubYear, hubPush, hubReset, HUB } from './hub.js';
 import { captureYear, subjugate, release } from './capture.js';
+import { empireYear, regionSuccessors } from './empire.js';
 import { relicsYear, newHouse, crownGoal, claimGoal } from './relics.js';
 import { powersYear as greatPowersYear } from './greatpowers.js';
 import { word, makeSound, rootTags, tagFrom, soundOf, tonguesYear, tongueGap, cultureOf } from './tongues.js';
@@ -481,7 +482,7 @@ export function* peopleSteps(w) {
     alive++; if (c.power) { POWER[c.power](w, c); continue; } cultYear(w, c);
   }
   yield;
-  armiesYear(w); warsYear(w, WAR_HOOKS); tidyWars(w); ruinsYear(w); plaguesYear(w); faithYear(w);
+  armiesYear(w); warsYear(w, WAR_HOOKS); tidyWars(w); empireYear(w); ruinsYear(w); plaguesYear(w); faithYear(w);
   yield;
   tonguesYear(w); captureYear(w); greatPowersYear(w); relicsYear(w);
   w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop
@@ -561,7 +562,7 @@ function cultYear(w, c) {
       for (let k = 1; k <= 5; k++) { const i = Math.round(b.y + (dy * k) / 5) * W + wx(Math.round(b.x + (dx * k) / 5)); rough += Math.abs(hh[i] - hh[pi]) * 6 + (w.water[i] === 1 ? 1 : 0) + (w.t[i] > 0.6 ? 0.2 : 0); pi = i; }
       sum += d * (1 + rough / 5); n++; }
     const reach = 30 + (A.roads ? 14 : 0) + (A.riding ? 8 : 0) + (A.writing ? 8 : 0) + (A.bureaucracy ? 18 : 0) + (A.railways ? 60 : 0) + (A.telegraph ? 100 : 0);
-    c.span = n ? sum / n / reach : 0; }
+    c.span = n ? sum / n / reach : 0; c.reachR = reach; }
   const HB = hubYear(w, c, HOOKS); if (!c.alive) return;
   const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / 300 - 0.35 * Math.min(2, Math.max(0, (c.span || 0) - 0.9)), claim: c.claimHeld ? 0.05 : 0, age: HUB.ageDiv ? -(w.year - c.born) / HUB.ageDiv : 0, elites: HB.elites, strife: HB.strife, living: HB.living, frontier: HB.frontier, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
     ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: ((c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) + (c.docs && c.docs.world ? 0.04 : 0) + (c.docs && c.docs.peace ? 0.04 : 0)) * (1 + (Q ? Q.pious : 0)) * (c.faithHold == null ? 1 : 0.4 + 0.6 * c.faithHold), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, peace: !!(c.docs && c.docs.peace) ? 0.04 : 0 };
@@ -664,7 +665,9 @@ const HOOKS = { collapse: (w, c) => collapse(w, c), civilWar: (w, c) => { const 
 export function collapse(w, c) {
   const b = c.big, old = c.tech, n0 = c.count, heirs = [];
   if (b && n0 >= 10) (w.claims || (w.claims = [])).push({ name: realmTitle(c), cult: c.id, cap: b.id, towns: w.sets.filter((s) => !s.dead && s.cult === c.id && !s.nomad).map((s) => s.id), year: w.year, done: false });   /* the old realm's lands, for whoever can claim them */
-  c.fellAt = w.year; record(w, 'collapse', [c.id], c._why || { terms: c.press, x: b.x, y: b.y }); let went = 0; for (let k = 0; k < 3; k++) { const r = schism(w, c, true); if (r) { went += r.n; if (!heirs.includes(r.to)) heirs.push(r.to); } }
+  c.fellAt = w.year; record(w, 'collapse', [c.id], c._why || { terms: c.press, x: b.x, y: b.y }); let went = 0;
+  for (const nc of regionSuccessors(w, c)) { went += nc.count; heirs.push(nc); }   /* (slice 3) the successors form around the regional houses */
+  for (let k = heirs.length; k < 3; k++) { const r = schism(w, c, true); if (r) { went += r.n; if (!heirs.includes(r.to)) heirs.push(r.to); } }
   for (const s of w.sets) if (s.cult === c.id && !s.nomad) { /* (slice 0) a falling realm is a falling government: its towns and people go on (losses come from what follows: hunger, raids, plague, broken trade) */ if (s === b) continue;
     if (w.rnd() < 0.3) { let to = null; near(w, s.x, s.y, 22, s, true, (u, q) => { if (u.cult !== c.id && (!to || q < to.q)) to = { u, q }; }); if (to) { s.cult = to.u.cult; s.trade = 0; went++; const h = w.cults[to.u.cult]; if (!heirs.includes(h)) heirs.push(h); } } }
   const who = heirs.length ? ` ${went === 1 ? 'One' : went} of ${b.name ? 'its places' : 'their camps'} ${went === 1 ? 'goes' : 'go'} over to the ${heirs.slice(0, 2).map((h) => h.name).join(' and the ')}${heirs.length > 2 ? ' and others' : ''}.` : '';
