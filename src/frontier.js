@@ -19,7 +19,7 @@ const wealth = (c) => c.pop * (0.25 + Math.max(0, c.surplus || 0));
 
 export function frontierYear(w) {
   const R = w.rel || (w.rel = {});
-  for (const c of w.cults) { c.subOut = 0; c._fg = 0; }
+  for (const c of w.cults) { c.subOut = 0; c._fg = 0; if (c.rby) for (const k in c.rby) { c.rby[k] *= 0.85; if (c.rby[k] < 0.3) delete c.rby[k]; } }   /* raids by each confederation, remembered for a few years */
   // standing terms: they are paid, or they lapse
   for (const k in R) {
     const r = R[k]; if (!r.terms) continue;
@@ -46,7 +46,7 @@ export function frontierYear(w) {
       const s = w.cults[k]; if (!s || !s.alive || s.power || nomadic(s) || n.nb[k] < 0.3 || s.war || termsBetween(w, n.id, s.id) || truceLeft(w, n.id, s.id) || !s.big || !n.big) continue;
       const threat = mine / Math.max(1, strength(s, s.pop)), united = s.coh > 0.5 && (!s.hub || s.hub.A > 0.5), b = s.big;
       let t = null;
-      if (united && threat > 0.04 && (s.arts.writing || s.arts.bureaucracy)) t = { k: 'subsidy', from: s.id, to: n.id, rate: Math.min(0.06, Math.max(0.01, 0.3 * threat)) };
+      if (united && threat > 0.06 && (s.rby && s.rby[n.id] > 1.5) && (s.arts.writing || s.arts.bureaucracy))   /* a state pays once the raids have shown what refusing costs */ t = { k: 'subsidy', from: s.id, to: n.id, rate: Math.min(0.06, Math.max(0.01, 0.3 * threat)) };
       else if (united && threat < 0.02 && n.count <= 8 && s.arts.writing) t = { k: 'tribute', from: n.id, to: s.id, rate: 0.06 };
       else if ((s.markets || 0) >= 1 && w.rnd() < 0.3) t = { k: 'market', from: s.id, to: n.id, rate: 0 };
       if (!t) continue; t.since = w.year; t.until = w.year + 30; addTerm(w, t); tally(w, 'frontier_' + t.k);
@@ -57,4 +57,4 @@ export function frontierYear(w) {
   }
 }
 // how many bands a confederation can hold together: the more it draws from the settled world, the bigger
-export const bandCap = (c) => Math.round(10 + 24 * Math.min(1, (c.fi || 0) * 1.6));
+export const bandCap = (c) => Math.round(14 + 22 * Math.min(1, (c.fi || 0) * 2));

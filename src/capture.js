@@ -183,6 +183,7 @@ function settle(w, o, x, y, natives) {
 }
 // settler colonies far from the crown break away when the take runs high or the tongue has drifted
 function independence(w, o) {
+  { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; if (n >= 36) return; }   /* no more realms than the splits may make */
   const away = w.sets.filter((s) => !s.dead && s.cult === o.id && !s.nomad && overseas(w, o, s)); if (away.length < 4) return;
   const drift = away.filter((s) => tongueGap(w, s.lang, o.langId) > 0).length / away.length, X = o.hub ? o.hub.X : 0.15;
   const divided = o.hub && (o.hub.st === 'factions' || o.hub.st === 'civil') ? 0.03 : 0, warring = o.war ? 0.02 : 0;

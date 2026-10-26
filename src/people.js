@@ -337,7 +337,7 @@ arrive.army = (w, m) => {
       liftSiege(w, o, 0.4); back(0.8); return; } }
   if (o.cult === m.cult) { back(1); return; }
   const oc = w.cults[o.cult], war = atWar(w, c, oc) ? c.war : null;
-  contact(w, c, o, 'Warriors'); if (m.nomad) oc.raided = (oc.raided || 0) + 1;
+  contact(w, c, o, 'Warriors'); if (m.nomad) { oc.raided = (oc.raided || 0) + 1; (oc.rby || (oc.rby = {}))[c.id] = ((oc.rby && oc.rby[c.id]) || 0) + 1; }
   if (c.arts.cannon || oc.arts.cannon) scar(w, o, c);
   w.fx.push({ k: 'clash', x: o.x, y: o.y, T: 1.1 });
   if (o.nomad) { if (rnd() < 0.7) { const a = rnd() * 6.283, x = wx(Math.round(o.x + Math.cos(a) * 7)), y = clamp(Math.round(o.y + Math.sin(a) * 7), 3, H - 4); if (!w.water[y * W + x]) { o.px = o.x; o.py = o.y; o.mt = w.tickN; o.x = x; o.y = y; } o.pop *= 0.92; back(0.95); } else if (o.pop < m.n * 2.5) { endSet(w, o, 'absorbed'); back(1.1); } else { o.pop *= 0.8; back(0.7); } return; }
