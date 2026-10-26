@@ -51,7 +51,7 @@ export function empireYear(w) {
     const seats = R.map((r) => byId.get(r.seat)); for (const r of R) { r.pop = 0; r.kept = 0; r.towns = 0; r.eff = 0; }
     for (const s of T) { s._reg = null; let bi = -1, bd = dist(s, b) * 0.8; for (let k = 0; k < seats.length; k++) { const d = dist(s, seats[k]); if (d < bd) { bd = d; bi = k; } } if (bi < 0) continue; const r = R[bi]; r.pop += s.pop; r.kept += s.pop * (1 - eff.get(s)); r.towns++; r.eff += s.pop * eff.get(s); s._reg = r.id; }
     const h = c.hub, rate = ((0.25 + (c.surplus || 0)) * Math.max(0.02, h.X - (c.tribute || 0))) / (100 * (c.boomL || 1));
-    for (const r of R) { r.eff = r.pop > 0 ? r.eff / r.pop : 1; r.w += (r.kept * rate - r.w) / 30; r.share = r.w / Math.max(1e-6, r.w + (h.inc || 0)); }
+    for (const r of R) { r.eff = r.pop > 0 ? r.eff / r.pop : 1; r.w += (r.kept * rate - r.w) / 30; r.c = (r.c || 0) + (Math.max(0, r.pop - r.kept) * rate - (r.c || 0)) / 30; r.share = r.w / Math.max(1e-9, r.w + r.c); }   /* the house's wealth against what the court takes from the same province */
     // a house rich enough, with a court too weak to hold it or too far to collect, makes its move
     if (c.over || c.war) continue;
     for (let k = 0; k < R.length; k++) {

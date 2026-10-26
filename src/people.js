@@ -419,7 +419,7 @@ export function* peopleSteps(w) {
       if (ore[i]) ores |= 1 << ore[i];
       if (w.graze[i] > 0.05) { if (huntLeft > 0) { const take = takeGame(w, i, huntLeft); huntLeft -= take; hunt += take * 3.2; } if (w.graze[i] > 0.4 && w.spAt[i] !== 255) tameAt = i; }
       if (farm[i]) {
-        farms++; soilS += soil[i]; const ir = fresh[i] <= irrR, mb = i * 6, y0 = Math.min(1, cy + (ir && cy > 0.05 ? 0.5 : 0)) * Math.min(1, soil[i]) * (1 - 0.7 * Math.min(1, w.mem[mb])) * (1 + 0.3 * Math.min(1, w.mem[mb + 4])) * (w.year < (c.blightTo || 0) ? 0.35 : 1) * (1 - Math.min(1, w.fallout[i]));
+        farms++; soilS += soil[i]; const ir = fresh[i] <= irrR, mb = i * 6, y0 = Math.max(0, Math.min(1, cy + (ir && cy > 0.05 ? 0.5 : 0)) * Math.min(1, soil[i]) * (1 - 0.7 * Math.min(1, w.mem[mb])) * (1 + 0.3 * Math.min(1, w.mem[mb + 4])) * (w.year < (c.blightTo || 0) ? 0.35 : 1) * (1 - Math.min(1, w.fallout[i])));   /* never a negative harvest */
         if (farm[i] === 2) { blight++; farm[i] = 1; } else if (ir) irrg += y0; else rain += y0;
         if (!(fresh[i] <= 1 && mi[i] > 0.3)) { const sh = t[i + 1] > 0.3 || t[i - 1] > 0.3 || t[i + W] > 0.3 || t[i - W] > 0.3; soil[i] -= (A.writing ? 0.002 : 0.004) * (sh ? 1 : 2) * (A.terraces ? 0.7 : 1) * (mi[i] > 1.6 ? 2.2 : 1) + (ir && mi[i] < 0.3 ? 0.002 : 0); if (soil[i] < 0.42) { farm[i] = 0; if (w.tCap[i] > 0.3) t[i] = 0.05; } }
         else if (wa > 1.45) soil[i] = Math.min(1.3, soil[i] + 0.02);
@@ -441,7 +441,7 @@ export function* peopleSteps(w) {
     const fSea = want > 0 ? catchFish(w, s.x, s.y, s.R + (A.sailing ? 10 : A.boats ? 4 : 1), want) : 0, fF = fFr + fSea, fishGap = want > 8 ? fSea / want : 1;
     const fA = (rain * clamp(wa, 0.2, 1.3) + irrg * (A.irrigation ? 1.15 : 1) * (0.72 + 0.28 * Math.min(wa, 1.2)) * (wa > 1.5 ? 0.8 : 1)) * yieldF * sun;
     const fP = herder ? c.boom * past * (s.nomad ? 3.4 : 2) * (c.tame.horse ? 1.15 : 1) * (0.5 + 0.5 * Math.min(wa, 1.3)) * sun : 0;
-    const imp = s.imp || {}, food = (fW + fH + fF + fA + fP) * (s.blessed && w.year - s.blessed < 3 ? 1.15 : 1) * (w.year - (s.fed ?? -99) < 3 ? 1.12 : 1) * (w.year - (imp[GD.salt] ?? -99) < 5 && (herder || seaN) ? 1.05 : 1) * (s.market ? 1.1 : 1) * (1 + 0.06 * Math.min(4, s.trade)) * (c.tame.pig ? 1.05 : 1) * (s.plague > 0 ? 0.8 : 1); s.src = [fW, fH, fF, fA, fP]; c._sur += s.pop * Math.min(1, (fA + fP) / Math.max(1, food));
+    const imp = s.imp || {}, food = (fW + fH + fF + fA + fP) * (s.blessed && w.year - s.blessed < 3 ? 1.15 : 1) * (w.year - (s.fed ?? -99) < 3 ? 1.12 : 1) * (w.year - (imp[GD.salt] ?? -99) < 5 && (herder || seaN) ? 1.05 : 1) * (s.market ? 1.1 : 1) * (1 + 0.06 * Math.min(4, s.trade)) * (c.tame.pig ? 1.05 : 1) * (s.plague > 0 ? 0.8 : 1); s.src = [fW, fH, fF, fA, fP]; c._sur += s.pop * clamp((fA + fP) / Math.max(1, food), 0, 1);
     const mx = Math.max(fW, fH, fF, fA, fP); s.way = mx === fA ? 'farm' : mx === fP ? 'herd' : mx === fF ? 'fish' : mx === fH ? 'hunt' : 'forage'; c._ways[s.way] += s.pop;
     if (!s.nomad && A.farming && bestI >= 0 && farms < Math.ceil((s.pop * 1.3) / (yieldF * 0.6))) { farm[bestI] = 1; t[bestI] = 0; g[bestI] = 0.25; }
     // tallies that decide what this people can learn
