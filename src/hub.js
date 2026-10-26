@@ -58,7 +58,7 @@ export function hubYear(w, c, hooks) {
   h.X = clamp(F.x + 0.2 * Math.max(0, h.pi - 1) + (c.tribute || 0) + (c.owe || 0) + (c.q ? 0.03 * c.q.build : 0) + 0.04 * (c.temple || 0) - (w.year < h.eased ? 0.05 : 0), 0.05, 0.6);
   // living standard: what the common people keep, and how this year's surplus compares with what they are used to.
   // Every loss is tagged by source so the ledger can name it; the 40-year baseline adapts, so realms recover.
-  const loss = { plague: 0.5 * Math.min(1, c.plagued || 0), fey: c.lostShare || 0, tribute: c.tribute || 0, hunger: 1 - fed, war: c.war && c.war.lost ? Math.min(0.4, 0.05 * c.war.lost) : 0, fallout: c.poisoned || 0 };
+  const loss = { plague: 0.5 * Math.min(1, c.plagued || 0), fey: c.lostShare || 0, tribute: c.tribute || 0, hunger: 1 - fed, war: Math.min(0.5, (c.war && c.war.lost ? 0.05 * c.war.lost : 0) + 1.5 * (c.serveShare || 0)),   /* (slice 2) men away at war are missing from the fields */ fallout: c.poisoned || 0 };
   const S = (0.25 + (c.surplus || 0)) * fed * (1 - loss.fey) * (1 - loss.plague) * (1 - loss.war) * (1 - loss.fallout);
   h.S40 = h.S40 == null ? S : h.S40 + (S - h.S40) / 40;
   const ratio = Math.max(0.6, Math.min(1.3, Math.sqrt(S / Math.max(1e-6, h.S40))));

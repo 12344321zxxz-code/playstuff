@@ -118,6 +118,7 @@ export function warsYear(w, H) {
     let held = 0, long = 0; for (const s of aimT) if (s.occ && sideOf(K, s.occ.by) === 0) { held++; if (w.year - s.occ.since >= 2) long++; }
     const pA = N ? held / N : 0, xa = exhaustion(w, K, 0), xd = exhaustion(w, K, 1);
     const willA = K.stakes[0] * (0.7 + pA) - xa.t, willD = K.stakes[1] * (1 - 0.5 * pA) + 0.1 - xd.t;
+    { const pk = K.peak || (K.peak = [0, 0]); for (const s of [0, 1]) { let sv = 0, pp = 0; for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { sv += c.serving || 0; pp += c.pop; } } if (pp > 0) pk[s] = Math.max(pk[s], sv / pp); } }
     K.will = [+willA.toFixed(2), +willD.toFixed(2)]; K.exh = [xa.e, xd.e]; K.prog = pA;
     let out = null, how = 'will';
     if (N && long === N) { out = 'won'; how = 'held'; }
@@ -151,5 +152,22 @@ function settle(w, K, out, how, aimT, H) {
   }
   for (const s of w.sets) if (s.occ && s.occ.cid === K.id) s.occ = null;   /* what the peace did not give away goes back */
   tally(w, 'settle_' + r.kind); tally(w, 'end_' + how);
+  // (slice 2) did the stronger side win, and how hard did the war press each side
+  if (K.odds != null && r.kind !== 'status') { const attWon = out === 'won', fav = K.odds >= 1 ? attWon : !attWon; tally(w, fav ? 'favWon' : 'favLost'); }
+  if (K.peak) { const p = Math.max(K.peak[0], K.peak[1]); tally(w, p >= 0.06 ? 'mobTotal' : p >= 0.02 ? 'mobMid' : 'mobLimited'); }
   H.endWar(w, A, r);
+}
+
+// ---------- (slice 2) mobilisation ----------
+// Each realm in a war can field a share of its people: capacity (how well the state can raise, pay and
+// move men: bureaucracy, railways, the radio, and whether the realm holds together) times commitment
+// (its stakes in this war; everything it has when its capital is taken or besieged). c.serving counts
+// the men out in bands, marching home or sitting in sieges; it is recounted each year from the
+// movers and the sieges, and grows as bands are sent. Serving men are missing from the fields.
+export function capacityOf(c) { const A = c.arts; return (0.04 + (A.bureaucracy ? 0.02 : 0) + (A.railways ? 0.04 : 0) + (A.radio ? 0.02 : 0)) * (0.6 + 0.8 * c.coh); }
+export function mobBudget(w, c) {
+  const K = conflictOf(w, c); if (!K || !K.stakes) return Infinity;   /* an older save's war: no budget */
+  const s = sideOf(K, c.id); if (s < 0) return Infinity; const b = c.big, cornered = !!(b && (b.occ || (b.siege && b.siege.by !== c.id)));
+  const commit = cornered ? 1 : 0.25 + 0.75 * Math.min(1, K.stakes[s]);
+  return Math.max(0, c.pop * capacityOf(c) * commit * (cornered ? 2 : 1) - (c.serving || 0));
 }
