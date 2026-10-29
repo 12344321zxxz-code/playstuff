@@ -7,7 +7,6 @@ import { describeSet, cultLines } from './entities.js';
 import { explain } from './ledger.js';
 import { tongueColor } from './tongues.js';
 import { RECORDS } from './relics.js';
-import { drawSpark } from './threads.js';
 
 const $ = (id) => document.getElementById(id);
 let log = [], shown = '', almDirty = true, tab = 'chron', rosterKey = '';
@@ -80,16 +79,8 @@ function tongues() {
   const lost = L.filter((l) => l.parent == null && !livingBelow(l)); if (lost.length) box.appendChild(el('p', 'gone', `Lost with no heirs: ${lost.slice(-12).map((l) => l.name).join(', ')}.`));
 }
 // the Stories tab: every question the world asked and how it ended, newest first
-let stKey = '';
-function storiesTab() {
-  const w = state.w, S = w.stories || [], k = S.length + ':' + (S[0] ? S[0].to : 0); if (k === stKey) return; stKey = k;
-  const box = $('stories'); box.textContent = '';
-  if (!S.length) { box.appendChild(el('p', 'muted', 'No stories have ended yet. Open questions are listed under This world; when one is settled it is written here.')); return; }
-  for (const s of S) { const b = el('button', 'story'); b.type = 'button'; const cv = document.createElement('canvas'); cv.width = 70; cv.height = 16; drawSpark(cv, s.pts || []);
-    b.append(el('span', 'y', `${s.from}–${s.to}`), el('span', 'sq', s.q), cv, el('span', 'se', s.end)); if (s.x != null) b.addEventListener('click', () => flyTo(s.x + 0.5, s.y + 0.5, 6)); box.appendChild(b); }
-}
-function render() { if (tab === 'chron') chronicle(); else if (tab === 'ppl') roster(); else if (tab === 'st') storiesTab(); else if (tab === 'tg') tongues(); else almanac(); }
-function setTab(t) { tab = t; for (const [id, k] of [['tab-chron', 'chron'], ['tab-ppl', 'ppl'], ['tab-st', 'st'], ['tab-tg', 'tg'], ['tab-alm', 'alm']]) $(id).setAttribute('aria-selected', t === k); $('stories').hidden = t !== 'st'; stKey = ''; $('log').hidden = t !== 'chron'; $('roster').hidden = t !== 'ppl'; $('almanac').hidden = t !== 'alm'; $('tongues').hidden = t !== 'tg'; tgKey = ''; shown = ''; rosterKey = ''; almDirty = true; render(); }
+function render() { if (tab === 'chron') chronicle(); else if (tab === 'ppl') roster(); else if (tab === 'tg') tongues(); else almanac(); }
+function setTab(t) { tab = t; for (const [id, k] of [['tab-chron', 'chron'], ['tab-ppl', 'ppl'], ['tab-tg', 'tg'], ['tab-alm', 'alm']]) $(id).setAttribute('aria-selected', t === k); $('log').hidden = t !== 'chron'; $('roster').hidden = t !== 'ppl'; $('almanac').hidden = t !== 'alm'; $('tongues').hidden = t !== 'tg'; tgKey = ''; shown = ''; rosterKey = ''; almDirty = true; render(); }
 
 // world population as a small line: the rises and the falls are the story
 function spark(w) {
@@ -101,7 +92,7 @@ function spark(w) {
 }
 
 let bound = false;
-hook('newWorld', () => { log = []; shown = ''; rosterKey = ''; almDirty = true; if (!bound) { bound = true; $('tab-chron').addEventListener('click', () => setTab('chron')); $('tab-ppl').addEventListener('click', () => setTab('ppl')); $('tab-tg').addEventListener('click', () => setTab('tg')); $('tab-st').addEventListener('click', () => setTab('st')); $('tab-alm').addEventListener('click', () => setTab('alm')); } setTab(tab); });
+hook('newWorld', () => { log = []; shown = ''; rosterKey = ''; almDirty = true; if (!bound) { bound = true; $('tab-chron').addEventListener('click', () => setTab('chron')); $('tab-ppl').addEventListener('click', () => setTab('ppl')); $('tab-tg').addEventListener('click', () => setTab('tg')); $('tab-alm').addEventListener('click', () => setTab('alm')); } setTab(tab); });
 hook('tick', (w) => { drain(w); });
 hook('vitals', (w, rows) => {
   drain(w); render(); spark(w); const s = w.stats;

@@ -303,7 +303,7 @@ function drawFx(ctx, w, cam, s, now) {
     else if (f.k === 'spark') { const R = (1 + 5 * u) * s; ctx.lineWidth = 2.4 * cam.dpr; ctx.strokeStyle = `rgba(255,224,90,${1 - u})`; ctx.beginPath(); for (let q = 0; q < 8; q++) { const a = (q / 8) * TAU; ctx.moveTo(A[0] + Math.cos(a) * R * 0.45, A[1] + Math.sin(a) * R * 0.45); ctx.lineTo(A[0] + Math.cos(a) * R, A[1] + Math.sin(a) * R); } ctx.stroke(); }
   }
   if (w.fx.some((f) => f.done)) w.fx = w.fx.filter((f) => !f.done);
-  if (jar) jar.style.transform = shake > 0.02 && !still ? `translate(${((Math.sin(now * 0.09) * 5 * shake) | 0)}px, ${((Math.cos(now * 0.11) * 4 * shake) | 0)}px)` : '';
+  if (jar && jar.style.transform) jar.style.transform = '';   /* no camera shake (Oct 29): the ring or flash on the map is enough */
 }
 
 function drawSel(ctx, cam, S, now) {

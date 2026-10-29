@@ -19,7 +19,7 @@ import { plateAt } from './powers.js';
 import { coarse } from './climate.js';
 import { bus } from './bus.js';
 
-export const TPS = [0, 16, 32, 96];   // ticks per second for each speed; [1] is Watchful's quiet pace
+export const TPS = [0, 16, 32, 96];   // ticks per second for each speed
 const RATE = [0, 16, 32, 480];         // in the worker, Fast is as fast as the machine allows (up to 60 years a second)
 
 // the land shares the page shows under Vitals (worked out here: they need the whole map)
