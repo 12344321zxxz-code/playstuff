@@ -145,8 +145,8 @@ function colonise(w, o) {
   for (const c of w.cults) {
     if (!c.alive || c.power || c === o || c.over || !c.big) continue; const cb = c.big; if (w.mass[cb.y * W + cb.x] === mine) continue;
     const dist = Math.hypot(wrapDx(cb.x - ob.x), cb.y - ob.y); if (dist > reach) continue;
-    const st = strength(c, c.pop); if (st > 0.3 * my) continue;
-    const gain = 1 + c.pop / 1000 + c.count * 0.2, cost = 1 + dist / 80 + st / (0.3 * my);
+    const st = strength(c, c.pop), dare = o.tech >= c.tech + 1 ? (o.arts.railways ? 1.2 : 0.7) : 0.3; if (st > dare * my) continue;   /* (Oct 29) a power an age ahead dares far bigger prey: Bengal, not only islands */
+    const gain = 1 + c.pop / 1000 + c.count * 0.2, cost = 1 + dist / 80 + st / (dare * my);
     const s = gain / cost; if (s > bs) { bs = s; best = c; }
   }
   // empty or thin land over the sea is also a target: settlers
