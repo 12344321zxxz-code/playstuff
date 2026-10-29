@@ -9,6 +9,7 @@
 //   w.rel['a-b'] = { truce: untilYear, by: conflict id }
 import { wrapDx, W } from './core.js';
 import { tally } from './ledger.js';
+import { strength } from './people.js';
 
 const pairKey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
 const conflicts = (w) => w.conflicts || (w.conflicts = {});
@@ -130,7 +131,10 @@ export function warsYear(w, H) {
     const aimT = K.aim.towns.map((t) => byId.get(t)).filter((s) => s && sideOf(K, s.cult) === 1), raze = K.aim.kind === 'raze', N = raze ? K.aim.towns.length : aimT.length;
     let held = 0, long = 0; if (raze) { held = long = N - aimT.length; } else for (const s of aimT) if (s.occ && sideOf(K, s.occ.by) === 0) { held++; if (w.year - s.occ.since >= 2) long++; }   /* a war of destruction progresses as its towns burn */
     const pA = N ? held / N : 0, xa = exhaustion(w, K, 0), xd = exhaustion(w, K, 1);
-    const willA = K.stakes[0] * (0.7 + pA) - xa.t, willD = K.stakes[1] * (1 - 0.5 * pA) + 0.1 - xd.t;
+    // (Oct 29) the balance of strength now weighs on both: the side that is losing the war of numbers knows it
+    let sA = 0, sD = 0; for (const s of [0, 1]) for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { const v = strength(c, c.pop); if (s === 0) sA += v; else sD += v; } }
+    const bal = 0.3 * Math.log(Math.max(0.2, Math.min(5, sA / Math.max(1, sD))));
+    const willA = K.stakes[0] * (0.7 + pA) - xa.t + bal, willD = K.stakes[1] * (1 - 0.5 * pA) + 0.1 - xd.t - bal;
     { const pk = K.peak || (K.peak = [0, 0]); for (const s of [0, 1]) { let sv = 0, pp = 0; for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { sv += c.serving || 0; pp += c.pop; } } if (pp > 0) pk[s] = Math.max(pk[s], sv / pp); } }
     K.will = [+willA.toFixed(2), +willD.toFixed(2)]; K.exh = [xa.e, xd.e]; K.prog = pA;
     let out = null, how = 'will';
@@ -169,12 +173,13 @@ function settle(w, K, out, how, aimT, H) {
     D.wins = (D.wins || 0) + 2; A.wins = Math.max(0, (A.wins || 0) - 2);
   }
   // (Oct 29) whoever won keeps the towns it holds at the peace, if it can rule them: near its own land, or two ages ahead of their lords
-  if ((out === 'won' || out === 'lost') && !conquestNorm(w, out === 'won' ? A : D)) { const ws = out === 'won' ? 0 : 1, keep = new Map();
-    for (const s of w.sets) { if (s.dead || !s.occ || s.occ.cid !== K.id || sideOf(K, s.occ.by) !== ws || sideOf(K, s.cult) !== 1 - ws) continue; const o = w.cults[s.occ.by], sv = w.cults[s.cult]; if (!o || !o.alive || o.power) continue;
+  // (a war that dies down keeps the lines where they stand: towns held three years or more stay with their holders)
+  for (const ws of out === 'won' ? [0] : out === 'lost' ? [1] : [0, 1]) { if (conquestNorm(w, w.cults[K.sides[ws].lead])) continue; const keep = new Map();
+    for (const s of w.sets) { if (s.dead || !s.occ || s.occ.cid !== K.id || sideOf(K, s.occ.by) !== ws || sideOf(K, s.cult) !== 1 - ws || (out === 'none' && w.year - s.occ.since < 3)) continue; const o = w.cults[s.occ.by], sv = w.cults[s.cult]; if (!o || !o.alive || o.power) continue;
       let d = 1e9; for (const m of w.sets) if (!m.dead && !m.nomad && m.cult === o.id) { const q = d2(m, s); if (q < d) d = q; }
       if (d <= 30 * 30 || o.tech >= sv.tech + 2) keep.set(s, o); }
     for (const [s, o] of keep) { const sv = w.cults[s.cult]; if (sv.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, o); tally(w, 'heldKept'); }
-    if (keep.size && r.kind === 'status') r.kind = out === 'won' ? 'annex' : 'lost'; }
+    if (keep.size && r.kind === 'status') r.kind = ws === 0 ? 'annex' : 'lost'; }
   for (const s of w.sets) if (s.occ && s.occ.cid === K.id) s.occ = null;   /* what the peace did not give away goes back */
   tally(w, 'settle_' + r.kind); tally(w, 'end_' + how);
   // (slice 2) did the stronger side win, and how hard did the war press each side
