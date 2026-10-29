@@ -4,14 +4,18 @@
 // world's leading age at its start (the most advanced realm holding at least 3% of settled people),
 // the way the sources file by calendar era.
 //   foreign:  an existing realm took it, or razed it in war
-//     colonial (part of foreign): the taker was two or more ages ahead of the realm it took from; a
-//     realm made the client (protectorate) of one two or more ages ahead counts here too
+//     colonial (part of foreign): the taker was at least one age ahead and rules from outside (another landmass,
+//     or another tongue family); a realm made the protectorate of such a power counts here too
 //   internal: a breakaway, successor or reunion within one family of realms
 //     decolonisation (part of internal): land taken colonially breaking free again
 // Becoming a client (a protectorate, a vassal paying tribute) counts as foreign: the top-level sovereign is now its overlord,
 // as in Cliopatria's composites and the modern series (puppets count); throwing an overlord off counts as internal.
 // Towns founded during the century are not counted.
-import { N } from '../src/core.js';
+import { N, W } from '../src/core.js';
+import { tongueGap } from '../src/tongues.js';
+// colonial (Oct 29, as in the revised Old World and modern series): the taker is at least one age ahead, and rules
+// from outside: its court is on another landmass, or the land speaks a tongue of another family
+const outside = (w, taker, s, lang) => { const b = taker.big; if (b && w.mass && w.mass[b.y * W + b.x] !== w.mass[s.y * W + s.x]) return true; return lang != null && taker.langId != null && tongueGap(w, lang, taker.langId) === Infinity; };
 
 export const BUCKETS = ['1-2', '3', '4', '5', '6', '7', '8', '9-10'];
 export const bucketOf = (t) => (t <= 2 ? 0 : t >= 9 ? 7 : t - 2);
@@ -41,7 +45,7 @@ export function turnoverYear(w, T) {
   }
   const colNow = new Set(), freed = new Set();   // realms made a protectorate of a far more advanced realm this century, or freed from one
   for (const [id, o0] of T.cur.over) { const c = w.cults[id], o = overOf(w, c); if (o === o0) continue;
-    if (o != null) { colNow.add(id); if (typeof o === 'number' && w.cults[o].tech >= c.tech + 2) colNow.add('c' + id); }   /* made a client: its top-level sovereign changes (a protectorate of a far more advanced realm is colonial) */
+    if (o != null) { colNow.add(id); if (typeof o === 'number' && c.big && w.cults[o].tech >= c.tech + 1 && outside(w, w.cults[o], c.big, c.langId)) colNow.add('c' + id); }   /* made a client: its top-level sovereign changes (a protectorate of a far more advanced realm is colonial) */
     else if (o0 != null) freed.add(id); }
   for (const r of T.cur.rows) {
     if (r.done) continue; const s = r.s;
@@ -52,7 +56,7 @@ export function turnoverYear(w, T) {
       continue;
     }
     const n = w.cults[s.cult]; r.done = n && !n.power && kin(w, s.cult, r.cult) ? 'i' : 'f';
-    if (r.done === 'f' && n && n.tech >= r.tier + 2) { r.col = true; T.colOf.set(s.id, s.cult); }
+    if (r.done === 'f' && n && n.tech >= r.tier + 1 && outside(w, n, s, s.lang)) { r.col = true; T.colOf.set(s.id, s.cult); }
     else if (r.done === 'i' && T.colOf.get(s.id) === r.cult) { r.decol = true; T.colOf.delete(s.id); }
     else if (r.done === 'f') T.colOf.delete(s.id);
   }
