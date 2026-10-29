@@ -84,7 +84,7 @@ POWER.dead = function deadYear(w, c) {
   let any = false;
   for (const s of mine) {
     const full = 120 + 80 * (s.tier || 1) + (s.capital ? 200 : 0); let tg = null, bd = 1e9;
-    near(w, s.x, s.y, 30, s, false, (u, q) => { const oc = w.cults[u.cult]; if (oc.power || u.nomad) return; any = true; const sc = q / (1 + (p && p.grudge && oc.name === p.grudge ? 3 : 0)); if (sc < bd) { bd = sc; tg = u; } });
+    near(w, s.x, s.y, 30, s, false, (u, q) => { const oc = w.cults[u.cult]; if (oc.power) return;   /* the living bands on the grass too (Oct 29): beaten, they rise as the king's */ any = true; const sc = q / (1 + (p && p.grudge && oc.name === p.grudge ? 3 : 0)); if (sc < bd) { bd = sc; tg = u; } });
     if (!tg || s.pop < full || bd > 22 * 22) continue;
     const men = s.pop - full * 0.5; s.pop -= men;
     const cells = routeCells(w, s, tg); if (!cells) { s.pop += men; continue; } send(w, { kind: 'army', cult: c.id, x: s.x, y: s.y, tx: tg.x, ty: tg.y, n: men, from: s, to: tg, dead: true, path: cells, step: 1 });   /* the dead walk the land too */

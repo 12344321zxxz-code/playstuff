@@ -340,6 +340,15 @@ arrive.army = (w, m) => {
   contact(w, c, o, 'Warriors'); if (m.nomad) { oc.raided = (oc.raided || 0) + 1; (oc.rby || (oc.rby = {}))[c.id] = ((oc.rby && oc.rby[c.id]) || 0) + 1; }
   if (c.arts.cannon || oc.arts.cannon) scar(w, o, c);
   w.fx.push({ k: 'clash', x: o.x, y: o.y, T: 1.1 });
+  if (o.nomad && c.power === 'dead') {   /* (Oct 29) the dead fall on a band: beaten, it rises and camps where it fell, one more dead site */
+    const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()) * (1.5 + 2 * c.coh), B = strength(oc, o.pop * 1.5) * (0.6 + 0.8 * rnd());
+    corpses(w, o.x, o.y, Math.min(o.pop, m.n) * 0.3);
+    if (A <= B) { o.pop *= 0.85; back(0.4); return; }
+    tally(w, 'deadTookBand'); const n0 = o.pop;
+    if ((w.nTown || 0) < MAXS && !w.water[o.y * W + o.x]) { o.nomad = false; o.cult = c.id; o.undead = true; o.wasDead = true; o.capital = false; o.tier = 1; o.maxTier = Math.max(1, o.maxTier || 0); o.age = 0; o.px = o.x; o.py = o.y; o.pop = n0 * 0.6 + m.n * 0.4; o.name = 'the Barrow of the ' + oc.name; w.nTown = (w.nTown || 0) + 1; }
+    else { endSet(w, o, 'absorbed'); back(1 + (0.5 * n0) / Math.max(1, m.n)); }
+    if (once(w, 'deadband') || w.year - (c.bandSay || -99) > 40) { c.bandSay = w.year; ev(w, `The dead of the ${c.name} fall on a camp of the ${oc.name} out on the open land. By morning the camp rises with them.`, o.x, o.y, c.color, 1); }
+    return; }
   if (o.nomad) { if (rnd() < 0.7) { const a = rnd() * 6.283, x = wx(Math.round(o.x + Math.cos(a) * 7)), y = clamp(Math.round(o.y + Math.sin(a) * 7), 3, H - 4); if (!w.water[y * W + x]) { o.px = o.x; o.py = o.y; o.mt = w.tickN; o.x = x; o.y = y; } o.pop *= 0.92; back(0.95); } else if (o.pop < m.n * 2.5) { endSet(w, o, 'absorbed'); back(1.1); } else { o.pop *= 0.8; back(0.7); } return; }
   // (slice 2) the defenders call in men from the towns around, as far as their muster allows
   let rein = 0; if (war && !oc.power && !c.power) { const left = mobBudget(w, oc); if (left > 0) { near(w, o.x, o.y, 10, o, true, (u) => { if (u.cult === oc.id && !u.occ && !u.siege) rein += u.pop * 0.08; }); rein = Math.min(rein, left); oc.serving = (oc.serving || 0) + rein; } }
@@ -698,9 +707,13 @@ function nomadStep(w, s, c, seaN, fishGap) {
     }
   }
   s.px = s.x; s.py = s.y; s.mt = w.tickN;
-  if (rnd() < 0.7) { let best = siteScore(w, s.x, s.y, A.farming, herding, c) * 1.08, bx = s.x, by = s.y; const D = DISC[herder ? 6 : 3];
-    for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2) continue; const i = y * W + x; if (w.water[i] || w.h[i] - w.params.sea > 0.42 || w.ice[i]) continue;
+  // (Oct 29) a band may cross a state's land but not camp in it, unless the two are at war
+  const foreign = (i) => { const k = w.owner[i], t = k >= 0 ? w.sets[k] : null; if (!t || t.dead || t.nomad || t.cult === s.cult) return false; const o = w.cults[t.cult]; return !!o && !o.power && !atWar(w, c, o); };
+  const inside = foreign(s.y * W + s.x);
+  if (inside || rnd() < 0.7) { let best = inside ? -1 : siteScore(w, s.x, s.y, A.farming, herding, c) * 1.08, bx = s.x, by = s.y; const D = DISC[inside ? 10 : herder ? 6 : 3];
+    for (let q = 0; q < (inside ? 14 : 6); q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2) continue; const i = y * W + x; if (w.water[i] || w.h[i] - w.params.sea > 0.42 || w.ice[i] || foreign(i)) continue;
       let sc = siteScore(w, x, y, A.farming, herding, c) * (0.9 + 0.2 * rnd()); if (near(w, x, y, 4, s)) sc *= 0.4; if (sc > best) { best = sc; bx = x; by = y; } }
+    if (inside && best < 0) { const k = w.owner[s.y * W + s.x], t = w.sets[k], dx = wrapDx(s.x - t.x), dy = s.y - t.y, L = Math.max(1, Math.hypot(dx, dy)), x = wx(Math.round(s.x + (dx / L) * 5)), y = clamp(Math.round(s.y + (dy / L) * 5), 2, H - 3); if (!w.water[y * W + x]) { bx = x; by = y; } tally(w, 'bandPushed'); }   /* nowhere free in sight: away from the town whose land it is on */
     s.x = bx; s.y = by; }
   if (!(c.tech >= 4 && (c.sedLast || 0) >= 3) && !(c.tech >= 5) && (s.pop > (herder ? 150 : 46) || (s.note === 'full' && s.pop > (herder ? 55 : 34))) && Math.max(c.env.nomads, c.nomadsWas || 0) < (herder ? (c.env.sed > 4 ? 12 : bandCap(c)) : 10) && (w.nBand || 0) < MAXB) { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; const D = DISC[herding ? 7 : 4]; for (let q = 0; q < 6; q++) { const o = D[(rnd() * D.length) | 0], x = wx(s.x + o[0]), y = s.y + o[1]; if (y < 2 || y >= H - 2 || w.water[y * W + x]) continue; const half = Math.round(s.pop * 0.45); s.pop -= half; const b = addSet(w, s.cult, x, y, half, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN; break; } }
   if (A.farming && !herding && s.age > 20 && rnd() < 0.08) { const b = near(w, s.x, s.y, 14, s, true); if (b) { b.pop += s.pop * 0.8; s.dead = true; w.anyDead = true; return; } if (s.age > 60) { s.dead = true; w.anyDead = true; return; } }
