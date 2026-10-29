@@ -298,7 +298,12 @@ function armiesYear(w) {
 }
 // (slice 1b) a town taken in a war is held, not annexed: it keeps its sovereign until the peace
 function occupy(w, o, c, oc, war, home) {
-  const K = conflictOf(w, c), wasCap = oc.big === o && oc.count > 2; o.occ = { by: c.id, cid: K ? K.id : null, since: w.year }; o.trade = 0; o.lastSack = w.year; war.taken++; tally(w, 'occupied');
+  const K = conflictOf(w, c), wasCap = oc.big === o && oc.count > 2;
+  if (K && K.aim && K.aim.kind === 'raze' && sideOf(K, c.id) === 0) {   /* (Oct 29) a war to wipe them out: the town is not held but destroyed, its people killed or driven off */
+    war.taken++; tally(w, 'wipedOut'); corpses(w, o.x, o.y, o.pop * 0.5); flee(w, o, o.pop * 0.2); remember(w, o.x, o.y, DEATH, 0.3, 3, 'sacked', `the ${c.name} destroyed ${o.name}`);
+    if (wasCap) oc.coh = Math.max(0.05, oc.coh - 0.15);
+    ev(w, wasCap ? `The ${c.name} take ${o.name}, seat of the ${oc.name}, and leave nothing of it standing.` : `The ${c.name} take ${o.name}, kill whoever did not flee, and burn it to the ground.`, o.x, o.y, c.color, wasCap && oc.count > 12 ? 0 : 1);
+    endSet(w, o, 'sacked', c.name); return; } o.occ = { by: c.id, cid: K ? K.id : null, since: w.year }; o.trade = 0; o.lastSack = w.year; war.taken++; tally(w, 'occupied');
   if (c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal) && w.rnd() < 0.5) scorch(w, o, c);
   if (wasCap) { war.capital = true; oc.coh = Math.max(0.05, oc.coh - 0.1); }
   corpses(w, o.x, o.y, o.pop * 0.05);
@@ -592,10 +597,10 @@ function cultYear(w, c) {
   else if (c.count >= 4 && b) {
     // (slice 1b) the foe is the rival best worth fighting: rivalry, what could be won, and the odds of winning it
     let foe = null, fs = 0, feas = 0; const mine = strength(c, c.pop); for (const k in c.nb) { const o = w.cults[k]; if (!o.alive || o.war || c.nb[k] <= 1.5 || truceLeft(w, c.id, o.id) || termsBetween(w, c.id, o.id) || leagued(w, c.id, o.id) || (c.oath != null && o.oath === c.oath)) continue;
-      const r = mine / Math.max(1, strength(o, o.pop)), fz = r / (r + 1), sc = c.nb[k] * fz * (1 + (claimGoal(w, c, o) || crownGoal(w, c, o) ? 1 : 0) + (c.over && c.over.kind === 'realm' && c.over.id === o.id ? 0.5 : 0)); if (sc > fs) { fs = sc; foe = o; feas = fz; } }
+      const r = mine / Math.max(1, strength(o, o.pop)), fz = r / (r + 1), torn = o.coh < 0.35 || (o.hub && o.hub.st === 'civil') || w.year - (o.born || 0) < 15 && o.pid != null ? 1 : 0, sc = c.nb[k] * fz * (1 + torn + (claimGoal(w, c, o) || crownGoal(w, c, o) ? 1 : 0) + (c.over && c.over.kind === 'realm' && c.over.id === o.id ? 0.5 : 0)); if (sc > fs) { fs = sc; foe = o; feas = fz * (1 + torn); } }   /* (Oct 29) a realm coming apart, or one just broken off, is carved up by its neighbours */
     const horde = c.env.nomads > c.env.sed && c.env.nomads >= 9 && A.riding && (tr === 'great' || (Q && Q.horse > 0.65)) && !c.ruler.rode;
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
-    const deter = foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1;
+    const deter = (foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1) * ((w.leadAge || 0) >= 8 && c.tech >= 7 ? 0.3 : 1);   /* (Oct 29) the norm against conquest under the bomb */
     const kin = foe && foe._tp && (foe._tg[c.langId] || 0) > 0.25 * foe._tp && tongueGap(w, foe.langId, c.langId) > 0, relic = foe && crownGoal(w, c, foe), reclaim = foe && claimGoal(w, c, foe);   /* or to take back the crown of their tongue */   // "reunite the old tongue"
     if (foe && rnd() < deter * Math.min(1.2, 2 * feas) * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * (relic ? 1.6 : 1) * (reclaim ? 1.6 : 1) * ((horde ? 0.3 * (0.5 + 2 * (c.fi || 0)) : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (!!(c.docs && c.docs.peace) ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; c._relic = relic; c._reclaim = reclaim; startWar(w, c, foe, horde, holy); c._kin = false; c._relic = null; }
   }
@@ -611,6 +616,10 @@ function startWar(w, c, f, horde, holy) {
   // (slice 1b) what the war is for, and what each side stands to lose
   const ratio = strength(c, c.pop) / Math.max(1, strength(f, f.pop)), far = !!(c.big && f.big && Math.hypot(wrapDx(c.big.x - f.big.x), c.big.y - f.big.y) > 45), press = hubPush(c) > 1, hungry = c.hungry > c.count * 0.25;
   K.aim = c.over && c.over.kind === 'realm' && c.over.id === f.id ? { kind: 'free', towns: [] } : pickAim(w, c, f, { relic: c._relic, reclaim: c._reclaim, horde, ratio, far, press, hungry, dragon: !!(c.over && c.over.kind === 'dragon'), trade: !!((c.q && c.q.trade > 0.5) || (c.markets || 0) >= 2) });
+  // (Oct 29) some wars are fought to wipe the enemy out, not to rule them: more often in the bronze age and in the age of total war, rarely under the bomb
+  { const t = c.tech, base = t <= 2 ? 0.25 : t <= 4 ? 0.15 : t <= 6 ? 0.1 : t === 7 ? 0.15 : 0.05, stranger = tongueGap(w, c.langId, f.langId) === Infinity, same = sameFaith(c, f);
+    const p = Math.min(0.6, base * (stranger ? 1.4 : 0.8) * (holy ? 1.5 : 1) * (same ? 0.6 : 1) * (horde ? 1.4 : 1) * (c.ruler.trait === 'mad' ? 2 : 1)); const bk = t <= 2 ? '1_2' : t >= 9 ? '9_10' : t;
+    tally(w, 'warAim_' + bk); if (K.aim.kind === 'land' && K.aim.towns.length && w.rnd() < p) { K.aim.kind = 'raze'; tally(w, 'razeAim_' + bk); } }
   let share = 0, cap = false; for (const s of w.sets) if (!s.dead && K.aim.towns.includes(s.id)) { share += s.pop; if (s === f.big) cap = true; } share /= Math.max(1, f.pop);
   K.stakes = [clamp(0.35 + (press ? 0.2 : 0) + (K.aim.kind === 'restore' || K.aim.kind === 'free' ? 0.25 : 0) + (horde ? 0.2 : 0) + (holy ? 0.15 : 0) + (hungry ? 0.15 : 0), 0.2, 1), clamp(0.35 + 1.5 * share + (cap ? 0.4 : 0) + (K.aim.kind === 'tribute' || K.aim.kind === 'free' ? 0.25 : 0), 0.3, 1.2)];
   K.lost = [0, 0]; K.pop0 = [c.pop, f.pop]; K.coh0 = [c.coh, f.coh]; K.last = w.year; K.odds = +ratio.toFixed(2);
@@ -632,7 +641,7 @@ function endWar(w, c, quiet, out) {
   const f = w.cults[wr.foe], fw = f && f.war && (K ? f.war.cid === K.id : f.war.foe === c.id) ? f.war : null;
   const a = wr.mine ? c : f, d = wr.mine ? f : c, aw = wr.mine ? wr : fw, dw = wr.mine ? fw : wr, got = aw ? aw.taken : 0, lost = dw ? dw.taken : 0, yrs = w.year - wr.since, at = a && d ? a.big || d.big : null;
   // (slice 1b) the peace decides the truce: what changed hands, how long it took, whether a court fell or bowed
-  const gain = out ? out.annexed.length + (out.kind === 'client' ? 3 : out.kind === 'toll' || out.kind === 'reparations' || out.kind === 'release' || out.kind === 'freed' ? 2 : out.kind === 'frontier' ? 1 : 0) : Math.abs(got - lost);
+  const gain = out ? out.annexed.length + (out.razed || 0) + (out.kind === 'client' ? 3 : out.kind === 'toll' || out.kind === 'reparations' || out.kind === 'release' || out.kind === 'freed' ? 2 : out.kind === 'frontier' ? 1 : 0) : Math.abs(got - lost);
   const years = quiet || !f ? 0 : truceYears(gain, 0, yrs, out ? out.capital || out.kind === 'client' : !!((aw && aw.capital) || (dw && dw.capital)));   /* a decisive war buys a long peace */
   if (K) closeConflict(w, K, years); else { c.war = null; if (fw) f.war = null; if (years) setTruce(w, c.id, f.id, w.year + years); }
   if (quiet || !f || !f.alive || !c.alive) return;
@@ -646,6 +655,7 @@ function endWar(w, c, quiet, out) {
     : say === 'release' ? `The ${a.name} are beaten. The ${d.name} owe them nothing any more.`
     : say === 'freed' ? `The ${a.name} have won. They owe the ${d.name} nothing any more.`
     : say === 'frontier' ? `The ${a.name} give up their claim to ${out.name}. The frontier stays where it was.`
+    : say === 'razed' ? `The ${d.name} sue for peace with what they have left. ${out.razed} of their towns are ashes.`
     : say === 'reparations' ? `The war the ${a.name} started ends badly for them: they will pay the ${d.name} for twenty years.`
     : say === 'won' ? `After ${yrs} years the ${d.name} sue for peace. ${got} of their towns now answer to the ${a.name}.`
     : say === 'lost' ? `The war the ${a.name} started ends badly for them: ${lost} towns lost to the ${d.name}.`

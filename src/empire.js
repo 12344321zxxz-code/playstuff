@@ -57,7 +57,7 @@ export function empireYear(w) {
     for (let k = 0; k < R.length; k++) {
       const r = R[k], seat = seats[k]; if (!seat || r.towns < 3 || w.year - r.since < 30) continue;
       const gap = tongueGap(w, seat.lang, c.langId), far = mass(w, seat) !== mass(w, b);
-      const p = 0.001 + 0.04 * Math.max(0, r.share - 0.3) + (h.A < 0.35 ? 0.008 : 0) + (h.st === 'civil' ? 0.02 : h.st === 'factions' ? 0.006 : 0) + (gap > 2 ? 0.004 : 0) + (far ? 0.004 : 0);
+      const p = 0.001 + 0.04 * Math.max(0, r.share - 0.3) + (h.A < 0.35 ? 0.008 : 0) + (h.st === 'civil' ? 0.02 : h.st === 'factions' ? 0.006 : 0) + (gap > 2 ? 0.004 : 0) + (far ? 0.004 : 0) + ((w.leadAge || 0) >= 8 && (gap > 2 || far) ? 0.03 : 0);   /* (Oct 29) foreign provinces go in the age of the bomb */
       if (w.rnd() >= p) continue;
       const why = { x: seat.x, y: seat.y, terms: { share: +r.share.toFixed(2), eff: +r.eff.toFixed(2), A: +h.A.toFixed(2), gap: gap === Infinity ? 99 : gap } };
       if (h.A >= 0.45 && r.eff < 0.55) { if (living(w) >= MAXC) continue; const nc = secede(w, c, R, k, T, 'autonomy', why); if (nc && subjugate(w, nc, c)) nc.over.house = r.name; break; }   /* the court can still make them pay, not govern them */
