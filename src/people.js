@@ -49,7 +49,7 @@ export function newCult(w, parent) {
   if (used[slot]) slot = (w.rnd() * COLORS.length) | 0;
   const lang = parent ? parent.lang : makeSound(w);   // a daughter people keeps its parent's tongue; tongues fork by drift, not by politics
   const c = { id: w.cults.length, slot, color: COLORS[slot], lang, name: cultName(w, lang), know: parent ? parent.know : 0, tech: parent ? parent.tech : 0, alive: true, count: 0, pop: 0, peak: 0, wit: 0.75 + 0.6 * w.rnd(),
-    arts: parent ? Object.assign({}, parent.arts) : {}, tame: parent ? Object.assign({}, parent.tame) : {}, metals: 0, gold: false, coh: 0.85, born: w.year, way: parent ? parent.way : 'forage', kind: 'foragers', parent: parent ? parent.name : null, grazer: parent ? parent.grazer : null,
+    arts: parent ? Object.assign({}, parent.arts) : {}, tame: parent ? Object.assign({}, parent.tame) : {}, metals: 0, gold: false, coh: 0.85, born: w.year, way: parent ? parent.way : 'forage', kind: 'foragers', parent: parent ? parent.name : null, pid: parent ? parent.id : null, grazer: parent ? parent.grazer : null,
     ruler: null, big: null, flags: parent ? { village: 1, town: parent.flags.town, city: parent.flags.city } : {}, wins: 0, wonderAt: -999, war: null, nb: {}, env: { crop: 0, coast: 0, dryRiver: 0, hill: 0, sed: 0, nomads: 0, towns: 0, cities: 0 }, germ: parent ? parent.germ || 0 : 0, stance: parent ? parent.stance || 'revere' : 'revere', crops: parent ? Object.assign({}, parent.crops) : {}, cropL: parent ? (parent.cropL || []).slice() : [], dom: {}, surplus: 0, rivals: 0, lastMet: w.year, banned: parent ? Object.assign({}, parent.banned) : {}, hungry: 0, lastDry: -99, faith: parent ? parent.faith : null, faithShare: 0,
     _n: -1, _p: 0, _sur: 0, _b: null, _metals: 0, _ways: { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }, _dry: 0, _full: 0 };   // _n < 0: born since the last census began
   crown(w, c, true); w.cults.push(c); rootTags(w, c, parent); return c;
@@ -143,7 +143,7 @@ const RUIN_TEXT = { abandoned: 'lies empty. Grass grows in its streets.', sacked
 const RUIN_PAGE = { drowned: 'drowned', buried: 'buried', overgrown: 'overgrown', frozen: 'frozen' };
 const DEPOSIT = { sacked: [DEATH, 0.55, 'sacked', (s) => `the sack of ${s.name}`], plague: [DEATH, 0.5, 'plague', (s) => `the plague at ${s.name}`], starved: [DEATH, 0.45, 'famine', (s) => `${s.name} starved`], frozen: [FROST, 0.6, 'frozen', (s) => `the ice took ${s.name}`], drowned: [DEEP, 0.6, 'drowned', (s) => `${s.name} went under the water`], buried: [FIRE, 0.6, null], crater: [FIRE, 0.8, null], dragon: [FIRE, 0.4, null], overgrown: [WILD, 0.4, null], swallowed: [FIRE, 0.4, null] };
 export function endSet(w, s, kind, by) {
-  if (s.dead) return; s.dead = true; w.anyDead = true; const c = w.cults[s.cult];
+  if (s.dead) return; s.dead = true; s.endKind = kind; w.anyDead = true; const c = w.cults[s.cult];
   // only a real tragedy is remembered: a town or city, not a hamlet; and the dead do not raise more dead by killing
   const dp = DEPOSIT[kind]; if (dp && s.name && s.maxTier >= 2) remember(w, s.x, s.y, dp[0], dp[1] * (0.5 + 0.25 * s.maxTier), 3, dp[2], dp[3] && dp[3](s), { place: s.name.replace(/^New /, ''), by, risen: !!(by && /^the (Dead|dead)/.test(by)) });
   if (s.maxTier >= 2 || (s.maxTier >= 1 && kind !== 'abandoned' && kind !== 'absorbed')) {
