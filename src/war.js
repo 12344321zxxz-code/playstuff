@@ -162,7 +162,7 @@ function settle(w, K, out, how, aimT, H) {
       else if (mine.length && !(conquestNorm(w, A) && w.rnd() > 0.2)) { for (const s of mine) { if (D.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, A); } r.kind = 'annex';
         // (Oct 29) what is left of a small or broken realm goes too: the conquered country, not only a province of it
         const rest = w.sets.filter((s) => !s.dead && !s.nomad && s.cult === D.id), ratio = K.odds || 1;
-        if (rest.length && !far && !conquestNorm(w, A) && (rest.length <= 2 || (ratio >= 3 && rest.length <= 12) || r.capital && ratio >= 1.5 && rest.length <= 8)) { for (const s of rest) { r.annexed.push(s.name); H.annex(w, s, A); } r.whole = true; tally(w, 'realmConquered'); } }
+        if (rest.length && !far && !conquestNorm(w, A) && (rest.length <= (A.tech <= 4 ? 4 : 2) || (ratio >= 3 && rest.length <= 12) || r.capital && ratio >= 1.5 && rest.length <= 8)) { for (const s of rest) { r.annexed.push(s.name); H.annex(w, s, A); } r.whole = true; tally(w, 'realmConquered'); } }
       else if (!D.over && H.subjugate(w, D, A, K)) r.kind = 'client';
     }
     A.wins = (A.wins || 0) + 2; D.wins = Math.max(0, (D.wins || 0) - 2);
