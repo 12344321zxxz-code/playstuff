@@ -495,7 +495,7 @@ export function* peopleSteps(w) {
     let wt = 1;
     if (!s.nomad) { const b0 = c.big; if (s.k == null) s.k = c.know;
       if (s === b0) { s.k = c.know; s._tie = 1; }
-      else { const dx = b0 ? Math.hypot(wrapDx(s.x - b0.x), s.y - b0.y) : 0, tg = s.lang != null && c.langId != null ? tongueGap(w, s.lang, c.langId) : 0;
+      else { const dx = b0 ? Math.hypot(wrapDx(s.x - b0.x), s.y - b0.y) : 0, tg = s.lang != null && c.langId != null && s.lang !== c.langId ? gapCached(w, s.lang, c.langId) : 0;
         const tie = Math.min(1, (1 / (1 + dx / Math.max(20, c.reachR || 30))) * (tg === Infinity ? 0.5 : tg > 2 ? 0.75 : 1) * (s.links ? 1.25 : 1)); s._tie = tie;
         if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * 0.05 * tie * (gap >= 2 ? 0.3 : 1); } else s.k += (c.know - s.k) * 0.01; }
       s.lvl = techOf(s.k); wt = 0.4 + 0.6 * s._tie * Math.min(1, s.k / Math.max(1, c.know)); }
@@ -554,6 +554,9 @@ function kindOf(c) {
   return A.irrigation && e.dryRiver * 2 >= e.sed ? (m < 0.3 ? 'oasis farmers' : 'river farmers') : A.terraces && e.hill * 2 >= e.sed ? 'terrace farmers' : T > 21 && m > 1.1 ? 'rice growers' : T < 8 ? 'rye farmers' : m < 0.6 ? 'dry-land farmers' : 'grain farmers';
 }
 
+// tongue distances, cached for a year (they change only as tongues split)
+let _gapY = -1, _gapW = null; const _gapM = new Map();
+function gapCached(w, a, b) { if (_gapY !== w.year || _gapW !== w) { _gapY = w.year; _gapW = w; _gapM.clear(); } const k = a * 65536 + b; let g = _gapM.get(k); if (g === undefined) { g = tongueGap(w, a, b); _gapM.set(k, g); } return g; }
 function cultYear(w, c) {
   const rnd = w.rnd, b = c.big, A = c.arts; if (c.pop > c.peak) c.peak = c.pop;
   if (!Number.isFinite(c.know)) c.know = TECH[1]; if (!Number.isFinite(c.surplus)) c.surplus = 0;   // never let one bad number spread to everyone they meet
@@ -615,7 +618,7 @@ function cultYear(w, c) {
   else if (c.count >= 4 && b) {
     // (slice 1b) the foe is the rival best worth fighting: rivalry, what could be won, and the odds of winning it
     // (Oct 29) a realm's neighbours are the realms whose towns lie close to its own, not only those it has lately met
-    if (!c.bord || w.year % 10 === c.id % 10) { const B = c.bord = {}; for (const s of w.sets) { if (s.dead || s.nomad || s.cult !== c.id) continue; near(w, s.x, s.y, 18 + (A.riding ? 6 : 0) + (A.roads ? 4 : 0), s, true, (u) => { if (u.cult !== c.id && !u.nomad) B[u.cult] = (B[u.cult] || 0) + 1; }); } }
+    if (!c.bord || w.year % 20 === c.id % 20) { const B = c.bord = {}; let nT = 0; for (const s of w.sets) { if (s.dead || s.nomad || s.cult !== c.id || (c.count > 40 && (s.id + w.year) % Math.ceil(c.count / 40) !== 0)) continue; nT++; near(w, s.x, s.y, 18 + (A.riding ? 6 : 0) + (A.roads ? 4 : 0), s, true, (u) => { if (u.cult !== c.id && !u.nomad) B[u.cult] = (B[u.cult] || 0) + 1; }); } }
     const nbOf = (k) => Math.max(c.nb[k] || 0, c.bord[k] ? 1.5 + Math.min(1.5, c.bord[k] / 4) : 0), keys = new Set([...Object.keys(c.nb), ...Object.keys(c.bord)]);
     let foe = null, fs = 0, feas = 0; const mine = strength(c, c.pop); for (const k of keys) { const o = w.cults[k]; if (!o || !o.alive || o.war || nbOf(k) <= 1.5 || !(o.env && o.env.sed > 0) || truceLeft(w, c.id, o.id) || termsBetween(w, c.id, o.id) || leagued(w, c.id, o.id) || (c.oath != null && o.oath === c.oath)) continue;
       const r = mine / Math.max(1, strength(o, o.pop)), fz = r / (r + 1), torn = o.coh < 0.35 || (o.hub && o.hub.st === 'civil') || w.year - (o.born || 0) < 15 && o.pid != null ? 1 : 0, sc = nbOf(k) * fz * (c.tech >= o.tech + 2 && !o.power ? 2.5 : 1) * (1 + torn + (claimGoal(w, c, o) || crownGoal(w, c, o) ? 1 : 0) + (c.over && c.over.kind === 'realm' && c.over.id === o.id ? 0.5 : 0)); if (sc > fs) { fs = sc; foe = o; feas = fz * (1 + torn); } }   /* (Oct 29) a realm coming apart, or one just broken off, is carved up by its neighbours */
@@ -623,7 +626,7 @@ function cultYear(w, c) {
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
     const deter = (foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1) * ((w.leadAge || 0) >= 8 ? 0.3 : 1) * (foe && c.tech >= 6 && c.tech >= foe.tech + 1 && c.big && foe.big && w.mass[c.big.y * W + c.big.x] !== w.mass[foe.big.y * W + foe.big.x] && (w.leadAge || 0) < 8 ? 3 : 1);   /* (Oct 29) the norm against conquest under the bomb; and the scramble: a people two ages behind is a tempting target */   /* (Oct 29) the norm against conquest under the bomb */
     const kin = foe && foe._tp && (foe._tg[c.langId] || 0) > 0.25 * foe._tp && tongueGap(w, foe.langId, c.langId) > 0, relic = foe && crownGoal(w, c, foe), reclaim = foe && claimGoal(w, c, foe);   /* or to take back the crown of their tongue */   // "reunite the old tongue"
-    if (foe && rnd() < deter * Math.min(1.2, 2 * feas) * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * (relic ? 1.6 : 1) * (reclaim ? 1.6 : 1) * ((horde ? 0.3 * (0.5 + 2 * (c.fi || 0)) : tr === 'great' ? 0.04 : tr === 'mad' ? 0.03 : WAR_RATE * (c.tech === 4 ? 3 : c.tech <= 3 ? 2 : 1) * (0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0))) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (!!(c.docs && c.docs.peace) ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; c._relic = relic; c._reclaim = reclaim; startWar(w, c, foe, horde, holy); c._kin = false; c._relic = null; }
+    if (foe && rnd() < deter * Math.min(1.2, 2 * feas) * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * (relic ? 1.6 : 1) * (reclaim ? 1.6 : 1) * ((horde ? 0.3 * (0.5 + 2 * (c.fi || 0)) : tr === 'great' ? 0.04 : tr === 'mad' ? 0.03 : WAR_RATE * (c.tech === 4 ? 4 : c.tech <= 3 ? 2 : 1) * (0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0))) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (!!(c.docs && c.docs.peace) ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; c._relic = relic; c._reclaim = reclaim; startWar(w, c, foe, horde, holy); c._kin = false; c._relic = null; }
   }
 }
 export function declareWar(w, c, f) { if (c.war || f.war || !c.big) return false; startWar(w, c, f, false, false); return true; }   /* (slice 4) for wars begun elsewhere: colonial conquest */
