@@ -91,7 +91,8 @@ export function pickAim(w, c, f, o) {
   if (o.trade) { const ent = nearest(theirs.filter((s) => s.entrepot))[0]; if (ent && gap.get(ent) < 45 * 45) return { kind: 'trade', towns: [ent.id], name: ent.name }; }
   // (Oct 29) how much a war is for grows with how lopsided it is: a realm two or more ages ahead means to take the whole country
   const ageGap = (c.tech || 0) - (f.tech || 0), want = 2 + (o.press ? 1 : 0) + (o.hungry ? 1 : 0) + (o.ratio > 2 ? 1 : 0) + (o.ratio > 4 ? 2 : 0) + (ageGap >= 2 ? 4 * (ageGap - 1) : 0);
-  const n = Math.max(1, Math.min(ageGap >= 2 ? theirs.length : Math.max(1, theirs.length - 1), ageGap >= 2 ? 24 : 10, want));
+  const frac = 0.2 + (o.ratio > 1.5 ? 0.15 : 0) + (o.ratio > 3 ? 0.25 : 0) + (o.press ? 0.1 : 0) + (o.hungry ? 0.1 : 0);   /* a province, not a village: a share of their land */
+  const n = Math.max(1, Math.min(ageGap >= 2 ? theirs.length : Math.max(1, theirs.length - 1), ageGap >= 2 ? 30 : 16, Math.max(want, Math.ceil(theirs.length * frac))));
   return { kind: 'land', towns: nearest(theirs).slice(0, n).map((s) => s.id) };
 }
 export function aimText(w, K) {
@@ -153,7 +154,10 @@ function settle(w, K, out, how, aimT, H) {
       const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x], press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
       const ahead = A.tech >= D.tech + 2;   /* (Oct 29) far ahead and on the same land: direct rule */
       if (!press && (far || ((A.span || 0) > 1.1 && !ahead)) && !D.over && D.count > mine.length + 2 && H.subjugate(w, D, A, K)) r.kind = 'client';
-      else if (mine.length && !(conquestNorm(w, A) && w.rnd() > 0.2)) { for (const s of mine) { if (D.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, A); } r.kind = 'annex'; }
+      else if (mine.length && !(conquestNorm(w, A) && w.rnd() > 0.2)) { for (const s of mine) { if (D.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, A); } r.kind = 'annex';
+        // (Oct 29) what is left of a small or broken realm goes too: the conquered country, not only a province of it
+        const rest = w.sets.filter((s) => !s.dead && !s.nomad && s.cult === D.id), ratio = K.odds || 1;
+        if (rest.length && !far && !conquestNorm(w, A) && (rest.length <= 2 || (ratio >= 3 && rest.length <= 12) || r.capital && ratio >= 1.5 && rest.length <= 8)) { for (const s of rest) { r.annexed.push(s.name); H.annex(w, s, A); } r.whole = true; tally(w, 'realmConquered'); } }
       else if (!D.over && H.subjugate(w, D, A, K)) r.kind = 'client';
     }
     A.wins = (A.wins || 0) + 2; D.wins = Math.max(0, (D.wins || 0) - 2);
