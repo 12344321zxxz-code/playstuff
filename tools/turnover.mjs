@@ -44,8 +44,8 @@ export function turnoverYear(w, T) {
   }
   const colNow = new Set(), freed = new Set();   // realms made a protectorate of a far more advanced realm this century, or freed from one
   for (const [id, o0] of T.cur.over) { const c = w.cults[id], o = overOf(w, c); if (o === o0) continue;
-    if (o != null) { colNow.add(id); if (typeof o === 'number' && c.big && w.cults[o].tech >= c.tech + 1 && outside(w, w.cults[o], c.big)) colNow.add('c' + id); }   /* made a client: its top-level sovereign changes (a protectorate of a far more advanced realm is colonial) */
-    else if (o0 != null) freed.add(id); }
+    if (o != null && (o0 == null || typeof o !== 'number' || typeof o0 !== 'number' || !kin(w, o, o0))) { colNow.add(id); if (typeof o === 'number' && c.big && w.cults[o].tech >= c.tech + 1 && outside(w, w.cults[o], c.big)) colNow.add('c' + id); }   /* made a client: its top-level sovereign changes (a protectorate of a far more advanced realm is colonial) */
+    else if (o == null && o0 != null) freed.add(id); }   /* (a client handed from an overlord to its successor has not changed hands) */
   for (const r of T.cur.rows) {
     if (r.done) continue; const s = r.s;
     if (s.dead) { if (WAR_END.has(s.endKind)) r.done = 'raze'; else if (s.cult !== r.cult) r.done = kin(w, s.cult, r.cult) ? 'i' : 'f'; else r.done = 'gone'; continue; }
