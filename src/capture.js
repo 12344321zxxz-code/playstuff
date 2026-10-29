@@ -132,7 +132,7 @@ export function captureYear(w) {
   // empires over the sea
   for (const o of w.cults) {
     if (!o.alive || o.power || o.over || !o.big || !o.arts.sailing || !(o.arts.gunpowder || o.arts.navigation) || o.war || (w.leadAge || 0) >= 8) continue;   /* (Oct 29) no new colonies in the age of the bomb */
-    const pushed = o.hub && (o.hub.st === 'press' || o.hub.st === 'factions'); if (rnd() > (pushed ? 0.04 : 0.008) * (o.arts.railways ? 4 : o.arts.engines ? 2 : 1)) continue;   /* (Oct 29) the industrial scramble */
+    const pushed = o.hub && (o.hub.st === 'press' || o.hub.st === 'factions'); if (rnd() > (pushed ? 0.04 : 0.008) * (o.arts.railways ? 12 : o.arts.engines ? 4 : 1)) continue;   /* (Oct 29) the industrial scramble: once there are railways at home, expeditions go out year after year */
     colonise(w, o);
   }
   for (const o of w.cults) if (o.alive && !o.power && o.big && (o.arts.sailing || o.arts.navigation)) independence(w, o);   /* colonies break away on their own clock, likelier when the crown is at war or divided */

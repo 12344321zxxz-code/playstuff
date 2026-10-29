@@ -117,7 +117,7 @@ export function leadAge(w) {
   let tot = 0; for (const c of w.cults) if (c.alive && !c.power && c.big) tot += c.pop;
   let t = 0; for (const c of w.cults) if (c.alive && !c.power && c.big && c.pop >= 0.03 * tot && c.tech > t) t = c.tech; return t;
 }
-export const conquestNorm = (w, c) => (w.leadAge || 0) >= 8 && c.tech >= 7;
+export const conquestNorm = (w, c) => (w.leadAge || 0) >= 8 && !c.power;   /* once the leaders have the bomb, the norm binds everyone (a world order, not only the great) */
 export function warsYear(w, H) {
   w.leadAge = leadAge(w);
   const byId = new Map(); for (const s of w.sets) if (!s.dead) byId.set(s.id, s);
@@ -153,7 +153,7 @@ function settle(w, K, out, how, aimT, H) {
     if (K.aim.kind === 'raze') { r.kind = 'razed'; r.razed = K.aim.towns.length - aimT.length; }
     else if (K.aim.kind === 'free') { if (A.over && A.over.kind === 'realm' && A.over.id === D.id) H.release(w, A, `the ${A.name} win their freedom from the ${D.name}`); r.kind = 'freed'; }
     else if (K.aim.kind === 'trade' && mine.length) { const s = mine[0]; s.tollTo = A.id; s.tollUntil = w.year + 40; r.kind = 'toll'; r.town = s.name; }
-    else if (K.aim.kind === 'tribute' && H.subjugate(w, D, A, K)) r.kind = 'client';
+    else if (K.aim.kind === 'tribute' && !conquestNorm(w, A) && H.subjugate(w, D, A, K)) r.kind = 'client';
     else {
       // direct rule or indirect: a realm stretched thin, or across the sea, takes a client rather than provinces; lords short of posts want the land
       const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x], press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
@@ -163,7 +163,7 @@ function settle(w, K, out, how, aimT, H) {
         // (Oct 29) what is left of a small or broken realm goes too: the conquered country, not only a province of it
         const rest = w.sets.filter((s) => !s.dead && !s.nomad && s.cult === D.id), ratio = K.odds || 1;
         if (rest.length && !far && !conquestNorm(w, A) && (rest.length <= (A.tech <= 4 ? 4 : 2) || (ratio >= 3 && rest.length <= 12) || r.capital && ratio >= 1.5 && rest.length <= 8)) { for (const s of rest) { r.annexed.push(s.name); H.annex(w, s, A); } r.whole = true; tally(w, 'realmConquered'); } }
-      else if (!D.over && H.subjugate(w, D, A, K)) r.kind = 'client';
+      else if (!D.over && !conquestNorm(w, A) && H.subjugate(w, D, A, K)) r.kind = 'client';
     }
     A.wins = (A.wins || 0) + 2; D.wins = Math.max(0, (D.wins || 0) - 2);
   } else if (out === 'lost') {
