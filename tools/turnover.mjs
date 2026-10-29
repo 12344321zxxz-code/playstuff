@@ -18,7 +18,7 @@ const outside = (w, taker, s) => { const b = taker.big; return taker.tech >= 5 &
 
 export const BUCKETS = ['1-2', '3', '4', '5', '6', '7', '8', '9-10'];
 export const bucketOf = (t) => (t <= 2 ? 0 : t >= 9 ? 7 : t - 2);
-const WAR_END = new Set(['sacked', 'nuked', 'dragon', 'swallowed']);
+const WAR_END = new Set(['sacked', 'dragon', 'swallowed']);   /* (a nuked town's land leaves the map of states; it does not change sovereign) */
 
 export function makeTurnover() { return { cur: null, acc: BUCKETS.map(() => ({ area: 0, f: 0, i: 0, raze: 0, col: 0, decol: 0, n: 0, cents: 0, gap: 0 })), cent: [], colOf: new Map() }; }
 
