@@ -35,6 +35,7 @@ import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock, plantWild } from '
 export const TIER = ['band', 'village', 'town', 'city'];
 export const COLORS = ['#d7263d', '#8e44d6', '#f46d1b', '#f2efe4', '#22201e', '#e040a8', '#ffd400', '#00c2a8', '#7a3b1d', '#ff8fa3', '#3d5afe', '#9bd636', '#00a1e4', '#b56576', '#6d597a', '#e9c46a', '#577590', '#f94144', '#43aa8b', '#bc6c25', '#a2d2ff', '#cdb4db', '#606c38', '#fb8500'];
 export const ORES = ['', 'copper', 'tin', 'iron', 'gold', 'salt', 'coal', 'uranium'];
+export const WAR_RATE = 3;   /* (Oct 29) how often realms go to war, tuned to the turnover of land in history */
 const MAXS = 520, MAXB = 420, MAXC = 30, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
 const placeName = (w, c) => word(w, c.lang, w.rnd() < 0.6 ? 2 : 3);
 function cultName(w, L) { let s = word(w, L, w.rnd() < 0.5 ? 1 : 2); const suf = ['i', 'an', 'ari', 'u', 'esh', 'or', 'im', 'a'][(w.rnd() * 8) | 0]; if (/[aeiou]$/.test(s)) s = s.slice(0, -1); return s + suf; }
@@ -602,7 +603,7 @@ function cultYear(w, c) {
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
     const deter = (foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1) * ((w.leadAge || 0) >= 8 && c.tech >= 7 ? 0.3 : 1);   /* (Oct 29) the norm against conquest under the bomb */
     const kin = foe && foe._tp && (foe._tg[c.langId] || 0) > 0.25 * foe._tp && tongueGap(w, foe.langId, c.langId) > 0, relic = foe && crownGoal(w, c, foe), reclaim = foe && claimGoal(w, c, foe);   /* or to take back the crown of their tongue */   // "reunite the old tongue"
-    if (foe && rnd() < deter * Math.min(1.2, 2 * feas) * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * (relic ? 1.6 : 1) * (reclaim ? 1.6 : 1) * ((horde ? 0.3 * (0.5 + 2 * (c.fi || 0)) : tr === 'great' ? 0.03 : tr === 'mad' ? 0.02 : 0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0)) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (!!(c.docs && c.docs.peace) ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; c._relic = relic; c._reclaim = reclaim; startWar(w, c, foe, horde, holy); c._kin = false; c._relic = null; }
+    if (foe && rnd() < deter * Math.min(1.2, 2 * feas) * hubPush(c) * (c.overPush || 1) * (Q ? (1 + 0.8 * Q.war) * (1 - 0.5 * Q.trade) : 1) * (kin ? 1.8 : 1) * (relic ? 1.6 : 1) * (reclaim ? 1.6 : 1) * ((horde ? 0.3 * (0.5 + 2 * (c.fi || 0)) : tr === 'great' ? 0.04 : tr === 'mad' ? 0.03 : WAR_RATE * (0.0025 + (A.bureaucracy ? 0.004 : 0) + (A.gunpowder ? 0.004 : 0))) + Math.min(0.03, (c.hungry / c.count) * 0.05)) * (same ? (!!(c.docs && c.docs.peace) ? 0.15 : 0.4) : holy ? 2 : 1)) { c._kin = kin; c._relic = relic; c._reclaim = reclaim; startWar(w, c, foe, horde, holy); c._kin = false; c._relic = null; }
   }
 }
 export function declareWar(w, c, f) { if (c.war || f.war || !c.big) return false; startWar(w, c, f, false, false); return true; }   /* (slice 4) for wars begun elsewhere: colonial conquest */

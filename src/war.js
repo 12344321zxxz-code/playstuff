@@ -90,7 +90,7 @@ export function pickAim(w, c, f, o) {
   if (o.dragon) { const rich = nearest(theirs.filter((s) => s.entrepot || (s.ores & 16)))[0]; if (rich && gap.get(rich) < 50 * 50) return { kind: 'trade', towns: [rich.id], name: rich.name }; if (!f.over && f.big && !f.big.occ) return { kind: 'tribute', towns: [f.big.id] }; }   /* (slice 5) a dragon wants gold: a gold town or an entrepôt, or a rich court to pay it */
   if (o.trade) { const ent = nearest(theirs.filter((s) => s.entrepot))[0]; if (ent && gap.get(ent) < 45 * 45) return { kind: 'trade', towns: [ent.id], name: ent.name }; }
   // (Oct 29) how much a war is for grows with how lopsided it is: a realm two or more ages ahead means to take the whole country
-  const ageGap = (c.tech || 0) - (f.tech || 0), want = 1 + (o.press ? 1 : 0) + (o.hungry ? 1 : 0) + (o.ratio > 2 ? 1 : 0) + (o.ratio > 4 ? 2 : 0) + (ageGap >= 2 ? 4 * (ageGap - 1) : 0);
+  const ageGap = (c.tech || 0) - (f.tech || 0), want = 2 + (o.press ? 1 : 0) + (o.hungry ? 1 : 0) + (o.ratio > 2 ? 1 : 0) + (o.ratio > 4 ? 2 : 0) + (ageGap >= 2 ? 4 * (ageGap - 1) : 0);
   const n = Math.max(1, Math.min(ageGap >= 2 ? theirs.length : Math.max(1, theirs.length - 1), ageGap >= 2 ? 24 : 10, want));
   return { kind: 'land', towns: nearest(theirs).slice(0, n).map((s) => s.id) };
 }
@@ -168,7 +168,7 @@ function settle(w, K, out, how, aimT, H) {
   if ((out === 'won' || out === 'lost') && !conquestNorm(w, out === 'won' ? A : D)) { const ws = out === 'won' ? 0 : 1, keep = new Map();
     for (const s of w.sets) { if (s.dead || !s.occ || s.occ.cid !== K.id || sideOf(K, s.occ.by) !== ws || sideOf(K, s.cult) !== 1 - ws) continue; const o = w.cults[s.occ.by], sv = w.cults[s.cult]; if (!o || !o.alive || o.power) continue;
       let d = 1e9; for (const m of w.sets) if (!m.dead && !m.nomad && m.cult === o.id) { const q = d2(m, s); if (q < d) d = q; }
-      if (d <= 22 * 22 || o.tech >= sv.tech + 2) keep.set(s, o); }
+      if (d <= 30 * 30 || o.tech >= sv.tech + 2) keep.set(s, o); }
     for (const [s, o] of keep) { const sv = w.cults[s.cult]; if (sv.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, o); tally(w, 'heldKept'); }
     if (keep.size && r.kind === 'status') r.kind = out === 'won' ? 'annex' : 'lost'; }
   for (const s of w.sets) if (s.occ && s.occ.cid === K.id) s.occ = null;   /* what the peace did not give away goes back */
