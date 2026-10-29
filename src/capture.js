@@ -150,7 +150,7 @@ function colonise(w, o) {
     const s = gain / cost; if (s > bs) { bs = s; best = c; }
   }
   // empty or thin land over the sea is also a target: settlers
-  tally(w, best ? 'colTarget' : 'colNoTarget'); const tryEmpty = !best || rnd() < 0.3;
+  tally(w, best ? 'colTarget' : 'colNoTarget'); const tryEmpty = !best || rnd() < 0.15;
   if (best && !tryEmpty) {
     const cb = best.big, i = cb.y * W + cb.x, fever = w.tMean[i] > 21 && w.mi[i] > 1.1 && !o.arts.medicine;
     if (fever) { tally(w, 'colFort'); fort(w, o, cb.x, cb.y, best); return; }
@@ -162,6 +162,8 @@ function colonise(w, o) {
       ev(w, `Ships of the ${o.name} come to ${cb.name}. Within a year the ${best.name} pay them tribute, collected by ${best.over.house}, who rule in their name. In the towns they still speak ${w.langs ? w.langs[best.langId].name : 'their own tongue'}.`, cb.x, cb.y, o.color, 2); discover(w, 'colony', cb.x, cb.y);
       return;
     }
+    // (Oct 29) a small realm of villages is taken under the flag too, not only settled beside
+    if (o.tech >= best.tech + 1) { tally(w, 'colTake'); take(w, best, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(best.id); record(w, 'capture', [best.id, o.id], { note: `the ${o.name} take the ${best.name}`, x: cb.x, y: cb.y }); ev(w, `Ships of the ${o.name} come to ${cb.name}, and a flag goes up over it. The ${best.name} answer to them now.`, cb.x, cb.y, o.color, 1); return; }
     settle(w, o, cb.x, cb.y, best); return;
   }
   // look for good empty land on another landmass
