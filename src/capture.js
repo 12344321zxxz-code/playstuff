@@ -150,14 +150,14 @@ function colonise(w, o) {
     const s = gain / cost; if (s > bs) { bs = s; best = c; }
   }
   // empty or thin land over the sea is also a target: settlers
-  const tryEmpty = !best || rnd() < 0.3;
+  tally(w, best ? 'colTarget' : 'colNoTarget'); const tryEmpty = !best || rnd() < 0.3;
   if (best && !tryEmpty) {
     const cb = best.big, i = cb.y * W + cb.x, fever = w.tMean[i] > 21 && w.mi[i] > 1.1 && !o.arts.medicine;
-    if (fever) { fort(w, o, cb.x, cb.y, best); return; }
+    if (fever) { tally(w, 'colFort'); fort(w, o, cb.x, cb.y, best); return; }
     if (best.pop > 2500 && best.env.towns >= 2) {
       // (slice 4) a realm of towns is not taken by showing the flag: it is a war, for tribute, fought over the sea
       if (!best.war && declareWar(w, o, best)) { tally(w, 'colonialWar'); record(w, 'colonial-war', [o.id, best.id], { note: `the ${o.name} sail to make the ${best.name} pay`, x: cb.x, y: cb.y, terms: { theirs: strength(best, best.pop), overlord: my } }); ev(w, `Ships of the ${o.name} come to ${cb.name}, and they have not come to trade. The ${o.name} mean to make the ${best.name} pay them tribute.`, cb.x, cb.y, o.color, 0); return; }
-      take(w, best, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(best.id);
+      tally(w, 'colTake'); take(w, best, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(best.id);
       record(w, 'capture', [best.id, o.id], { note: `the ${o.name} take the ${best.name}`, x: cb.x, y: cb.y, terms: { theirs: strength(best, best.pop), overlord: my } });
       ev(w, `Ships of the ${o.name} come to ${cb.name}. Within a year the ${best.name} pay them tribute, collected by ${best.over.house}, who rule in their name. In the towns they still speak ${w.langs ? w.langs[best.langId].name : 'their own tongue'}.`, cb.x, cb.y, o.color, 2); discover(w, 'colony', cb.x, cb.y);
       return;
