@@ -7,7 +7,7 @@ import { ZONES } from './zones.js';
 import { makeTexState, buildTex } from './texbuild.js';
 import { KINDS, STANCES } from './memory.js';
 import { PLANTS } from './origins.js';
-export const ERA_COL = ['#7a6a86', '#3b5bb5', '#2f8fd6', '#2bb5c2', '#3cc48a', '#8dcf45', '#d9cf3a', '#f5a636', '#ef6a2e', '#d93a3a', '#fff4d6'];   // one ordered ramp, cold and old to hot and new (white-hot last)
+export const ERA_COL = ['#8a8a8a', '#5fb84a', '#b8862b', '#c0392b', '#3f63d6', '#9a4fd6', '#ff8a2a', '#3fd0d0', '#ff4f9e', '#f4e04d', '#ffffff'];   // eleven ages, each its own colour (first fields green)
 const CW = 128, CH = 64;
 
 export function createRenderer(glc) {
