@@ -11,7 +11,7 @@
 //     and expulsions where many strangers live under a closed people, skilled migrants carrying
 //     knowledge, and named streams.
 import { W, H, DISC, wx, wrapDx, clamp, peopleText } from './core.js';
-import { near, addSet, flee, routeToCell, departPort } from './people.js';
+import { near, addSet, flee, routeToCell, departPort, absorb } from './people.js';
 import { reachFrom, rangeOf, seaLane } from './travel.js';
 import { tongueGap, cultureOf } from './tongues.js';
 import { carry } from './faith.js';
@@ -92,7 +92,7 @@ function arrive(w, s, t, k, sea, why, streams) {
   if (s.lang != null && t.lang != null && s.lang !== t.lang) { const m = t.mix || (t.mix = {}); m[s.lang] = Math.min(1, (m[s.lang] || 0) + k / Math.max(30, t.pop));
     if (m[s.lang] > 0.5) { const was = t.lang; t.lang = s.lang; delete m[s.lang]; m[was] = 0.3; record(w, 'tongue-flip', [t.cult], { x: t.x, y: t.y, note: `${t.name} now speaks the newcomers' tongue` }); if (w.langs && t.tier >= 2) ev(w, `In ${t.name} the newcomers outnumber the old families. Within a generation the town speaks ${w.langs[s.lang].name}.`, t.x, t.y, tc.color, 1); } }
   if (w.rnd() < k / 200) carry(w, s, t, 'refugees');
-  if (c !== tc && c.know > tc.know && k > 10) tc.know += (c.know - tc.know) * Math.min(0.01, k / 20000);   /* skilled hands take what they know with them */
+  if (c !== tc && c.know > tc.know && k > 10) tc.know += (c.know - tc.know) * Math.min(0.01, k / 20000) * absorb(c.tech - tc.tech);   /* (Oct 29) as much as they can take in */   /* skilled hands take what they know with them */
   const key = s.id + '>' + t.id; let st = streams.get(key); if (!st) { st = { n: 0, since: w.year, named: false }; streams.set(key, st); } st.n += k;
   if (!st.named && st.n > 100 && w.year - st.since > 30 && (t.tier >= 3 || c !== tc)) {   /* only the great streams get a name: into cities, or across a border */ st.named = true; record(w, 'stream', [s.cult, t.cult], { x: t.x, y: t.y, note: `${s.name} to ${t.name}, ${why}` });
     ev(w, c === tc ? `Year after year the young of ${s.name} leave for ${t.name}.` : `People from ${s.name} keep coming to ${t.name} of the ${tc.name}; they have a street of their own there now.`, t.x, t.y, tc.color, 1); discover(w, 'stream', t.x, t.y); }

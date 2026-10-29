@@ -17,7 +17,7 @@ export const BUCKETS = ['1-2', '3', '4', '5', '6', '7', '8', '9-10'];
 export const bucketOf = (t) => (t <= 2 ? 0 : t >= 9 ? 7 : t - 2);
 const WAR_END = new Set(['sacked', 'nuked', 'dragon', 'swallowed']);
 
-export function makeTurnover() { return { cur: null, acc: BUCKETS.map(() => ({ area: 0, f: 0, i: 0, raze: 0, col: 0, decol: 0, n: 0, cents: 0 })), cent: [], colOf: new Map() }; }
+export function makeTurnover() { return { cur: null, acc: BUCKETS.map(() => ({ area: 0, f: 0, i: 0, raze: 0, col: 0, decol: 0, n: 0, cents: 0, gap: 0 })), cent: [], colOf: new Map() }; }
 
 // does realm a descend from realm b (or b from a) within a few generations?
 function kin(w, a, b) {
@@ -36,7 +36,7 @@ export function turnoverYear(w, T) {
     if (T.cur) close(w, T);
     const area = new Map(); for (let i = 0; i < N; i++) { const k = w.owner[i]; if (k >= 0) area.set(k, (area.get(k) || 0) + 1); }
     const rows = [], over = new Map();
-    for (const [k, a] of area) { const s = w.sets[k]; if (!s || s.dead || s.nomad) continue; const c = w.cults[s.cult]; if (!c || !c.alive || c.power) continue; rows.push({ s, cult: c.id, tier: c.tech, a, done: null }); if (!over.has(c.id)) over.set(c.id, overOf(w, c)); }
+    for (const [k, a] of area) { const s = w.sets[k]; if (!s || s.dead || s.nomad) continue; const c = w.cults[s.cult]; if (!c || !c.alive || c.power) continue; rows.push({ s, cult: c.id, tier: s.lvl != null ? s.lvl : c.tech, a, done: null }); if (!over.has(c.id)) over.set(c.id, overOf(w, c)); }
     T.cur = { y: w.year, age: leadingAge(w), rows, over }; return;
   }
   const colNow = new Set(), freed = new Set();   // realms made a protectorate of a far more advanced realm this century, or freed from one
@@ -61,7 +61,7 @@ export function turnoverYear(w, T) {
 function close(w, T) {
   const b = T.acc[bucketOf(T.cur.age)], tot = { area: 0, f: 0, i: 0 }; b.cents++;
   for (const r of T.cur.rows) {
-    b.area += r.a; b.n++; tot.area += r.a;
+    b.area += r.a; b.n++; tot.area += r.a; if (r.tier <= T.cur.age - 2) b.gap += r.a;   /* land two or more ages behind the leaders (a diagnostic, not a target) */
     if (r.done === 'f' || r.done === 'raze') { b.f += r.a; tot.f += r.a; if (r.done === 'raze') b.raze += r.a; if (r.col) b.col += r.a; }
     else if (r.done === 'i') { b.i += r.a; tot.i += r.a; if (r.decol) b.decol += r.a; }
   }
@@ -74,8 +74,8 @@ export function turnoverSummary(T) {
   const out = {};
   T.acc.forEach((b, k) => {
     const p = (v) => (b.area ? +((100 * v) / b.area).toFixed(1) : null), key = 'to' + BUCKETS[k].replace('-', '_');
-    out[key + 'F'] = p(b.f); out[key + 'I'] = p(b.i); out[key + 'Col'] = p(b.col); out[key + 'Decol'] = p(b.decol); out[key + 'Raze'] = p(b.raze); out[key + 'C'] = b.cents;
+    out[key + 'F'] = p(b.f); out[key + 'I'] = p(b.i); out[key + 'Col'] = p(b.col); out[key + 'Decol'] = p(b.decol); out[key + 'Raze'] = p(b.raze); out[key + 'C'] = b.cents; out[key + 'Gap'] = p(b.gap);
   });
-  out.toRaw = T.acc.map((b) => [b.area, b.f, b.i, b.col, b.decol, b.raze, b.cents]);
+  out.toRaw = T.acc.map((b) => [b.area, b.f, b.i, b.col, b.decol, b.raze, b.cents, b.gap]);
   return out;
 }

@@ -85,15 +85,20 @@ function suits(w, c, kind, k) {
   const i = homeCell(c); if (i < 0) return false;
   return kind === 'crop' ? w.pSuit[k * N + i] > 120 : TAME_SP[k] == null || habitat(w, TAME_SP[k], i) > 0.5;
 }
+// (Oct 29) how much of what a people sees in another it can take in: a neighbour one age ahead teaches a
+// great deal, one two ages ahead very little (they see the guns, not the foundry). After Cohen & Levinthal.
+export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
 function meet(w, c, o, p) {
   const rnd = w.rnd; if (c === o) return;
-  if (o.know > c.know) c.know += (o.know - c.know) * 0.006; else o.know += (c.know - o.know) * 0.006;
-  c.lastMet = o.lastMet = w.year; (c.met || (c.met = {}))[o.id] = 1; (o.met || (o.met = {}))[c.id] = 1;
   const tg = tongueGap(w, c.langId, o.langId), talk = tg <= 2 ? 1.5 : tg === Infinity ? 0.7 : 1;   // ideas pass easily between close tongues
+  // ties, not trips: the tenth caravan of the year between two peoples teaches less than the first
+  const yk = w.year, M = c._mt && c._mtY === yk ? c._mt : ((c._mtY = yk), (c._mt = {})), n = (M[o.id] = (M[o.id] || 0) + 1), tie = 1 / n;
+  { const [lo, hi] = o.know > c.know ? [c, o] : [o, c]; lo.know += (hi.know - lo.know) * 0.006 * absorb(hi.tech - lo.tech) * talk * tie; }
+  c.lastMet = o.lastMet = w.year; (c.met || (c.met = {}))[o.id] = 1; (o.met || (o.met = {}))[c.id] = 1;
   for (const [a, b] of [[c, o], [o, c]]) {
     for (const k in b.tame) if (!a.tame[k] && rnd() < 0.12 && suits(w, a, 'beast', k)) { a.tame[k] = w.year; if (TAME_GRAZE[k] && !a.grazer) { a.grazer = k; learn(w, a, 'herding'); } }
     for (const k of b.cropL) if (!hasCrop(a, k) && rnd() < 0.07 && suits(w, a, 'crop', k)) { giveCrop(w, a, k, b); if (!a.arts.farming && a.tech >= 1) learn(w, a, 'farming', b); break; }
-    if (rnd() < p * 0.4 * talk * (a.q ? 1 + 0.5 * a.q.open : 1) * (a.arts.alphabet || b.arts.alphabet ? 1.4 : 1) * (b.arts.printing ? 2 : 1) * (b.arts.networks ? 2 : 1)) { const got = ART_KEYS.filter((k) => b.arts[k] && canLearn(a, k, true)); if (got.length) learn(w, a, got[(rnd() * got.length) | 0], b); }
+    if (rnd() < p * 0.4 * talk * tie * absorb(b.tech - a.tech) * (a.q ? 1 + 0.5 * a.q.open : 1) * (a.arts.alphabet || b.arts.alphabet ? 1.4 : 1) * (b.arts.printing ? 2 : 1) * (b.arts.networks ? 2 : 1)) { const got = ART_KEYS.filter((k) => b.arts[k] && canLearn(a, k, true)); if (got.length) learn(w, a, got[(rnd() * got.length) | 0], b); }
   }
   c.nb[o.id] = (c.nb[o.id] || 0) + 1; o.nb[c.id] = (o.nb[c.id] || 0) + 1;
 }
