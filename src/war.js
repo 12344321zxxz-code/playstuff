@@ -158,7 +158,7 @@ function settle(w, K, out, how, aimT, H) {
       // direct rule or indirect: a realm stretched thin, or across the sea, takes a client rather than provinces; lords short of posts want the land
       const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x], press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
       const ahead = A.tech >= D.tech + 2;   /* (Oct 29) far ahead and on the same land: direct rule */
-      if (!press && (far || ((A.span || 0) > 1.4 && !ahead)) && !D.over && D.count > mine.length + 2 && H.subjugate(w, D, A, K)) r.kind = 'client';
+      if (!press && !conquestNorm(w, A) && (far || ((A.span || 0) > 1.4 && !ahead)) && !D.over && D.count > mine.length + 2 && H.subjugate(w, D, A, K)) r.kind = 'client';
       else if (mine.length && !(conquestNorm(w, A) && w.rnd() > 0.2)) { for (const s of mine) { if (D.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, A); } r.kind = 'annex';
         // (Oct 29) what is left of a small or broken realm goes too: the conquered country, not only a province of it
         const rest = w.sets.filter((s) => !s.dead && !s.nomad && s.cult === D.id), ratio = K.odds || 1;
