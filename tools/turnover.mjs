@@ -20,7 +20,7 @@ export const BUCKETS = ['1-2', '3', '4', '5', '6', '7', '8', '9-10'];
 export const bucketOf = (t) => (t <= 2 ? 0 : t >= 9 ? 7 : t - 2);
 const WAR_END = new Set(['sacked', 'dragon', 'swallowed']);   /* (a nuked town's land leaves the map of states; it does not change sovereign) */
 
-export function makeTurnover() { return { cur: null, acc: BUCKETS.map(() => ({ area: 0, f: 0, i: 0, raze: 0, col: 0, decol: 0, n: 0, cents: 0, gap: 0 })), cent: [], colOf: new Map() }; }
+export function makeTurnover() { return { cur: null, acc: BUCKETS.map(() => ({ area: 0, f: 0, i: 0, raze: 0, col: 0, decol: 0, n: 0, cents: 0, gap: 0, fPow: 0, fCli: 0 })), cent: [], colOf: new Map() }; }
 
 // does realm a descend from realm b (or b from a) within a few generations?
 function kin(w, a, b) {
@@ -50,11 +50,11 @@ export function turnoverYear(w, T) {
     if (r.done) continue; const s = r.s;
     if (s.dead) { if (WAR_END.has(s.endKind)) r.done = 'raze'; else if (s.cult !== r.cult) r.done = kin(w, s.cult, r.cult) ? 'i' : 'f'; else r.done = 'gone'; continue; }
     if (s.cult === r.cult) {
-      if (colNow.has(r.cult)) { r.done = 'f'; if (colNow.has('c' + r.cult)) { r.col = true; T.colOf.set('r' + r.cult, overOf(w, w.cults[r.cult])); } }
+      if (colNow.has(r.cult)) { r.done = 'f'; r.cli = true; if (colNow.has('c' + r.cult)) { r.col = true; T.colOf.set('r' + r.cult, overOf(w, w.cults[r.cult])); } }
       else if (freed.has(r.cult)) { r.done = 'i'; if (T.colOf.has('r' + r.cult)) { r.decol = true; T.colOf.delete('r' + r.cult); } }
       continue;
     }
-    const n = w.cults[s.cult]; r.done = n && !n.power && kin(w, s.cult, r.cult) ? 'i' : 'f';
+    const n = w.cults[s.cult]; r.done = n && !n.power && kin(w, s.cult, r.cult) ? 'i' : 'f'; if (n && n.power) r.pow = true;
     if (r.done === 'f' && n && n.tech >= r.tier + 1 && outside(w, n, s)) { r.col = true; T.colOf.set(s.id, s.cult); }
     else if (r.done === 'i' && T.colOf.get(s.id) === r.cult) { r.decol = true; T.colOf.delete(s.id); }
     else if (r.done === 'f') T.colOf.delete(s.id);
@@ -65,7 +65,7 @@ function close(w, T) {
   const b = T.acc[bucketOf(T.cur.age)], tot = { area: 0, f: 0, i: 0 }; b.cents++;
   for (const r of T.cur.rows) {
     b.area += r.a; b.n++; tot.area += r.a; if (r.tier <= T.cur.age - 2) b.gap += r.a;   /* land two or more ages behind the leaders (a diagnostic, not a target) */
-    if (r.done === 'f' || r.done === 'raze') { b.f += r.a; tot.f += r.a; if (r.done === 'raze') b.raze += r.a; if (r.col) b.col += r.a; }
+    if (r.done === 'f' || r.done === 'raze') { b.f += r.a; tot.f += r.a; if (r.done === 'raze') b.raze += r.a; if (r.col) b.col += r.a; if (r.pow) b.fPow += r.a; if (r.cli) b.fCli += r.a; }
     else if (r.done === 'i') { b.i += r.a; tot.i += r.a; if (r.decol) b.decol += r.a; }
   }
   if (tot.area) T.cent.push([T.cur.y, T.cur.age, Math.round((100 * tot.f) / tot.area), Math.round((100 * tot.i) / tot.area)]);
@@ -79,6 +79,6 @@ export function turnoverSummary(T) {
     const p = (v) => (b.area ? +((100 * v) / b.area).toFixed(1) : null), key = 'to' + BUCKETS[k].replace('-', '_');
     out[key + 'F'] = p(b.f); out[key + 'I'] = p(b.i); out[key + 'Col'] = p(b.col); out[key + 'Decol'] = p(b.decol); out[key + 'Raze'] = p(b.raze); out[key + 'C'] = b.cents; out[key + 'Gap'] = p(b.gap);
   });
-  out.toRaw = T.acc.map((b) => [b.area, b.f, b.i, b.col, b.decol, b.raze, b.cents, b.gap]);
+  out.toRaw = T.acc.map((b) => [b.area, b.f, b.i, b.col, b.decol, b.raze, b.cents, b.gap, b.fPow, b.fCli]);
   return out;
 }
