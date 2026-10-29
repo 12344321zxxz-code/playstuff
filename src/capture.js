@@ -117,7 +117,7 @@ export function captureYear(w) {
       c.tribute = ov.take; o.tributeIn = (o.tributeIn || 0) + ov.take * c.pop / 100;
       if (rnd() < 0.15) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 2) { from = s; break; } if (from && o.big) { const lane = seaLane(w, from.x, from.y, o.big.x, o.big.y), cells = lane ? null : legCells(w, from, o.big); if (lane || (cells && cells.length > 1)) send(w, { kind: 'trade', cult: o.id, x: from.x, y: from.y, tx: o.big.x, ty: o.big.y, n: 10, goods: -1, land: 0.8, path: lane || cells, wet0: !!lane, step: lane ? 4 : 2 }); }   /* the colony's tribute sails a lane home, or goes by the ways */; }
       const gap = tongueGap(w, c.langId, o.langId), weak = (o.hub && (o.hub.st === 'civil' || o.hub.st === 'factions') ? 0.03 : 0) + (o.lostDragonAt != null && w.year - o.lostDragonAt < 25 ? 0.04 : 0);   /* (slice 5) a host that has lost its dragon holds its own clients more loosely */
-      const LA = w.leadAge || 0, decol = LA >= 8 ? 0.04 : LA === 7 ? 0.01 : 0;   /* (Oct 29) decolonisation */
+      const LA = w.leadAge || 0, decol = LA >= 8 ? 0.07 : LA === 7 ? 0.01 : 0;   /* (Oct 29) decolonisation */
       const p = 0.003 + 0.03 * Math.max(0, 0.8 - L) + weak + (gap === Infinity ? 0.004 : 0) + Math.min(0.02, ov.hw / 4000) + decol;
       if (rnd() < p) {
         const rebels = strength(c, c.pop) * (1 + Math.min(1, ov.hw / 300)), held = strength(o, o.pop) * 0.35 * (LA >= 8 ? 0.4 : 1) * (o.hub && o.hub.st === 'civil' ? 0.4 : 1) * (o.shaken != null && w.year - o.shaken < 15 ? 0.5 : 1), roll = rnd(), pw = rebels / (rebels + held);
@@ -193,7 +193,7 @@ function settle(w, o, x, y, natives) {
 // settler colonies far from the crown break away when the take runs high or the tongue has drifted
 function independence(w, o) {
   { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; if (n >= 36) return; }   /* no more realms than the splits may make */
-  const L = w.leadAge || 0, decol = L >= 8 ? 0.06 : L === 7 ? 0.012 : 0, minG = L >= 8 ? 2 : 4;   /* (Oct 29) decolonisation: in the age of the bomb colonies go */
+  const L = w.leadAge || 0, decol = L >= 8 ? 0.1 : L === 7 ? 0.015 : 0, minG = L >= 8 ? 2 : 4;   /* (Oct 29) decolonisation: in the age of the bomb colonies go */
   const away = w.sets.filter((s) => !s.dead && s.cult === o.id && !s.nomad && overseas(w, o, s)); if (away.length < minG) return;
   const drift = away.filter((s) => tongueGap(w, s.lang, o.langId) > 0).length / away.length, X = o.hub ? o.hub.X : 0.15;
   // (Oct 29) a colony breaks away when it can: by how far its own towns have come (a colony two ages behind rarely
