@@ -72,9 +72,9 @@ export function empireYear(w) {
   // overlords look again at their clients every thirty years
   for (const c of w.cults) {
     if (!c.alive || c.power || !c.over || c.over.kind !== 'realm' || c.war) continue; const o = w.cults[c.over.id]; if (!o || !o.alive || o.war || !o.big || !c.big) continue;
-    if ((w.year - c.over.since) % 30 !== 29) continue; const h = o.hub, want = h && (h.st === 'press' || h.st === 'factions' || h.pi > 1.05);
+    if ((w.year - c.over.since) % 20 !== 19) continue; const h = o.hub, want = h && (h.st === 'press' || h.st === 'factions' || h.pi > 1.05);
     const near = mass(w, c.big) === mass(w, o.big) && dist(c.big, o.big) < 1.2 * Math.max(20, o.reachR || 30), small = c.count <= Math.max(6, 0.4 * o.count), kin = tongueGap(w, c.langId, o.langId) <= 3;
-    if (!(near && small && (want || kin)) || w.rnd() > 0.5) continue;
+    if (!(near && small && (want || kin || o.tech > c.tech || c.count <= 4)) || w.rnd() > 0.6) continue;   /* (Oct 29) a small client next door is swallowed sooner or later */
     let n = 0; for (const s of towns.get(c.id) || []) { s.cult = o.id; s.trade = 0; n++; } for (const s of w.sets) if (!s.dead && s.cult === c.id) s.cult = o.id;   /* the herders too */
     release(w, c, `absorbed by the ${o.name}`); record(w, 'absorb', [o.id, c.id], { x: c.big.x, y: c.big.y, note: `the ${c.name}, ${n} towns, ruled directly from ${o.big.name || 'the court'}`, terms: { want: want ? 1 : 0, kin: kin ? 1 : 0 } }); tally(w, 'absorbed');
     ev(w, `The ${o.name} stop ruling the ${c.name} through their own lords. Governors come from ${o.big.name || 'the court'}, and the old court of ${c.big.name || 'the ' + c.name} is shut.`, c.big.x, c.big.y, o.color, c.count >= 8 ? 0 : 1);
