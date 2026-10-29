@@ -11,7 +11,7 @@
 //   What it does there depends on the land (Acemoglu, Johnson and Robinson): fever country gets
 //   only trading forts; a dense native realm is taken at the top and keeps its tongue; thin or
 //   emptied land gets settler colonies. Colonies drift and break away when the take runs high.
-import { atWar } from './war.js';
+import { atWar, realmCap } from './war.js';
 import { strength, newCult, addSet, endSet, near, whereAbouts, routeToCell, declareWar } from './people.js';
 import { send, arrive } from './movers.js';
 import { record, tally } from './ledger.js';
@@ -192,7 +192,7 @@ function settle(w, o, x, y, natives) {
 }
 // settler colonies far from the crown break away when the take runs high or the tongue has drifted
 function independence(w, o) {
-  { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; if (n >= 36) return; }   /* no more realms than the splits may make */
+  { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; if (n >= realmCap(w)) return; }   /* no more realms than the splits may make */
   const L = w.leadAge || 0, decol = L >= 8 ? 0.1 : L === 7 ? 0.015 : 0, minG = L >= 8 ? 2 : 4;   /* (Oct 29) decolonisation: in the age of the bomb colonies go */
   const away = w.sets.filter((s) => !s.dead && s.cult === o.id && !s.nomad && overseas(w, o, s)); if (away.length < minG) return;
   const drift = away.filter((s) => tongueGap(w, s.lang, o.langId) > 0).length / away.length, X = o.hub ? o.hub.X : 0.15;

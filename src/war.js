@@ -117,6 +117,9 @@ export function leadAge(w) {
   let tot = 0; for (const c of w.cults) if (c.alive && !c.power && c.big) tot += c.pop;
   let t = 0; for (const c of w.cults) if (c.alive && !c.power && c.big && c.pop >= 0.03 * tot && c.tech > t) t = c.tech; return t;
 }
+// (Oct 29) how many living realms the world can hold: more once the leading powers reach the world-war age and the bomb,
+// when empires break into many states (about 70 states in 1945, about 160 by 1990)
+export const realmCap = (w) => ((w.leadAge || 0) >= 8 ? 56 : (w.leadAge || 0) === 7 ? 44 : 36);
 export const conquestNorm = (w, c) => (w.leadAge || 0) >= 8 && !c.power;   /* once the leaders have the bomb, the norm binds everyone (a world order, not only the great) */
 export function warsYear(w, H) {
   w.leadAge = leadAge(w);

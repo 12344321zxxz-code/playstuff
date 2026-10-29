@@ -14,7 +14,7 @@ import { subjugate, release } from './capture.js';
 import { record, tally } from './ledger.js';
 import { ev, discover } from './story.js';
 import { tongueGap, word } from './tongues.js';
-import { atWar } from './war.js';
+import { atWar, realmCap } from './war.js';
 import { W, wrapDx } from './core.js';
 
 const MAXC = 36;   /* the living cap is 30; a province breaking away may take it a little past, as colonies do */
@@ -60,10 +60,10 @@ export function empireYear(w) {
       const p = 0.001 + 0.04 * Math.max(0, r.share - 0.3) + (h.A < 0.35 ? 0.008 : 0) + (h.st === 'civil' ? 0.02 : h.st === 'factions' ? 0.006 : 0) + (gap > 2 ? 0.004 : 0) + (far ? 0.004 : 0) + ((w.leadAge || 0) >= 8 && (gap > 2 || far) ? 0.06 : 0);   /* (Oct 29) foreign provinces go in the age of the bomb */
       if (w.rnd() >= p) continue;
       const why = { x: seat.x, y: seat.y, terms: { share: +r.share.toFixed(2), eff: +r.eff.toFixed(2), A: +h.A.toFixed(2), gap: gap === Infinity ? 99 : gap } };
-      if (h.A >= 0.45 && r.eff < 0.55) { if (living(w) >= MAXC) continue; const nc = secede(w, c, R, k, T, 'autonomy', why); if (nc && subjugate(w, nc, c)) nc.over.house = r.name; break; }   /* the court can still make them pay, not govern them */
+      if (h.A >= 0.45 && r.eff < 0.55) { if (living(w) >= realmCap(w)) continue; const nc = secede(w, c, R, k, T, 'autonomy', why); if (nc && subjugate(w, nc, c)) nc.over.house = r.name; break; }   /* the court can still make them pay, not govern them */
       const mine = strength(c, Math.max(1, c.pop - r.pop)) * (0.4 + 0.6 * h.A), theirs = strength(c, r.pop) * (1 + Math.min(1, r.share)), roll = w.rnd(), pw = theirs / (theirs + mine);
       const id = record(w, 'house-rising', [c.id], Object.assign({ p: pw, roll, note: `${r.name} of ${seat.name}` }, why));
-      if (roll < pw && living(w) < MAXC) { secede(w, c, R, k, T, 'secession', Object.assign(why, { cause: id })); break; }
+      if (roll < pw && living(w) < realmCap(w)) { secede(w, c, R, k, T, 'secession', Object.assign(why, { cause: id })); break; }
       r.w *= 0.3; c.coh = Math.max(0.05, c.coh - 0.08); seat.pop *= 0.92; tally(w, 'risingCrushed');
       ev(w, `${r.name.replace(/^t/, 'T')} raises ${seat.name} against the court of the ${c.name}, and loses. Its lands are given to men the court can trust.`, seat.x, seat.y, c.color, 1);
       break;
@@ -109,6 +109,6 @@ export function secede(w, c, R, k, T, how, why) {
 // collapse: successors form around the regional houses first
 export function regionSuccessors(w, c) {
   const R = c.regions; if (!R || !R.length || !c.big) return [];
-  const out = []; while (R.length && living(w) < MAXC) { const nc = secede(w, c, R, 0, null, 'heir'); if (!nc) break; if (nc.count) out.push(nc); }
+  const out = []; while (R.length && living(w) < realmCap(w)) { const nc = secede(w, c, R, 0, null, 'heir'); if (!nc) break; if (nc.count) out.push(nc); }
   return out;
 }
