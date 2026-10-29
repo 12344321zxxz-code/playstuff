@@ -87,6 +87,7 @@ export function pickAim(w, c, f, o) {
   if (o.relic) { const t = theirs.find((s) => s.id === o.relic.at); if (t) return { kind: 'restore', towns: [t.id], name: o.relic.name }; }
   if (o.reclaim) { const ts = nearest(theirs.filter((s) => o.reclaim.towns.includes(s.id))).slice(0, 6); if (ts.length) return { kind: 'restore', towns: ts.map((s) => s.id), name: o.reclaim.name }; }
   if (!theirs.length) return { kind: o.horde ? 'tribute' : 'land', towns: [] };
+  if (o.horde && o.ratio > 1.5 && f.big && !f.big.occ) { const T = nearest(theirs).slice(0, Math.max(2, Math.ceil(theirs.length * (o.ratio > 3 ? 0.6 : 0.35)))); if (!T.includes(f.big)) T.push(f.big); return { kind: 'land', towns: T.map((s) => s.id), horde: true }; }   /* (Oct 29) a strong horde comes to rule: a conquest dynasty */
   if ((o.horde || (o.ratio > 3 && o.far)) && !f.over && f.big && !f.big.occ) return { kind: 'tribute', towns: [f.big.id] };   /* to make them pay: the court is the aim */
   if (o.dragon) { const rich = nearest(theirs.filter((s) => s.entrepot || (s.ores & 16)))[0]; if (rich && gap.get(rich) < 50 * 50) return { kind: 'trade', towns: [rich.id], name: rich.name }; if (!f.over && f.big && !f.big.occ) return { kind: 'tribute', towns: [f.big.id] }; }   /* (slice 5) a dragon wants gold: a gold town or an entrepôt, or a rich court to pay it */
   if (o.trade) { const ent = nearest(theirs.filter((s) => s.entrepot))[0]; if (ent && gap.get(ent) < 45 * 45) return { kind: 'trade', towns: [ent.id], name: ent.name }; }
@@ -133,7 +134,7 @@ export function warsYear(w, H) {
     const pA = N ? held / N : 0, xa = exhaustion(w, K, 0), xd = exhaustion(w, K, 1);
     // (Oct 29) the balance of strength now weighs on both: the side that is losing the war of numbers knows it
     let sA = 0, sD = 0; for (const s of [0, 1]) for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { const v = strength(c, c.pop); if (s === 0) sA += v; else sD += v; } }
-    const bal = 0.3 * Math.log(Math.max(0.2, Math.min(5, sA / Math.max(1, sD))));
+    const bal = 0.5 * Math.log(Math.max(0.2, Math.min(5, sA / Math.max(1, sD))));
     const willA = K.stakes[0] * (0.7 + pA) - xa.t + bal, willD = K.stakes[1] * (1 - 0.5 * pA) + 0.1 - xd.t - bal;
     { const pk = K.peak || (K.peak = [0, 0]); for (const s of [0, 1]) { let sv = 0, pp = 0; for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { sv += c.serving || 0; pp += c.pop; } } if (pp > 0) pk[s] = Math.max(pk[s], sv / pp); } }
     K.will = [+willA.toFixed(2), +willD.toFixed(2)]; K.exh = [xa.e, xd.e]; K.prog = pA;

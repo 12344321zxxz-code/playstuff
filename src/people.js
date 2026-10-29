@@ -35,7 +35,7 @@ import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock, plantWild } from '
 export const TIER = ['band', 'village', 'town', 'city'];
 export const COLORS = ['#d7263d', '#8e44d6', '#f46d1b', '#f2efe4', '#22201e', '#e040a8', '#ffd400', '#00c2a8', '#7a3b1d', '#ff8fa3', '#3d5afe', '#9bd636', '#00a1e4', '#b56576', '#6d597a', '#e9c46a', '#577590', '#f94144', '#43aa8b', '#bc6c25', '#a2d2ff', '#cdb4db', '#606c38', '#fb8500'];
 export const ORES = ['', 'copper', 'tin', 'iron', 'gold', 'salt', 'coal', 'uranium'];
-export const WAR_RATE = 3;   /* (Oct 29) how often realms go to war, tuned to the turnover of land in history */
+export const WAR_RATE = 8;   /* (Oct 29) how often realms go to war, tuned to the turnover of land in history */
 const MAXS = 520, MAXB = 420, MAXC = 30, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
 const placeName = (w, c) => word(w, c.lang, w.rnd() < 0.6 ? 2 : 3);
 function cultName(w, L) { let s = word(w, L, w.rnd() < 0.5 ? 1 : 2); const suf = ['i', 'an', 'ari', 'u', 'esh', 'or', 'im', 'a'][(w.rnd() * 8) | 0]; if (/[aeiou]$/.test(s)) s = s.slice(0, -1); return s + suf; }
@@ -598,9 +598,9 @@ function cultYear(w, c) {
   else if (c.count >= 4 && b) {
     // (slice 1b) the foe is the rival best worth fighting: rivalry, what could be won, and the odds of winning it
     // (Oct 29) a realm's neighbours are the realms whose towns lie close to its own, not only those it has lately met
-    if (!c.bord || w.year % 10 === c.id % 10) { const B = c.bord = {}; for (const s of w.sets) { if (s.dead || s.nomad || s.cult !== c.id) continue; near(w, s.x, s.y, 18, s, true, (u) => { if (u.cult !== c.id && !u.nomad) B[u.cult] = (B[u.cult] || 0) + 1; }); } }
+    if (!c.bord || w.year % 10 === c.id % 10) { const B = c.bord = {}; for (const s of w.sets) { if (s.dead || s.nomad || s.cult !== c.id) continue; near(w, s.x, s.y, 18 + (A.riding ? 6 : 0) + (A.roads ? 4 : 0), s, true, (u) => { if (u.cult !== c.id && !u.nomad) B[u.cult] = (B[u.cult] || 0) + 1; }); } }
     const nbOf = (k) => Math.max(c.nb[k] || 0, c.bord[k] ? 1.5 + Math.min(1.5, c.bord[k] / 4) : 0), keys = new Set([...Object.keys(c.nb), ...Object.keys(c.bord)]);
-    let foe = null, fs = 0, feas = 0; const mine = strength(c, c.pop); for (const k of keys) { const o = w.cults[k]; if (!o || !o.alive || o.war || nbOf(k) <= 1.5 || truceLeft(w, c.id, o.id) || termsBetween(w, c.id, o.id) || leagued(w, c.id, o.id) || (c.oath != null && o.oath === c.oath)) continue;
+    let foe = null, fs = 0, feas = 0; const mine = strength(c, c.pop); for (const k of keys) { const o = w.cults[k]; if (!o || !o.alive || o.war || nbOf(k) <= 1.5 || !(o.env && o.env.sed > 0) || truceLeft(w, c.id, o.id) || termsBetween(w, c.id, o.id) || leagued(w, c.id, o.id) || (c.oath != null && o.oath === c.oath)) continue;
       const r = mine / Math.max(1, strength(o, o.pop)), fz = r / (r + 1), torn = o.coh < 0.35 || (o.hub && o.hub.st === 'civil') || w.year - (o.born || 0) < 15 && o.pid != null ? 1 : 0, sc = nbOf(k) * fz * (1 + torn + (claimGoal(w, c, o) || crownGoal(w, c, o) ? 1 : 0) + (c.over && c.over.kind === 'realm' && c.over.id === o.id ? 0.5 : 0)); if (sc > fs) { fs = sc; foe = o; feas = fz * (1 + torn); } }   /* (Oct 29) a realm coming apart, or one just broken off, is carved up by its neighbours */
     const horde = c.env.nomads > c.env.sed && c.env.nomads >= 9 && A.riding && (tr === 'great' || (Q && Q.horse > 0.65)) && !c.ruler.rode;
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
@@ -625,7 +625,7 @@ function startWar(w, c, f, horde, holy) {
     const p = Math.min(0.6, base * (stranger ? 1.4 : 0.8) * (holy ? 1.5 : 1) * (same ? 0.6 : 1) * (horde ? 1.4 : 1) * (c.ruler.trait === 'mad' ? 2 : 1)); const bk = t <= 2 ? '1_2' : t >= 9 ? '9_10' : t;
     tally(w, 'warAim_' + bk); if (K.aim.kind === 'land' && K.aim.towns.length && w.rnd() < p) { K.aim.kind = 'raze'; tally(w, 'razeAim_' + bk); } }
   let share = 0, cap = false; for (const s of w.sets) if (!s.dead && K.aim.towns.includes(s.id)) { share += s.pop; if (s === f.big) cap = true; } share /= Math.max(1, f.pop);
-  K.stakes = [clamp(0.35 + (press ? 0.2 : 0) + (K.aim.kind === 'restore' || K.aim.kind === 'free' ? 0.25 : 0) + (horde ? 0.2 : 0) + (holy ? 0.15 : 0) + (hungry ? 0.15 : 0), 0.2, 1), clamp(0.35 + 1.5 * share + (cap ? 0.4 : 0) + (K.aim.kind === 'tribute' || K.aim.kind === 'free' ? 0.25 : 0), 0.3, 1.2)];
+  K.stakes = [clamp(0.6 + (press ? 0.2 : 0) + (K.aim.kind === 'restore' || K.aim.kind === 'free' ? 0.25 : 0) + (horde ? 0.2 : 0) + (holy ? 0.15 : 0) + (hungry ? 0.15 : 0), 0.2, 1), clamp(0.35 + 1.5 * share + (cap ? 0.4 : 0) + (K.aim.kind === 'tribute' || K.aim.kind === 'free' ? 0.25 : 0), 0.3, 1.2)];
   K.lost = [0, 0]; K.pop0 = [c.pop, f.pop]; K.coh0 = [c.coh, f.coh]; K.last = w.year; K.odds = +ratio.toFixed(2);
   joinAllies();
   // big wars get a name the chronicle can come back to
@@ -651,7 +651,7 @@ function endWar(w, c, quiet, out) {
   if (quiet || !f || !f.alive || !c.alive) return;
   const list = (L) => (L.length <= 1 ? L.join('') : L.length === 2 ? L.join(' and ') : `${L.slice(0, 2).join(', ')} and ${L.length - 2} other${L.length > 3 ? 's' : ''}`);
   const big = got + lost >= 8 || (out && (out.annexed.length >= 3 || out.kind === 'client')), say = out ? out.kind : got > lost + 1 ? 'won' : lost > got + 1 ? 'lost' : 'status';
-  record(w, 'peace', [a.id, d.id], { note: `${wr.name ? wr.name + ': ' : ''}${out ? say + (out.annexed.length ? ' (' + out.annexed.length + ' towns)' : '') + ', ' + out.how : `${got} towns taken, ${lost} lost`} after ${yrs} years`, cause: wr.hid, x: at ? at.x : null, y: at ? at.y : null, terms: out ? { kind: out.kind, aim: out.aim, how: out.how, will: K && K.will ? K.will[0] : null, theirWill: K && K.will ? K.will[1] : null } : undefined });
+  record(w, 'peace', [a.id, d.id], { note: `${wr.name ? wr.name + ': ' : ''}${out ? say + (out.annexed.length ? ' (' + out.annexed.length + ' towns)' : '') + ', ' + out.how : `${got} towns taken, ${lost} lost`} after ${yrs} years`, cause: wr.hid, x: at ? at.x : null, y: at ? at.y : null, terms: out ? { kind: out.kind, aim: out.aim, how: out.how, will: K && K.will ? K.will[0] : null, theirWill: K && K.will ? K.will[1] : null, odds: K ? K.odds : null, aimN: K && K.aim ? K.aim.towns.length : 0, prog: K ? K.prog : null, exh: K && K.exh ? K.exh.map((e) => Object.fromEntries(Object.entries(e).map(([k, v]) => [k, +v.toFixed(2)]))) : null, n: out.annexed.length, aN: a.count, dN: d.count } : undefined });
   const hordeWar = wr.horde || (fw && fw.horde), ov = d.over && d.over.kind === 'realm' && d.over.id === a.id ? d.over : null;
   const txt = say === 'annex' ? (hordeWar ? `The riders of the ${a.name} now rule ${list(out.annexed)}. In a generation they will be townsfolk themselves.` : `After ${yrs} years the ${d.name} sue for peace and give up ${list(out.annexed)} to the ${a.name}.`)
     : say === 'client' ? `The ${d.name} bow to the ${a.name}. They keep their own lords, and ${ov ? ov.house : 'one of their houses'} will collect the tribute.`
@@ -797,7 +797,7 @@ function raid(w, s, c) {
   if (s.lost || s.occ || s.siege) return;   /* a changeling village, a dark town, an occupied or besieged one sends no soldiers */
   const rnd = w.rnd, A = c.arts, war = c.war, reach = s.R + 5 + (A.riding ? 8 : 0) + (s.nomad ? 4 : 0) + (A.boats ? 3 : 0) + (war && A.sailing ? (A.navigation ? 50 : 30) : 0) + (war && A.railways ? 20 : 0); let o = null, bd = 1e9;
   const K = war ? conflictOf(w, c) : null, aims = K && K.aim && sideOf(K, c.id) === 0 ? K.aim.towns : null;
-  const far = aims ? 15 : 0;   /* (slice 2) a war's aim draws bands from further off */
+  const far = aims ? 25 : 0;   /* (slice 2, wider Oct 29) a war's aim draws bands from further off */
   near(w, s.x, s.y, reach + 9 + far, s, false, (u, q) => { const sg = u.siege && u.cult === s.cult && war ? w.cults[u.siege.by] : null, hc = u.occ ? w.cults[u.occ.by] : sg, mine = u.occ && hc && (hc === c || (war && !atWar(w, c, hc) && atWar(w, c, w.cults[u.cult]))), free = hc && war && atWar(w, c, hc); if (mine) return;   /* (slice 2) and our besieged towns are there to be relieved */   /* (slice 1b) held by our side already; our own towns held by the enemy are there to be freed */
     const en = free || (war && atWar(w, c, w.cults[u.cult])); if ((u.cult === s.cult && !free) || (u.nomad && !s.nomad && !en)) return; const lim = (reach + u.R + (aims && aims.includes(u.id) ? far : 0)) ** 2, pref = (en ? 0.35 : 1) * (free ? 0.5 : 1) * (aims && aims.includes(u.id) ? 0.4 : 1) * (u.entrepot && en ? 0.5 : 1) * (c.oath != null && u.cult === c.oath ? 0.3 : 1);   /* at war, the enemy's entrepôts first */ if (q < lim && q * pref < bd) { bd = q * pref; o = u; } });
   // (slice 4) the aim itself may lie over the sea: a fleet can carry the war that far
