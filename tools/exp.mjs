@@ -7,11 +7,12 @@ import { spawn } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i < 0 ? d : process.argv[i + 1]; };
 const [s0, s1] = arg('seeds', '1-6').split('-').map(Number), years = +arg('years', 1200), jobs = +arg('jobs', 2), patch = arg('patch'), gatesF = arg('gates', new URL('../test/gates.json', import.meta.url).pathname);
+const dump = arg('dump'); if (dump) (await import('node:fs')).mkdirSync(dump, { recursive: true });
 const seeds = []; for (let s = s0; s <= (s1 || s0); s++) seeds.push(s);
 const runOne = (seed, p) => new Promise((ok) => { const args = [new URL('./stats.mjs', import.meta.url).pathname, seed, years]; if (p) args.push(p); let out = ''; const ch = spawn('node', args); ch.stdout.on('data', (d) => (out += d)); ch.stderr.on('data', (d) => (out += d)); ch.on('close', () => { try { ok(JSON.parse(out.trim().split('\n').pop())); } catch (e) { ok({ seed, error: out.slice(-400) }); } }); });
 const queue = []; for (const s of seeds) { queue.push([s, null]); if (patch) queue.push([s, patch]); }
 const res = { A: {}, B: {} }; let i = 0;
-await Promise.all(Array.from({ length: jobs }, async () => { while (i < queue.length) { const [s, p] = queue[i++]; const r = await runOne(s, p); (p ? res.B : res.A)[s] = r; process.stderr.write(`${p ? 'B' : 'A'} seed ${s} ${r.error ? 'ERROR' : 'ok'}\n`); } }));
+await Promise.all(Array.from({ length: jobs }, async () => { while (i < queue.length) { const [s, p] = queue[i++]; const r = await runOne(s, p); (p ? res.B : res.A)[s] = r; if (dump) (await import('node:fs')).writeFileSync(`${dump}/${p ? 'b' : 'a'}${s}.json`, JSON.stringify(r)); process.stderr.write(`${p ? 'B' : 'A'} seed ${s} ${r.error ? 'ERROR' : 'ok'}\n`); } }));
 const q = (xs, f) => { const a = xs.filter((v) => v != null && Number.isFinite(v)).sort((x, y) => x - y); if (!a.length) return null; return a[Math.min(a.length - 1, Math.floor(f * a.length))]; };
 const dist = (xs) => `p10 ${q(xs, 0.1)} | med ${q(xs, 0.5)} | p90 ${q(xs, 0.9)}`;
 const metrics = (set) => { const rs = Object.values(set).filter((r) => !r.error); const keys = Object.keys(rs[0] || {}).filter((k) => typeof rs[0][k] === 'number' && k !== 'seed'); const m = {}; for (const k of keys) m[k] = rs.map((r) => r[k]); return { rs, m }; };

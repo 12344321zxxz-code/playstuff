@@ -23,8 +23,8 @@
  {
   "metric": "peakPeoples",
   "q": 0.9,
-  "max": 40,
-  "note": "people cap 30; independence may go past it (up to 40)"
+  "max": 60,
+  "note": "living realms: 36 before the world wars, up to 56 under the bomb (decolonisation, Oct 29)"
  },
  {
   "metric": "msPerTick",
