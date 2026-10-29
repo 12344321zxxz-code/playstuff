@@ -28,7 +28,7 @@ if (!R) $('nogl').hidden = false;
 const cam = { x: W / 2, y: H / 2, z: 3, dpr: 1, w: 0, h: 0, minZ: 1 };
 const pal = new Float32Array(96);
 const S = { w: null, tool: null, brush: 5, lens: 0, speed: 1, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {}, touched: false, ref: null, ghost: null, perf: { sim: 0, gl: 0, ov: 0, ticks: 0, frame: 16 }, q: 1, qT: 0, adapt: true, sim: null, ranIn: 0, frameT: 0, held: false, pending: null };
-const TPS = HOST_TPS;   // [1] is Watchful's quiet pace; it slows itself near turning points
+const TPS = HOST_TPS;
 const WATCH = makeWatch();
 const LENSES = [[0, 'Land'], [10, 'Climate'], [1, 'Heat'], [2, 'Rain'], [11, 'Life'], [8, 'Wind'], [3, 'Soil'], [5, 'Height'], [4, 'Plates']];
 const SEASONS = ['midwinter', 'late winter', 'spring', 'early summer', 'midsummer', 'late summer', 'autumn', 'early winter'];
@@ -159,8 +159,23 @@ const LEG = {
   4: ['Plates', null, 'Drag an arrow to change a drift; tap a plate to flip it.'],
   8: ['Wind and currents', null, 'White: wind. Blue: sea currents.'],
 };
-function legend() {
-  const el = $('legend'), L = LEG[S.lens]; el.textContent = ''; const w = S.w;
+// The key sits small in the corner: a title row with a button to fold it away, an "i" that shows the
+// longer explanation when there is one, and two columns once a list runs long (Oct 29).
+function legend() { const el = $('legend'); fillLegend(el); dressLegend(el); }
+function dressLegend(el) {
+  if (el.hidden) return; const title = el.querySelector('b'); if (!title) return;
+  const head = document.createElement('div'); head.className = 'lhead'; const body = document.createElement('div'); body.className = 'lbody';
+  while (el.firstChild) { const n = el.firstChild; if (n === title) { el.removeChild(n); continue; } body.appendChild(n); }
+  const btn = (txt, tip, on, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.title = tip; b.setAttribute('aria-pressed', on); b.addEventListener('click', (e) => { e.stopPropagation(); fn(); legend(); }); return b; };
+  head.appendChild(title);
+  const notes = body.querySelectorAll('.note'); for (const n of notes) n.hidden = !S.legNote;
+  if (notes.length && !S.legMin) head.appendChild(btn('i', S.legNote ? 'Hide the explanation' : 'What am I looking at?', !!S.legNote, () => { S.legNote = !S.legNote; }));
+  head.appendChild(btn(S.legMin ? '+' : '\u2013', S.legMin ? 'Show the key' : 'Fold the key away', !!S.legMin, () => { S.legMin = !S.legMin; }));
+  for (const k of body.querySelectorAll('.keys')) if (k.children.length > 6) k.classList.add('two');
+  body.hidden = !!S.legMin; el.append(head, body); el.classList.toggle('min', !!S.legMin);
+}
+function fillLegend(el) {
+  const L = LEG[S.lens]; el.textContent = ''; const w = S.w;
   if (S.lens === 6 || S.lens === 9) {
     const items = S.lens === 6 ? w.cults.filter((c) => c.alive && c.count > 0 && !c.power).sort((a, b) => b.pop - a.pop).slice(0, 7).map((c) => [c.color, c.name + ' · ' + c.kind]) : w.faiths.filter((f) => f.alive && f.towns > 0).sort((a, b) => b.towns - a.towns).slice(0, 7).map((f) => [f.color, f.name.replace(/^the /, '') + ' · ' + f.towns + (f.towns === 1 ? ' place' : ' places')]);
     if (!items.length) { el.hidden = true; return; }
@@ -168,7 +183,7 @@ function legend() {
     for (const [c, t] of items) { const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = c; r.append(i, document.createTextNode(t)); k.appendChild(r); }
     el.append(b, k); el.hidden = false; S.legT = performance.now(); return;
   }
-  const keyList = (title, items, note) => { const b = document.createElement('b'); b.textContent = title; const k = document.createElement('div'); k.className = 'keys'; for (const [c, t] of items) { const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = c; r.append(i, document.createTextNode(t)); k.appendChild(r); } el.append(b, k); if (note) { const p = document.createElement('div'); p.className = 'ends'; p.textContent = note; el.appendChild(p); } el.hidden = false; };
+  const keyList = (title, items, note) => { const b = document.createElement('b'); b.textContent = title; const k = document.createElement('div'); k.className = 'keys'; for (const [c, t] of items) { const r = document.createElement('div'); r.className = 'key'; const i = document.createElement('i'); i.style.background = c; r.append(i, document.createTextNode(t)); k.appendChild(r); } el.append(b, k); if (note) { const p = document.createElement('div'); p.className = 'note'; p.textContent = note; el.appendChild(p); } el.hidden = false; };
   if (S.lens === 7) { keyList('What the land remembers', KINDS.filter((k) => k.key !== 'frost').map((k) => [k.col, k.name[0].toUpperCase() + k.name.slice(1)]).concat(Object.values(STANCES).map((q) => [q.col, 'Borders: ' + q.name.toLowerCase()])), 'Pale lines: ley lines, which carry memory to the wells.'); return; }
   if (S.lens === 12) { keyList('Wild plants worth sowing', PLANTS.map((q) => [q.col, q.wild[0].toUpperCase() + q.wild.slice(1)]).concat([['#3d3b39', 'Nothing a people could farm']]), 'Brighter: better harvests. Crops travel along the same climate.'); return; }
   if (S.lens === 16) { keyList('Fallout', [['#bfff33', 'Poisoned ground: crops fail, animals die, people sicken'], ['#3a3836', 'Clean']], 'It fades over a few generations. The death it leaves behind lasts longer.'); return; }
@@ -182,6 +197,7 @@ function legend() {
   const b = document.createElement('b'); b.textContent = L[0]; el.appendChild(b);
   if (L[1]) { const bar = document.createElement('div'); bar.className = 'bar'; bar.style.background = L[1]; const e = document.createElement('div'); e.className = 'ends'; const a1 = document.createElement('span'), a2 = document.createElement('span'); a1.textContent = L[2]; a2.textContent = L[3]; e.append(a1, a2); el.append(bar, e); }
   else { const p = document.createElement('div'); p.className = 'ends'; p.textContent = L[2]; el.appendChild(p); }
+  if (L[4]) { const p = document.createElement('div'); p.className = 'note'; p.textContent = L[4]; el.appendChild(p); }
   el.hidden = false;
 }
 // with Look, the name of whatever is under the pointer
@@ -206,14 +222,6 @@ export function toast(e) {
   const box = $('toasts'); if (box.children.length >= 3) box.firstChild.remove();
   const b = document.createElement('button'); b.type = 'button'; b.className = 'toast'; const y = document.createElement('span'); y.className = 'y'; y.textContent = e.year; const c = document.createElement('span'); c.className = 'chip' + (e.color ? '' : ' none'); if (e.color) c.style.background = e.color; const t = document.createElement('span'); t.textContent = e.text;
   b.append(y, c, t); b.addEventListener('click', () => { if (e.x != null) flyTo(e.x + 0.5, e.y + 0.5, 6); b.remove(); }); box.appendChild(b); setTimeout(() => b.remove(), 7000);
-}
-
-/* ---------- the Watchful banner ---------- */
-function banner(now) {
-  const b = $('banner'); if (!b) return; const B = WATCH.banner;
-  if (B && now < B.until) { if (b.hidden || b.dataset.t !== B.text) { b.dataset.t = B.text; b.querySelector('.bt').textContent = B.text; b.hidden = false; b.querySelector('.bgo').hidden = B.x == null; b.querySelector('.bgo').onclick = () => { flyTo(B.x + 0.5, B.y + 0.5, 6); }; } }
-  else if (!b.hidden) b.hidden = true;
-  const t = WATCH.top, l = $('watching'); if (l) { const txt = t ? t.text : ''; if (l.dataset.t !== txt) { l.dataset.t = txt; l.textContent = txt ? 'Watching: ' + txt : ''; l.disabled = !t || t.x == null; l.onclick = () => { if (t && t.x != null) flyTo(t.x + 0.5, t.y + 0.5, 6); }; } }
 }
 
 /* ---------- panels ---------- */
@@ -327,9 +335,8 @@ function frameInner(now) {
   if (S.sim) {   /* the worker runs time; here the copy only catches up (see onSim) */
     if (holding !== S.held) { S.held = holding; S.sim.send({ t: 'hold', v: holding }); }
     ran = S.ranIn; S.ranIn = 0; S.acc = S.speed ? clamp((now - S.frameT) * (S.rate || 16) / 1000, 0, 1) : 1;
-    if (S.speed === 1) banner(now);
   } else if (S.speed && !holding) { const rate = S.speed === 1 ? (S.rate || TPS[1]) : TPS[S.speed]; S.acc += dt * rate; const big = []; while (S.acc >= 1 && ran < 10 && performance.now() - t0 < 12) { tick(w); for (const e of w.events) if (e.big) big.push(e); for (const fn of hooks.tick) fn(w); S.acc -= 1; ran++; } if (ran) S.simDirty = true; if (S.acc > 3) S.acc = 0;
-    if (S.speed === 1) { S.rate = watchRate(w, WATCH, now, big); banner(now); } }
+    if (S.speed === 1) S.rate = watchRate(); }
   if (S.climT && now > S.climT && !S.press) { S.climT = 0; if (S.sim) S.sim.send({ t: 'climate' }); else queueClimate(w); }
   if (!S.sim && !S.speed && w.job && !holding) { /* only while paused: a running world does its own background work, step for step */ const st = w.stamp.land; background(w, 1); if (w.stamp.land !== st) S.dirty = true; }
   const t1 = performance.now(); P.sim += (t1 - t0 + (S.simMs || 0) - P.sim) * 0.05; S.simMs = 0; P.ticks += (ran - P.ticks) * 0.05;

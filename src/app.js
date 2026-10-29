@@ -4,7 +4,6 @@ import './entities.js';
 import './hands.js';
 import './book.js';
 import './keep.js';
-import './threads.js';
 
 const hot = window.claude && window.claude.hot;
 let seed = null;

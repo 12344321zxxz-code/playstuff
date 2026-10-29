@@ -1,10 +1,6 @@
-// The Watchful clock: time runs at about two years a second while nothing much is happening, one
-// year a second while something is building toward a turn (a realm coming apart, a well near
-// bursting, the doomsday clock near midnight, two great realms at war), and slows to a crawl for
-// a few seconds when a turn arrives, with a banner. It only steers the clock and offers the camera;
-// it never changes what happens. Pure reads of the world.
-const QUIET = 16, TENSE = 8, CRAWL = 2;           // ticks per second (8 ticks = a year)
-const CRAWL_MS = 15000, GAP_MS = 150000;           // a slowdown lasts 15 s, at most one every 2.5 min
+// What is building toward a turn right now (a realm coming apart, the doomsday clock near midnight,
+// two great realms at war). Claude's probe reads it; the clock used to slow down for it, and no longer does.
+const QUIET = 16;                                  // ticks per second at the slow speed (8 ticks = a year)
 
 // What is building toward a turn right now, strongest first.
 export function tensions(w) {
@@ -24,14 +20,6 @@ export function tensions(w) {
   return out.sort((a, b) => b.s - a.s);
 }
 
-// state kept by the page between frames
-export function makeWatch() { return { crawlUntil: 0, lastCrawl: -1e9, banner: null, seen: 0 }; }
-
-// Called each frame in Watchful mode: returns ticks per second, and may raise a banner.
-export function watchRate(w, W0, now, events) {
-  // a headline that just landed is a turn: crawl for a moment and say so
-  for (const e of events) if (e.big && now - W0.lastCrawl > GAP_MS) { W0.lastCrawl = now; W0.crawlUntil = now + CRAWL_MS; W0.banner = { text: e.text, x: e.x, y: e.y, until: now + CRAWL_MS }; break; }
-  if (now < W0.crawlUntil) return CRAWL;
-  const t = tensions(w); W0.top = t[0] || null;
-  return t.length && t[0].s > 0.1 ? TENSE : QUIET;
-}
+// state kept by the page between frames (the clock no longer slows itself, Oct 29: time runs at the speed chosen)
+export function makeWatch() { return { banner: null, top: null }; }
+export function watchRate() { return QUIET; }
