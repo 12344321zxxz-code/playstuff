@@ -8,7 +8,9 @@
 //     realm made the client (protectorate) of one two or more ages ahead counts here too
 //   internal: a breakaway, successor or reunion within one family of realms
 //     decolonisation (part of internal): land taken colonially breaking free again
-// Becoming the client of a peer does not count. Towns founded during the century are not counted.
+// Becoming a client (a protectorate, a vassal paying tribute) counts as foreign: the top-level sovereign is now its overlord,
+// as in Cliopatria's composites and the modern series (puppets count); throwing an overlord off counts as internal.
+// Towns founded during the century are not counted.
 import { N } from '../src/core.js';
 
 export const BUCKETS = ['1-2', '3', '4', '5', '6', '7', '8', '9-10'];
@@ -27,7 +29,7 @@ export function leadingAge(w) {
   let tot = 0; for (const c of w.cults) if (settled(c)) tot += c.pop;
   let t = 0; for (const c of w.cults) if (settled(c) && c.pop >= 0.03 * tot && c.tech > t) t = c.tech; return t;
 }
-const overOf = (w, c) => (c && c.over && c.over.kind === 'realm' && w.cults[c.over.id] ? c.over.id : null);
+const overOf = (w, c) => (!c || !c.over ? null : c.over.kind === 'realm' ? (w.cults[c.over.id] ? c.over.id : null) : 'd' + (c.over.d || ''));   /* a realm's overlord: another realm, or a dragon */
 
 export function turnoverYear(w, T) {
   if (w.year % 100 === 0 || !T.cur) {
@@ -39,14 +41,14 @@ export function turnoverYear(w, T) {
   }
   const colNow = new Set(), freed = new Set();   // realms made a protectorate of a far more advanced realm this century, or freed from one
   for (const [id, o0] of T.cur.over) { const c = w.cults[id], o = overOf(w, c); if (o === o0) continue;
-    if (o != null && w.cults[o].tech >= c.tech + 2) colNow.add(id);
-    if (o0 != null && o == null && T.colOf.get('r' + id) === o0) freed.add(id); }
+    if (o != null) { colNow.add(id); if (typeof o === 'number' && w.cults[o].tech >= c.tech + 2) colNow.add('c' + id); }   /* made a client: its top-level sovereign changes (a protectorate of a far more advanced realm is colonial) */
+    else if (o0 != null) freed.add(id); }
   for (const r of T.cur.rows) {
     if (r.done) continue; const s = r.s;
     if (s.dead) { if (WAR_END.has(s.endKind)) r.done = 'raze'; else if (s.cult !== r.cult) r.done = kin(w, s.cult, r.cult) ? 'i' : 'f'; else r.done = 'gone'; continue; }
     if (s.cult === r.cult) {
-      if (colNow.has(r.cult)) { r.done = 'f'; r.col = true; T.colOf.set('r' + r.cult, overOf(w, w.cults[r.cult])); }
-      else if (freed.has(r.cult)) { r.done = 'i'; r.decol = true; T.colOf.delete('r' + r.cult); }
+      if (colNow.has(r.cult)) { r.done = 'f'; if (colNow.has('c' + r.cult)) { r.col = true; T.colOf.set('r' + r.cult, overOf(w, w.cults[r.cult])); } }
+      else if (freed.has(r.cult)) { r.done = 'i'; if (T.colOf.has('r' + r.cult)) { r.decol = true; T.colOf.delete('r' + r.cult); } }
       continue;
     }
     const n = w.cults[s.cult]; r.done = n && !n.power && kin(w, s.cult, r.cult) ? 'i' : 'f';
