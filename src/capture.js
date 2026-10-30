@@ -210,7 +210,7 @@ function colonise(w, o) {
 function fort(w, o, x, y, natives) {
   if ((w.nTown || 0) >= 520) return;
   // a trading fort on the coast: colonists die of the fevers inland
-  for (let q = 0; q < 30; q++) { const a = w.rnd() * 6.283, r = 4 + w.rnd() * 12, xx = wx(Math.round(x + Math.cos(a) * r)), yy = Math.round(y + Math.sin(a) * r); const i = yy * W + xx; if (w.water[i] || near(w, xx, yy, 5, null, true)) continue;
+  for (let q = 0; q < 30; q++) { const a = w.rnd() * 6.283, r = 4 + w.rnd() * 12, xx = wx(Math.round(x + Math.cos(a) * r)), yy = Math.round(y + Math.sin(a) * r); if (yy < 1 || yy >= H - 1) continue; const i = yy * W + xx; if (w.water[i] || near(w, xx, yy, 5, null, true)) continue;
     let coast = false; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (w.water[(yy + dy) * W + wx(xx + dx)] === 1) coast = true; if (!coast) continue;
     const s = addSet(w, o.id, xx, yy, 60, false); s.fort = true; s.port = true; tagFrom(w, s, o.big); s.name = 'Fort ' + s.name;
     record(w, 'fort', [o.id].concat(natives ? [natives.id] : []), { note: s.name, x: xx, y: yy });
