@@ -153,9 +153,9 @@ function footholds(w) {
   const rnd = w.rnd, seen = new Set();
   for (const s of w.sets) {
     if (s.dead || s.nomad) continue; const o = w.cults[s.cult]; if (!o || !o.alive || o.power || o.over || !o.big || !o.arts.sailing || !bySea(w, o.big, s)) continue;
-    const pace = o.arts.railways ? 0.03 : o.arts.engines ? 0.012 : 0.003; if (rnd() > pace * 4) continue;
+    const pace = o.arts.railways ? 0.03 : o.arts.engines ? 0.012 : 0.0012; if (rnd() > pace * 4) continue;
     near(w, s.x, s.y, 16, s, true, (u) => { const c = w.cults[u.cult]; if (!c || c === o || !c.alive || c.power || c.over || c.war || !c.big || seen.has(c.id)) return; seen.add(c.id);
-      const gap = o.tech - c.tech; if (gap < 1 || !bySea(w, o.big, c.big)) return;
+      const gap = o.tech - c.tech; if (gap < (o.arts.engines ? 1 : 2) || !bySea(w, o.big, c.big)) return;   /* before the engine only a realm far behind is drawn in */
       if (strength(c, c.pop) > (o.arts.railways ? 2 : 0.8) * strength(o, o.pop)) return;
       if (rnd() > 0.25 * gap) return;
       tally(w, 'footholdTake'); take(w, c, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(c.id);
@@ -180,7 +180,7 @@ function colonise(w, o) {
   if (best && !tryEmpty) {
     const cb = best.big, i = cb.y * W + cb.x, fever = w.tMean[i] > 21 && w.mi[i] > 1.1 && !o.arts.medicine;
     if (fever) { tally(w, 'colFort'); fort(w, o, cb.x, cb.y, best); return; }
-    if (!o.arts.engines && best.count > 2) { tally(w, 'colFoothold'); fort(w, o, cb.x, cb.y, best); return; }   /* (Oct 30) before the engine: a trading fort on their coast, a foothold, not a conquest */
+    if (!o.arts.engines && best.count > 1) { tally(w, 'colFoothold'); fort(w, o, cb.x, cb.y, best); return; }   /* (Oct 30) before the engine: a trading fort on their coast, a foothold, not a conquest */
     if (best.pop > 2500 && best.env.towns >= 2) {
       // (slice 4) a realm of towns is not taken by showing the flag: it is a war, for tribute, fought over the sea
       if (!best.war && declareWar(w, o, best)) { tally(w, 'colonialWar'); record(w, 'colonial-war', [o.id, best.id], { note: `the ${o.name} sail to make the ${best.name} pay`, x: cb.x, y: cb.y, terms: { theirs: strength(best, best.pop), overlord: my } }); ev(w, `Ships of the ${o.name} come to ${cb.name}, and they have not come to trade. The ${o.name} mean to make the ${best.name} pay them tribute.`, cb.x, cb.y, o.color, 0); return; }

@@ -1,7 +1,7 @@
 // Pool the turnover of several worlds (stats.mjs JSON lines, one file per seed) and compare with the
 // targets per leading age.   node tools/turnpool.mjs dir/*.json
 import { readFileSync } from 'node:fs';
-import { BUCKETS } from './turnover.mjs';
+const BUCKETS = ['1-2', '3', '4', '5', '6', '7', '8', '9-10'];   /* as in turnover.mjs (not imported: that pulls in the whole sim) */
 // targets per century (foreign, of which colonial, internal), from the turnover reconstructions; null = not gated
 const TGT = { '1-2': [20, null, 12], 3: [30, null, 17], 4: [30, null, 28], 5: [20, 3, 15], 6: [35, 25, 10], 7: [25, 8, 25], 8: [3, 0, 30], '9-10': [2, 0, 12] };
 const acc = BUCKETS.map(() => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]); let n = 0; const gaps = [];
