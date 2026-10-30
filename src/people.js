@@ -576,7 +576,8 @@ function cultYear(w, c) {
   // realm costs nothing; a crash that breaks every network costs whole eras, unevenly.
   // (slice 16) the contact that counts is trade: half of each partner's people, as far as trade ties
   // the two (a few loads a year is a full tie); ties fade by a fifth a year
-  { let carry = c.pop; const T = c.ties || {}; for (const k in T) { const o = w.cults[k]; T[k] *= 0.8; if (T[k] < 0.05) { delete T[k]; continue; } if (o && o.alive && !o.power) carry += 0.5 * o.pop * Math.min(1, T[k] / 3); } c.carry = carry;
+  { let carry = c.pop, tAll = 0, tInd = 0; const T = c.ties || {}; for (const k in T) { const o = w.cults[k]; T[k] *= 0.8; if (T[k] < 0.05) { delete T[k]; continue; } if (o && o.alive && !o.power) { const t = Math.min(1, T[k] / 3); carry += 0.5 * o.pop * t; tAll += t; if (o.arts.railways || o.arts.steamships) tInd += t; } } c.carry = carry;
+    c._undercut = tAll > 0 ? tInd / tAll : 0;   /* (Oct 30, council) how much of their trade is with factory powers: cheap cloth and iron ruin their own workshops */
     let hold = 0; while (hold < 10 && carry >= carriersFor(hold + 1)) hold++; c.hold = hold;
     if (hold < 9 && c.know > TECH[Math.max(0, hold)]) c.know -= (c.know - TECH[Math.max(0, hold)] * 0.97) * 0.06;
     let top = -1; for (const k in c.arts) { const T = ART[k]; if (T && T.tier < 99 && T.tier > hold && T.tier > top) top = T.tier; }

@@ -50,7 +50,7 @@ export const ART = {
   gunpowder: { say: 'gunpowder', tier: 5, req: ['steel'], can: (c) => (c.metals & 32) !== 0 || (c.metals & 64) !== 0, push: (c) => (c.war ? 3 : 0) },
   cannon: { say: 'cannon', tier: 5, req: ['gunpowder', 'steel'], push: (c) => (c.war ? 3 : 0) },
   sanitation: { say: 'sewers and clean water', tier: 5, req: ['aqueducts', 'medicine'], push: (c) => (c.plagued ? 2 : 0) },
-  engines: { say: 'smoke and engines', tier: 5, req: ['steel', 'mills'], can: (c) => (c._ownMetals & 64) !== 0 || ((c.metals & 64) !== 0 && (c.wealth || 0) > 60) },   /* (Oct 30) industry grows on its own coal; bought coal is enough only for a rich trading realm (the late industrialisers) */
+  engines: { say: 'smoke and engines', tier: 5, req: ['steel', 'mills'], can: (c) => ((c._ownMetals & 64) !== 0 || ((c.metals & 64) !== 0 && (c.wealth || 0) > 60)) && !((c._undercut || 0) > 0.5 && !(c.arts.bureaucracy && c.coh > 0.6)) },   /* (Oct 30, council) a realm whose trade is mostly with factory powers cannot start its own, unless a strong state shields its market (the Meiji path) */   /* (Oct 30) industry grows on its own coal; bought coal is enough only for a rich trading realm (the late industrialisers) */
   railways: { say: 'railways', tier: 6, req: ['engines', 'roads'] },
   steamships: { say: 'steamships', tier: 6, req: ['engines', 'navigation'] },   /* (Oct 30) the sea and the rivers opened to industry: the colonial gates key on these two */
   quinine: { say: 'quinine against the fevers', tier: 6, req: ['medicine', 'engines'], push: (c) => (c.plagued ? 3 : 0) },
