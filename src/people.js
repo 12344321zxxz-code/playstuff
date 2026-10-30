@@ -494,7 +494,7 @@ export function* peopleSteps(w) {
     // (distance against the realm's reach, a shared tongue, roads), so a conquered or colonised province stays
     // behind for generations; and a realm learns mostly through its well-tied towns (one court has limits)
     let wt = 1;
-    if (!s.nomad) { const b0 = c.big; if (s.k == null) s.k = c.know;
+    if (!s.nomad) { const b0 = c.big; if (s.k == null || !(s.k <= TECH[9] * 3)) s.k = Math.min(c.know, TECH[9] * 3);
       if (s === b0) { s.k = c.know; s._tie = 1; }
       else { const dx = b0 ? Math.hypot(wrapDx(s.x - b0.x), s.y - b0.y) : 0, tg = s.lang != null && c.langId != null && s.lang !== c.langId ? gapCached(w, s.lang, c.langId) : 0;
         const tie = Math.min(1, (1 / (1 + dx / Math.max(20, c.reachR || 30))) * (tg === Infinity ? 0.5 : tg > 2 ? 0.75 : 1) * (s.links ? 1.25 : 1)); s._tie = tie;
@@ -560,7 +560,7 @@ let _gapY = -1, _gapW = null; const _gapM = new Map();
 function gapCached(w, a, b) { if (_gapY !== w.year || _gapW !== w) { _gapY = w.year; _gapW = w; _gapM.clear(); } const k = a * 65536 + b; let g = _gapM.get(k); if (g === undefined) { g = tongueGap(w, a, b); _gapM.set(k, g); } return g; }
 function cultYear(w, c) {
   const rnd = w.rnd, b = c.big, A = c.arts; if (c.pop > c.peak) c.peak = c.pop;
-  if (!Number.isFinite(c.know)) c.know = TECH[1]; if (!Number.isFinite(c.surplus)) c.surplus = 0;   // never let one bad number spread to everyone they meet
+  if (!Number.isFinite(c.know)) c.know = TECH[1]; if (c.know > TECH[9] * 3) c.know = TECH[9] * 3;   /* (Oct 30) past the last age knowledge kept compounding until it overflowed (NaN worlds): it tops out */ if (!Number.isFinite(c.surplus)) c.surplus = 0;   // never let one bad number spread to everyone they meet
   if (!c.arts.engines && c.know > 0.97 * TECH[5]) c.know = 0.97 * TECH[5];   /* (Oct 30) industry is built, not copied: without its own engines (coal) a realm cannot leave the age of powder and print */
   if (c.pid != null && !c._kset && w.year - c.born <= 2) { c._kset = 1; let kp = 0, p = 0; for (const s of w.sets) if (!s.dead && !s.nomad && s.cult === c.id && s.k != null) { kp += s.k * s.pop; p += s.pop; } if (p > 0 && kp / p < c.know) { c.know = kp / p; c.tech = techOf(c.know); } }   /* (Oct 29) a breakaway knows what its own towns knew, not what its old court knew */
   let way = 'forage', mx = 0; for (const k in c._ways) if (c._ways[k] > mx) { mx = c._ways[k]; way = k; }

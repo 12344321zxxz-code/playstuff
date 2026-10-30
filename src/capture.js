@@ -168,9 +168,9 @@ function footholds(w) {
 // (Oct 30) the scramble: each colonial grab is remembered for twenty years, and every rival power within reach of it
 // feels the door closing. One power alone expands at leisure; several with overlapping reach race each other.
 function grab(w, o, at) { const G = w.grabs || (w.grabs = []); G.push({ by: o.id, x: at.x, y: at.y, year: w.year }); if (G.length > 200) G.shift(); }
-function rivalGrabs(w, o) { const G = w.grabs; if (!G || !o.big) return 0; let n = 0; for (const g of G) if (g.by !== o.id && w.year - g.year <= 20 && Math.hypot(wrapDx(g.x - o.big.x), g.y - o.big.y) < (o.arts.navigation ? 260 : 120)) n++; return n; }
+function rivalGrabs(w, o) { const G = w.grabs; if (!G || !o.big) return 0; let n = 0; for (const g of G) if (g.by !== o.id && w.year - g.year <= 20 && Math.hypot(wrapDx(g.x - o.big.x), g.y - o.big.y) < (o.arts.steamships ? 420 : o.arts.navigation ? 260 : 120)) n++; return n; }
 function colonise(w, o) {
-  const rnd = w.rnd, ob = o.big, mine = w.mass[ob.y * W + ob.x], reach = o.arts.navigation ? 260 : 90, my = strength(o, o.pop);
+  const rnd = w.rnd, ob = o.big, mine = w.mass[ob.y * W + ob.x], reach = o.arts.steamships ? 420 : o.arts.navigation ? 260 : 90,   /* (Oct 30) coaling stations: steamships reach most of the world */ my = strength(o, o.pop);
   let best = null, bs = 0; const why = { far: 0, strong: 0, peer: 0 };
   const above = new Set(); for (let u = o, k = 0; u && u.over && u.over.kind === 'realm' && k < 8; k++) { above.add(u.over.id); u = w.cults[u.over.id]; }   /* (Oct 30) a client never takes its own masters: overlord loops */
   for (const c of w.cults) {
