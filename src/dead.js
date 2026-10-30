@@ -26,7 +26,7 @@ import { record } from './ledger.js';
 import { ART } from './tech.js';
 
 const DEATH = 0, GREY = '#8d958a', CAP = 1050;
-export const WAR_ARTS = new Set(['riding', 'copper', 'masonry', 'bronze', 'chariots', 'iron', 'siege', 'stirrups', 'steel', 'gunpowder', 'cannon', 'dynamite']);
+export const WAR_ARTS = new Set(['riding', 'copper', 'masonry', 'bronze', 'chariots', 'iron', 'siege', 'stirrups', 'steel', 'gunpowder', 'cannon', 'dynamite', 'rifles']);
 // fresh dead, for the dead realms to take in: where, how many, when
 export function corpses(w, x, y, n) {
   if (!(n > 2) || !w.cults.some((c) => c.alive && c.power === 'dead')) return; const L = w.corpses || (w.corpses = []);

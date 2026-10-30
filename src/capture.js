@@ -176,10 +176,10 @@ function colonise(w, o) {
   for (const c of w.cults) {
     if (!c.alive || c.power || c === o || !c.big || above.has(c.id)) continue;
     if (c.over && c.over.kind === 'realm' && above.has(c.over.id)) continue;   /* nor its masters' other clients */
-    if (c.over) { const ov = c.over.kind === 'realm' ? w.cults[c.over.id] : null; if (!ov || ov === o || !o.arts.steamships || ov.tech > o.tech - 1 || strength(ov, ov.pop) > (o.arts.railways ? 2 : 0.8) * my) continue; }   /* (Oct 30) an industrial power strips a backward empire of its clients (Egypt from the Ottomans) */
+    if (c.over) { const ov = c.over.kind === 'realm' ? w.cults[c.over.id] : null; if (!ov || ov === o || !o.arts.rifles || !o.arts.steamships || ov.tech > o.tech - 1 || strength(ov, ov.pop) > 2 * my) continue; }   /* (Oct 30) an industrial power strips a backward empire of its clients (Egypt from the Ottomans) */
     const cb = c.big; if (!bySea(w, ob, cb) || (w.mass[cb.y * W + cb.x] === mine && !cb.port)) continue;   /* across the sea, or a coast far along the same land */
     const dist = Math.hypot(wrapDx(cb.x - ob.x), cb.y - ob.y); if (dist > reach) { why.far++; continue; }
-    const st = strength(c, c.pop), dare = o.tech >= c.tech + 1 ? (o.arts.railways ? 2 : 0.8) : 0.3; if (st > dare * my) { if (o.tech >= c.tech + 1) why.strong++; else why.peer++; continue; }   /* (Oct 29) a power an age ahead dares far bigger prey: Bengal, not only islands */
+    const st = strength(c, c.pop), dare = o.tech >= c.tech + 1 ? (o.arts.rifles ? 2 : 0.8) : 0.3; if (st > dare * my) { if (o.tech >= c.tech + 1) why.strong++; else why.peer++; continue; }   /* (Oct 29) a power an age ahead dares far bigger prey: Bengal, not only islands */
     const gain = 1 + c.pop / 1000 + c.count * 0.2, cost = 1 + dist / 80 + st / (dare * my);
     const s = gain / cost; if (s > bs) { bs = s; best = c; }
   }
@@ -191,7 +191,7 @@ function colonise(w, o) {
     if (best.over) { const ov = w.cults[best.over.id]; free(w, best, `the ${o.name} take the ${best.name} from the ${ov ? ov.name : 'old empire'}`); tally(w, 'colStrip'); take(w, best, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(best.id); grab(w, o, cb); record(w, 'capture', [best.id, o.id], { note: `the ${o.name} take the ${best.name} from the ${ov ? ov.name : 'old empire'}`, x: cb.x, y: cb.y });
       ev(w, `The ${ov ? ov.name : 'old masters'} can no longer protect the ${best.name}. Ships of the ${o.name} come to ${cb.name}, and the resident they leave behind gives the orders now.`, cb.x, cb.y, o.color, best.count >= 8 ? 0 : 1); return; }
     if (!o.arts.steamships && best.count > 1) { tally(w, 'colFoothold'); fort(w, o, cb.x, cb.y, best); return; }   /* (Oct 30) before the engine: a trading fort on their coast, a foothold, not a conquest */
-    if (best.pop > 2500 && best.env.towns >= 2 && !(o.arts.steamships && o.tech >= best.tech + 1)) {   /* (Oct 30) gunboats: a steamship power an age ahead dictates terms without a war */
+    if (best.pop > 2500 && best.env.towns >= 2 && !(o.arts.steamships && o.arts.rifles && o.tech >= best.tech + 1)) {   /* (Oct 30) gunboats: a steamship power an age ahead dictates terms without a war */
       // (slice 4) a realm of towns is not taken by showing the flag: it is a war, for tribute, fought over the sea
       if (!best.war && declareWar(w, o, best)) { tally(w, 'colonialWar'); record(w, 'colonial-war', [o.id, best.id], { note: `the ${o.name} sail to make the ${best.name} pay`, x: cb.x, y: cb.y, terms: { theirs: strength(best, best.pop), overlord: my } }); ev(w, `Ships of the ${o.name} come to ${cb.name}, and they have not come to trade. The ${o.name} mean to make the ${best.name} pay them tribute.`, cb.x, cb.y, o.color, 0); return; }
       tally(w, 'colTake'); take(w, best, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(best.id); grab(w, o, cb);

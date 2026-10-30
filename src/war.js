@@ -161,7 +161,7 @@ function settle(w, K, out, how, aimT, H) {
     else if (K.aim.kind === 'tribute' && !conquestNorm(w, A) && H.subjugate(w, D, A, K)) r.kind = 'client';
     else {
       // direct rule or indirect: a realm stretched thin, or across the sea, takes a client rather than provinces; lords short of posts want the land
-      const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x] && !(A.arts.steamships && A.arts.telegraph), press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
+      const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x] && !(A.arts.steamships && A.arts.telegraph && A.arts.rifles), press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
       const ahead = A.tech >= D.tech + 2;   /* (Oct 29) far ahead and on the same land: direct rule */
       if (!press && !conquestNorm(w, A) && (far || ((A.span || 0) > (A.arts.railways ? 2 : 1.4) && !ahead)) && !D.over && D.count > mine.length + 2 && H.subjugate(w, D, A, K)) r.kind = 'client';
       else if (mine.length && !(conquestNorm(w, A) && w.rnd() > 0.1)) { for (const s of mine) { if (D.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, A); } r.kind = 'annex';
