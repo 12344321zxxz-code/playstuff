@@ -137,7 +137,7 @@ export const ERA = ['the old stone', 'the first fields', 'bronze and kings', 'ir
 export function warMult(c) {
   const A = c.arts; let m = 1;
   if (A.bronze && !c.bronzeCut) m *= 1.3; if (A.iron) m *= 1.35; if (A.chariots) m *= 1.15; if (A.riding) m *= A.stirrups ? 1.55 : 1.3; if (A.steel) m *= 1.2;
-  if (A.gunpowder) m *= 1.45; if (A.cannon) m *= 1.3; if (A.railways) m *= 1.2; if (A.engines) m *= 1.15; if (A.dynamite) m *= 1.3; if (A.telegraph) m *= 1.1;   /* (Oct 29) steamships, quinine, breech-loaders, the Maxim gun: the industrial edge that let small powers take continents */ if (A.flight) m *= 1.35; if (A.radio) m *= 1.1; if (A.rockets) m *= 1.15; if (A.satellites) m *= 1.15; if (A.automation) m *= 1.3; if (A.ai) m *= 1.3; if (A.orbital) m *= 1.2; if (A.wards) m *= 1.1; if (A.bureaucracy) m *= 1.15;
+  if (A.gunpowder) m *= 1.45; if (A.cannon) m *= 1.3; if (A.railways) m *= 1.35; if (A.engines) m *= 1.25; if (A.dynamite) m *= 1.6; if (A.telegraph) m *= 1.15; if (A.steamships) m *= 1.15;   /* (Oct 30) the industrial bundle is worth about 3.5 times a powder army (was 2) */   /* (Oct 29) steamships, quinine, breech-loaders, the Maxim gun: the industrial edge that let small powers take continents */ if (A.flight) m *= 1.35; if (A.radio) m *= 1.1; if (A.rockets) m *= 1.15; if (A.satellites) m *= 1.15; if (A.automation) m *= 1.3; if (A.ai) m *= 1.3; if (A.orbital) m *= 1.2; if (A.wards) m *= 1.1; if (A.bureaucracy) m *= 1.15;
   return m;
 }
 // How much walls still matter against them.
