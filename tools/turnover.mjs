@@ -12,9 +12,10 @@
 // as in Cliopatria's composites and the modern series (puppets count); throwing an overlord off counts as internal.
 // Towns founded during the century are not counted.
 import { N, W } from '../src/core.js';
+import { bySea } from '../src/capture.js';
 // colonial (Oct 29, as in the revised Old World and modern series): from the age of gunpowder on, the taker is at
 // least one age ahead and rules from across the sea (its court on another landmass)
-const outside = (w, taker, s) => { const b = taker.big; return taker.tech >= 5 && !!b && !!w.mass && w.mass[b.y * W + b.x] !== w.mass[s.y * W + s.x]; };
+const outside = (w, taker, s) => taker.tech >= 5 && !!taker.big && bySea(w, taker.big, s);
 
 export const BUCKETS = ['1-2', '3', '4', '5', '6', '7', '8', '9-10'];
 export const bucketOf = (t) => (t <= 2 ? 0 : t >= 9 ? 7 : t - 2);

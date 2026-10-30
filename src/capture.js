@@ -27,6 +27,13 @@ import { W, H, DISC, wx, wrapDx } from './core.js';
 const dragonPower = (d) => (d.wyrm ? 60000 : 14000) * (1 + Math.min(2, d.age / 250));
 const houseName = (w, c) => `the House of ${word(w, c.lang, w.rnd() < 0.5 ? 1 : 2)}`;
 const overseas = (w, c, s) => c.big && w.mass[s.y * W + s.x] !== w.mass[c.big.y * W + c.big.x];
+// (Oct 30) reached by sea: another landmass, or far along the same one with sea in the way (Europe to Algeria or
+// India: the Old World is one landmass, but its empires went by ship)
+export function bySea(w, a, b) {
+  if (w.mass[a.y * W + a.x] !== w.mass[b.y * W + b.x]) return true;
+  const dx = wrapDx(b.x - a.x), dy = b.y - a.y; if (dx * dx + dy * dy < 60 * 60) return false;
+  let n = 0; for (let k = 1; k < 14; k++) { const x = wx(Math.round(a.x + (dx * k) / 14)), y = Math.round(a.y + (dy * k) / 14); if (w.water[y * W + x] === 1) n++; } return n >= 3;
+}
 
 function take(w, c, o) {
   c.over = Object.assign({ since: w.year, take: o.kind === 'dragon' ? 0.15 : 0.12, house: houseName(w, c), hw: 0, risings: 0 }, o);
@@ -132,7 +139,7 @@ export function captureYear(w) {
   // empires over the sea
   for (const o of w.cults) {
     if (!o.alive || o.power || o.over || !o.big || !o.arts.sailing || !(o.arts.gunpowder || o.arts.navigation) || (o.war && !o.arts.railways) || (w.leadAge || 0) >= 8) continue;   /* an industrial empire expands overseas even while at war elsewhere */   /* (Oct 29) no new colonies in the age of the bomb */
-    const pushed = o.hub && (o.hub.st === 'press' || o.hub.st === 'factions'); if (rnd() > (pushed ? 0.04 : 0.008) * (o.arts.railways ? 30 : o.arts.engines ? 8 : 1)) continue;   /* (Oct 29) the industrial scramble: once there are railways at home, expeditions go out year after year */
+    const pushed = o.hub && (o.hub.st === 'press' || o.hub.st === 'factions'); if (rnd() > (pushed ? 0.04 : o.arts.navigation ? 0.03 : 0.008) * (o.arts.railways ? 30 : o.arts.engines ? 8 : 1)) continue;   /* (Oct 29) the industrial scramble: once there are railways at home, expeditions go out year after year */
     colonise(w, o);
   }
   if ((w.leadAge || 0) < 8) footholds(w);
@@ -145,10 +152,10 @@ export function captureYear(w) {
 function footholds(w) {
   const rnd = w.rnd, seen = new Set();
   for (const s of w.sets) {
-    if (s.dead || s.nomad) continue; const o = w.cults[s.cult]; if (!o || !o.alive || o.power || o.over || !o.big || !overseas(w, o, s) || !o.arts.sailing) continue;
+    if (s.dead || s.nomad) continue; const o = w.cults[s.cult]; if (!o || !o.alive || o.power || o.over || !o.big || !o.arts.sailing || !bySea(w, o.big, s)) continue;
     const pace = o.arts.railways ? 0.03 : o.arts.engines ? 0.012 : 0.003; if (rnd() > pace * 4) continue;
     near(w, s.x, s.y, 16, s, true, (u) => { const c = w.cults[u.cult]; if (!c || c === o || !c.alive || c.power || c.over || c.war || !c.big || seen.has(c.id)) return; seen.add(c.id);
-      const gap = o.tech - c.tech; if (gap < 1 || w.mass[c.big.y * W + c.big.x] === w.mass[o.big.y * W + o.big.x]) return;
+      const gap = o.tech - c.tech; if (gap < 1 || !bySea(w, o.big, c.big)) return;
       if (strength(c, c.pop) > (o.arts.railways ? 2 : 0.8) * strength(o, o.pop)) return;
       if (rnd() > 0.25 * gap) return;
       tally(w, 'footholdTake'); take(w, c, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(c.id);
@@ -160,16 +167,16 @@ function footholds(w) {
 // gain over cost: land and how weak or empty it is, against distance and resistance, over the sea
 function colonise(w, o) {
   const rnd = w.rnd, ob = o.big, mine = w.mass[ob.y * W + ob.x], reach = o.arts.navigation ? 260 : 90, my = strength(o, o.pop);
-  let best = null, bs = 0;
+  let best = null, bs = 0; const why = { far: 0, strong: 0, peer: 0 };
   for (const c of w.cults) {
-    if (!c.alive || c.power || c === o || c.over || !c.big) continue; const cb = c.big; if (w.mass[cb.y * W + cb.x] === mine) continue;
-    const dist = Math.hypot(wrapDx(cb.x - ob.x), cb.y - ob.y); if (dist > reach) continue;
-    const st = strength(c, c.pop), dare = o.tech >= c.tech + 1 ? (o.arts.railways ? 2 : 0.8) : 0.3; if (st > dare * my) continue;   /* (Oct 29) a power an age ahead dares far bigger prey: Bengal, not only islands */
+    if (!c.alive || c.power || c === o || c.over || !c.big) continue; const cb = c.big; if (!bySea(w, ob, cb) || (w.mass[cb.y * W + cb.x] === mine && !cb.port)) continue;   /* across the sea, or a coast far along the same land */
+    const dist = Math.hypot(wrapDx(cb.x - ob.x), cb.y - ob.y); if (dist > reach) { why.far++; continue; }
+    const st = strength(c, c.pop), dare = o.tech >= c.tech + 1 ? (o.arts.railways ? 2 : 0.8) : 0.3; if (st > dare * my) { if (o.tech >= c.tech + 1) why.strong++; else why.peer++; continue; }   /* (Oct 29) a power an age ahead dares far bigger prey: Bengal, not only islands */
     const gain = 1 + c.pop / 1000 + c.count * 0.2, cost = 1 + dist / 80 + st / (dare * my);
     const s = gain / cost; if (s > bs) { bs = s; best = c; }
   }
   // empty or thin land over the sea is also a target: settlers
-  tally(w, best ? 'colTarget' : 'colNoTarget'); const tryEmpty = !best || rnd() < 0.15;
+  tally(w, best ? 'colTarget' : 'colNoTarget'); if (!best) { tally(w, 'colWhyFar', why.far); tally(w, 'colWhyStrong', why.strong); tally(w, 'colWhyPeer', why.peer); } const tryEmpty = !best || rnd() < 0.15;
   if (best && !tryEmpty) {
     const cb = best.big, i = cb.y * W + cb.x, fever = w.tMean[i] > 21 && w.mi[i] > 1.1 && !o.arts.medicine;
     if (fever) { tally(w, 'colFort'); fort(w, o, cb.x, cb.y, best); return; }
