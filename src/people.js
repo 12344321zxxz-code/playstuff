@@ -293,7 +293,7 @@ function armiesYear(w) {
     const sg = o.siege; if (!sg || o.dead) continue; const sc = w.cults[sg.by], oc = w.cults[o.cult];
     if (!sc || !sc.alive || !oc || o.occ || !atWar(w, sc, oc)) { liftSiege(w, o, 0.8); continue; }
     const home = sg.from != null ? w.sets.find((q) => q.id === sg.from && !q.dead) : null, dist = home ? Math.hypot(wrapDx(home.x - o.x), home.y - o.y) : 40, A = sc.arts;
-    const fields = w.farm[o.y * W + o.x] || o.tier >= 2 ? 0.5 : 1, waste = 0.03 + 0.1 * Math.min(1.5, (dist / 60) * (A.railways ? 0.4 : A.roads ? 0.75 : 1)) * fields;
+    const fields = w.farm[o.y * W + o.x] || o.tier >= 2 ? 0.5 : 1, waste = 0.03 + 0.1 * Math.min(1.5, (dist / 60) * (A.railways ? 0.25 : A.engines ? 0.5 : A.roads ? 0.75 : 1)) * fields;
     bleed(w, sc, sg.n * waste); sg.n *= 1 - waste; o.pop *= oc.arts.granaries ? 0.985 : 0.97; o.trade = 0;
     const r = strength(sc, sg.n * 6) / Math.max(1, strength(oc, o.pop) * (o.walls ? wallsAgainst(sc) : 1.2)), arts = (A.cannon ? 2 : 1) * (A.flight ? 1.5 : 1), hunger = (oc.arts.granaries ? 0.06 : 0.12) * (1 + 0.15 * (w.year - sg.since));
     sg.prog += 0.2 * Math.min(2, r) * arts + hunger;

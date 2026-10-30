@@ -161,9 +161,9 @@ function settle(w, K, out, how, aimT, H) {
     else if (K.aim.kind === 'tribute' && !conquestNorm(w, A) && H.subjugate(w, D, A, K)) r.kind = 'client';
     else {
       // direct rule or indirect: a realm stretched thin, or across the sea, takes a client rather than provinces; lords short of posts want the land
-      const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x], press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
+      const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x] && !(A.arts.steamships && A.arts.telegraph), press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
       const ahead = A.tech >= D.tech + 2;   /* (Oct 29) far ahead and on the same land: direct rule */
-      if (!press && !conquestNorm(w, A) && (far || ((A.span || 0) > 1.4 && !ahead)) && !D.over && D.count > mine.length + 2 && H.subjugate(w, D, A, K)) r.kind = 'client';
+      if (!press && !conquestNorm(w, A) && (far || ((A.span || 0) > (A.arts.railways ? 2 : 1.4) && !ahead)) && !D.over && D.count > mine.length + 2 && H.subjugate(w, D, A, K)) r.kind = 'client';
       else if (mine.length && !(conquestNorm(w, A) && w.rnd() > 0.1)) { for (const s of mine) { if (D.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, A); } r.kind = 'annex';
         // (Oct 29) what is left of a small or broken realm goes too: the conquered country, not only a province of it
         const rest = w.sets.filter((s) => !s.dead && !s.nomad && s.cult === D.id), ratio = K.odds || 1;
@@ -200,7 +200,7 @@ function settle(w, K, out, how, aimT, H) {
 // (its stakes in this war; everything it has when its capital is taken or besieged). c.serving counts
 // the men out in bands, marching home or sitting in sieges; it is recounted each year from the
 // movers and the sieges, and grows as bands are sent. Serving men are missing from the fields.
-export function capacityOf(c) { const A = c.arts; return (0.04 + (A.bureaucracy ? 0.02 : 0) + (A.railways ? 0.04 : 0) + (A.radio ? 0.02 : 0)) * (0.6 + 0.8 * c.coh); }
+export function capacityOf(c) { const A = c.arts; return (0.04 + (A.bureaucracy ? 0.02 : 0) + (A.engines ? 0.02 : 0) + (A.railways ? 0.05 : 0) + (A.radio ? 0.02 : 0)) * (0.6 + 0.8 * c.coh); }
 export function mobBudget(w, c) {
   const K = conflictOf(w, c); if (!K || !K.stakes) return Infinity;   /* an older save's war: no budget */
   const s = sideOf(K, c.id); if (s < 0) return Infinity; const b = c.big, cornered = !!(b && (b.occ || (b.siege && b.siege.by !== c.id)));
