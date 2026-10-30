@@ -10,6 +10,7 @@
 import { wrapDx, W } from './core.js';
 import { tally } from './ledger.js';
 import { strength } from './people.js';
+import { bySea } from './capture.js';
 
 const pairKey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
 const conflicts = (w) => w.conflicts || (w.conflicts = {});
@@ -137,6 +138,7 @@ export function warsYear(w, H) {
     const pA = N ? held / N : 0, xa = exhaustion(w, K, 0), xd = exhaustion(w, K, 1);
     // (Oct 29) the balance of strength now weighs on both: the side that is losing the war of numbers knows it
     let sA = 0, sD = 0; for (const s of [0, 1]) for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { const v = strength(c, c.pop); if (s === 0) sA += v; else sD += v; } }
+    if (A.big && D.big && bySea(w, A.big, D.big)) sA *= A.arts.steamships ? 1 : A.arts.navigation ? 0.5 : 0.3;   /* (Oct 30) a war over the sea is fought with what the ships carry */
     const bal = 0.5 * Math.log(Math.max(0.2, Math.min(5, sA / Math.max(1, sD))));
     const willA = K.stakes[0] * (0.7 + pA) - xa.t + bal, willD = K.stakes[1] * (1 - 0.5 * pA) + 0.1 - xd.t - bal;
     { const pk = K.peak || (K.peak = [0, 0]); for (const s of [0, 1]) { let sv = 0, pp = 0; for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { sv += c.serving || 0; pp += c.pop; } } if (pp > 0) pk[s] = Math.max(pk[s], sv / pp); } }
@@ -159,9 +161,9 @@ function settle(w, K, out, how, aimT, H) {
     else if (K.aim.kind === 'tribute' && !conquestNorm(w, A) && H.subjugate(w, D, A, K)) r.kind = 'client';
     else {
       // direct rule or indirect: a realm stretched thin, or across the sea, takes a client rather than provinces; lords short of posts want the land
-      const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x], press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
+      const far = A.big && D.big && w.mass && w.mass[A.big.y * W + A.big.x] !== w.mass[D.big.y * W + D.big.x] && !(A.arts.steamships && A.arts.telegraph && A.arts.rifles), press = A.hub && (A.hub.st === 'press' || A.hub.st === 'factions');
       const ahead = A.tech >= D.tech + 2;   /* (Oct 29) far ahead and on the same land: direct rule */
-      if (!press && !conquestNorm(w, A) && (far || ((A.span || 0) > 1.4 && !ahead)) && !D.over && D.count > mine.length + 2 && H.subjugate(w, D, A, K)) r.kind = 'client';
+      if (!press && !conquestNorm(w, A) && (far || ((A.span || 0) > (A.arts.railways ? 2 : 1.4) && !ahead)) && !D.over && D.count > mine.length + 2 && H.subjugate(w, D, A, K)) r.kind = 'client';
       else if (mine.length && !(conquestNorm(w, A) && w.rnd() > 0.1)) { for (const s of mine) { if (D.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, A); } r.kind = 'annex';
         // (Oct 29) what is left of a small or broken realm goes too: the conquered country, not only a province of it
         const rest = w.sets.filter((s) => !s.dead && !s.nomad && s.cult === D.id), ratio = K.odds || 1;
@@ -180,7 +182,7 @@ function settle(w, K, out, how, aimT, H) {
   // (a war that dies down keeps the lines where they stand: towns held three years or more stay with their holders)
   for (const ws of out === 'won' ? [0] : out === 'lost' ? [1] : [0, 1]) { if (conquestNorm(w, w.cults[K.sides[ws].lead])) continue; const keep = new Map();
     for (const s of w.sets) { if (s.dead || !s.occ || s.occ.cid !== K.id || sideOf(K, s.occ.by) !== ws || sideOf(K, s.cult) !== 1 - ws || (out === 'none' && w.year - s.occ.since < 3)) continue; const o = w.cults[s.occ.by], sv = w.cults[s.cult]; if (!o || !o.alive || o.power) continue;
-      let d = 1e9; for (const m of w.sets) if (!m.dead && !m.nomad && m.cult === o.id) { const q = d2(m, s); if (q < d) d = q; }
+      let d = 1e9; const home = o.big ? w.mass[o.big.y * W + o.big.x] : -1; for (const m of w.sets) if (!m.dead && !m.nomad && m.cult === o.id && (o.arts.steamships || w.mass[m.y * W + m.x] === home)) { const q = d2(m, s); if (q < d) d = q; }   /* (Oct 30) a fort on a far coast is no base to rule a province from, until steamships */
       if (d <= 30 * 30 || o.tech >= sv.tech + 2) keep.set(s, o); }
     for (const [s, o] of keep) { const sv = w.cults[s.cult]; if (sv.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, o); tally(w, 'heldKept'); }
     if (keep.size && r.kind === 'status') r.kind = ws === 0 ? 'annex' : 'lost'; }
@@ -198,7 +200,7 @@ function settle(w, K, out, how, aimT, H) {
 // (its stakes in this war; everything it has when its capital is taken or besieged). c.serving counts
 // the men out in bands, marching home or sitting in sieges; it is recounted each year from the
 // movers and the sieges, and grows as bands are sent. Serving men are missing from the fields.
-export function capacityOf(c) { const A = c.arts; return (0.04 + (A.bureaucracy ? 0.02 : 0) + (A.railways ? 0.04 : 0) + (A.radio ? 0.02 : 0)) * (0.6 + 0.8 * c.coh); }
+export function capacityOf(c) { const A = c.arts; return (0.04 + (A.bureaucracy ? 0.02 : 0) + (A.engines ? 0.02 : 0) + (A.railways ? 0.05 : 0) + (A.radio ? 0.02 : 0)) * (0.6 + 0.8 * c.coh); }
 export function mobBudget(w, c) {
   const K = conflictOf(w, c); if (!K || !K.stakes) return Infinity;   /* an older save's war: no budget */
   const s = sideOf(K, c.id); if (s < 0) return Infinity; const b = c.big, cornered = !!(b && (b.occ || (b.siege && b.siege.by !== c.id)));

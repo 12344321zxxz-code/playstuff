@@ -50,9 +50,12 @@ export const ART = {
   gunpowder: { say: 'gunpowder', tier: 5, req: ['steel'], can: (c) => (c.metals & 32) !== 0 || (c.metals & 64) !== 0, push: (c) => (c.war ? 3 : 0) },
   cannon: { say: 'cannon', tier: 5, req: ['gunpowder', 'steel'], push: (c) => (c.war ? 3 : 0) },
   sanitation: { say: 'sewers and clean water', tier: 5, req: ['aqueducts', 'medicine'], push: (c) => (c.plagued ? 2 : 0) },
-  engines: { say: 'smoke and engines', tier: 5, req: ['steel', 'mills'], can: (c) => (c.metals & 64) !== 0 },
+  engines: { say: 'smoke and engines', tier: 5, req: ['steel', 'mills'], can: (c) => (c._ownMetals & 64) !== 0 || ((c.metals & 64) !== 0 && (c.wealth || 0) > 60) },   /* (Oct 30) industry grows on its own coal; bought coal is enough only for a rich trading realm (the late industrialisers) */
   railways: { say: 'railways', tier: 6, req: ['engines', 'roads'] },
+  steamships: { say: 'steamships', tier: 6, req: ['engines', 'navigation'] },   /* (Oct 30) the sea and the rivers opened to industry: the colonial gates key on these two */
+  quinine: { say: 'quinine against the fevers', tier: 6, req: ['medicine', 'engines'], push: (c) => (c.plagued ? 3 : 0) },
   dynamite: { say: 'blasting powder', tier: 6, req: ['gunpowder', 'engines'] },
+  rifles: { say: 'breech-loaders and machine guns', tier: 6, req: ['railways', 'dynamite'], push: (c) => (c.war ? 3 : 0) },   /* (Oct 30) the firepower gap of the high imperial age: it comes well into the age of steam, not with the first engines */
   // wires and wings
   electricity: { say: 'electricity', tier: 6, req: ['engines', 'schools'] },
   telegraph: { say: 'the telegraph', tier: 6, req: ['electricity', 'alphabet'] },
@@ -135,7 +138,7 @@ export const ERA = ['the old stone', 'the first fields', 'bronze and kings', 'ir
 export function warMult(c) {
   const A = c.arts; let m = 1;
   if (A.bronze && !c.bronzeCut) m *= 1.3; if (A.iron) m *= 1.35; if (A.chariots) m *= 1.15; if (A.riding) m *= A.stirrups ? 1.55 : 1.3; if (A.steel) m *= 1.2;
-  if (A.gunpowder) m *= 1.45; if (A.cannon) m *= 1.3; if (A.railways) m *= 1.2; if (A.engines) m *= 1.15; if (A.dynamite) m *= 1.3; if (A.telegraph) m *= 1.1;   /* (Oct 29) steamships, quinine, breech-loaders, the Maxim gun: the industrial edge that let small powers take continents */ if (A.flight) m *= 1.35; if (A.radio) m *= 1.1; if (A.rockets) m *= 1.15; if (A.satellites) m *= 1.15; if (A.automation) m *= 1.3; if (A.ai) m *= 1.3; if (A.orbital) m *= 1.2; if (A.wards) m *= 1.1; if (A.bureaucracy) m *= 1.15;
+  if (A.gunpowder) m *= 1.45; if (A.cannon) m *= 1.3; if (A.railways) m *= 1.2; if (A.engines) m *= 1.05; if (A.dynamite) m *= 1.3; if (A.telegraph) m *= 1.1; if (A.rifles) m *= 1.8;   /* (Oct 30) the industrial bundle is worth about 3.2 times a powder army, most of it from breech-loaders and machine guns, well into the steam age */   /* (Oct 29) steamships, quinine, breech-loaders, the Maxim gun: the industrial edge that let small powers take continents */ if (A.flight) m *= 1.35; if (A.radio) m *= 1.1; if (A.rockets) m *= 1.15; if (A.satellites) m *= 1.15; if (A.automation) m *= 1.3; if (A.ai) m *= 1.3; if (A.orbital) m *= 1.2; if (A.wards) m *= 1.1; if (A.bureaucracy) m *= 1.15;
   return m;
 }
 // How much walls still matter against them.

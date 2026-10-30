@@ -12,15 +12,17 @@
 // as in Cliopatria's composites and the modern series (puppets count); throwing an overlord off counts as internal.
 // Towns founded during the century are not counted.
 import { N, W } from '../src/core.js';
+import { bySea } from '../src/capture.js';
+import { realmCap } from '../src/war.js';
 // colonial (Oct 29, as in the revised Old World and modern series): from the age of gunpowder on, the taker is at
 // least one age ahead and rules from across the sea (its court on another landmass)
-const outside = (w, taker, s) => { const b = taker.big; return taker.tech >= 5 && !!b && !!w.mass && w.mass[b.y * W + b.x] !== w.mass[s.y * W + s.x]; };
+const outside = (w, taker, s) => taker.tech >= 5 && !!taker.big && bySea(w, taker.big, s);
 
 export const BUCKETS = ['1-2', '3', '4', '5', '6', '7', '8', '9-10'];
 export const bucketOf = (t) => (t <= 2 ? 0 : t >= 9 ? 7 : t - 2);
 const WAR_END = new Set(['sacked', 'dragon', 'swallowed']);   /* (a nuked town's land leaves the map of states; it does not change sovereign) */
 
-export function makeTurnover() { return { cur: null, acc: BUCKETS.map(() => ({ area: 0, f: 0, i: 0, raze: 0, col: 0, decol: 0, n: 0, cents: 0, gap: 0, fPow: 0, fCli: 0 })), cent: [], colOf: new Map() }; }
+export function makeTurnover() { return { cur: null, acc: BUCKETS.map(() => ({ area: 0, f: 0, i: 0, raze: 0, col: 0, decol: 0, n: 0, cents: 0, gap: 0, fPow: 0, fCli: 0, pool: 0, colInd: 0, poolFree: 0, nearCol: 0 })), cent: [], colOf: new Map() }; }
 
 // does realm a descend from realm b (or b from a) within a few generations?
 function kin(w, a, b) {
@@ -40,7 +42,12 @@ export function turnoverYear(w, T) {
     const area = new Map(); for (let i = 0; i < N; i++) { const k = w.owner[i]; if (k >= 0) area.set(k, (area.get(k) || 0) + 1); }
     const rows = [], over = new Map();
     for (const [k, a] of area) { const s = w.sets[k]; if (!s || s.dead || s.nomad) continue; const c = w.cults[s.cult]; if (!c || !c.alive || c.power) continue; rows.push({ s, cult: c.id, tier: s.lvl != null ? s.lvl : c.tech, a, done: null }); if (!over.has(c.id)) over.set(c.id, overOf(w, c)); }
-    T.cur = { y: w.year, age: leadingAge(w), rows, over }; return;
+    const age = leadingAge(w); let lead = null; { let tot = 0; for (const c of w.cults) if (settled(c)) tot += c.pop; for (const c of w.cults) if (settled(c) && c.pop >= 0.03 * tot && c.tech === age && c.big && (!lead || c.pop > lead.pop)) lead = c; }
+    for (const r of rows) r.pool = !!(lead && r.cult !== lead.id && r.tier <= age - 1 && bySea(w, lead.big, r.s));   /* the colonial pool: land behind the leaders and reached by ship */
+    /* (Oct 30, council) a second clock: the most advanced realm with at least 1% of settled people; and how crowded the world is */
+    let tot1 = 0; for (const c of w.cults) if (settled(c)) tot1 += c.pop; let alt = 0; for (const c of w.cults) if (settled(c) && c.pop >= 0.01 * tot1 && c.tech > alt) alt = c.tech;
+    const living = w.cults.filter((c) => c.alive && !c.power).length, colPow = w.cults.filter((c) => c.alive && !c.power && !c.over && c.arts.rifles && c.arts.steamships).length, indPow = w.cults.filter((c) => c.alive && !c.power && !c.over && c.tech >= 6).length;
+    T.cur = { y: w.year, age, rows, over, alt, living, cap: realmCap(w), colPow, indPow }; return;
   }
   const colNow = new Set(), freed = new Set();   // realms made a protectorate of a far more advanced realm this century, or freed from one
   for (const [id, o0] of T.cur.over) { const c = w.cults[id], o = overOf(w, c); if (o === o0) continue;
@@ -50,25 +57,27 @@ export function turnoverYear(w, T) {
     if (r.done) continue; const s = r.s;
     if (s.dead) { if (WAR_END.has(s.endKind)) r.done = 'raze'; else if (s.cult !== r.cult) r.done = kin(w, s.cult, r.cult) ? 'i' : 'f'; else r.done = 'gone'; continue; }
     if (s.cult === r.cult) {
-      if (colNow.has(r.cult)) { r.done = 'f'; r.cli = true; if (colNow.has('c' + r.cult)) { r.col = true; T.colOf.set('r' + r.cult, overOf(w, w.cults[r.cult])); } }
+      if (colNow.has(r.cult)) { r.done = 'f'; r.cli = true; if (colNow.has('c' + r.cult)) { r.col = true; { const ov = w.cults[overOf(w, w.cults[r.cult])]; r.ct = ov ? ov.tech : 0; } T.colOf.set('r' + r.cult, overOf(w, w.cults[r.cult])); } }
       else if (freed.has(r.cult)) { r.done = 'i'; if (T.colOf.has('r' + r.cult)) { r.decol = true; T.colOf.delete('r' + r.cult); } }
       continue;
     }
+    if (T.cur.over.get(r.cult) === s.cult) { r.done = 'gone'; continue; }   /* an overlord absorbing its own client: it was already the sovereign */
     const n = w.cults[s.cult]; r.done = n && !n.power && kin(w, s.cult, r.cult) ? 'i' : 'f'; if (n && n.power) r.pow = true;
-    if (r.done === 'f' && n && n.tech >= r.tier + 1 && outside(w, n, s)) { r.col = true; T.colOf.set(s.id, s.cult); }
+    if (r.done === 'f' && n && n.tech >= r.tier + 1 && outside(w, n, s)) { r.col = true; r.ct = n.tech; T.colOf.set(s.id, s.cult); }
+    else if (r.done === 'f' && n && n.tech >= 5 && n.tech >= r.tier + 1 && n.big && Math.hypot(Math.min(Math.abs(n.big.x - s.x), W - Math.abs(n.big.x - s.x)), n.big.y - s.y) > 40) r.near = true;   /* diagnostic: would count as colonial under a looser 'far away' rule */
     else if (r.done === 'i' && T.colOf.get(s.id) === r.cult) { r.decol = true; T.colOf.delete(s.id); }
     else if (r.done === 'f') T.colOf.delete(s.id);
   }
 }
 
 function close(w, T) {
-  const b = T.acc[bucketOf(T.cur.age)], tot = { area: 0, f: 0, i: 0 }; b.cents++;
+  const b = T.acc[bucketOf(T.cur.age)], tot = { area: 0, f: 0, i: 0, col: 0, pool: 0 }; b.cents++;
   for (const r of T.cur.rows) {
-    b.area += r.a; b.n++; tot.area += r.a; if (r.tier <= T.cur.age - 2) b.gap += r.a;   /* land two or more ages behind the leaders (a diagnostic, not a target) */
-    if (r.done === 'f' || r.done === 'raze') { b.f += r.a; tot.f += r.a; if (r.done === 'raze') b.raze += r.a; if (r.col) b.col += r.a; if (r.pow) b.fPow += r.a; if (r.cli) b.fCli += r.a; }
+    b.area += r.a; b.n++; tot.area += r.a; if (r.tier <= T.cur.age - 2) b.gap += r.a; if (r.pool) { b.pool += r.a; if (T.cur.over.get(r.cult) == null) b.poolFree += r.a; }   /* land two or more ages behind the leaders (a diagnostic, not a target) */
+    if (r.pool && T.cur.over.get(r.cult) == null) tot.pool += r.a; if (r.done === 'f' || r.done === 'raze') { b.f += r.a; tot.f += r.a; if (r.col) tot.col += r.a; if (r.done === 'raze') b.raze += r.a; if (r.col) { b.col += r.a; if ((r.ct || 0) >= 6) b.colInd += r.a; } if (r.near) b.nearCol += r.a; if (r.pow) b.fPow += r.a; if (r.cli) b.fCli += r.a; }
     else if (r.done === 'i') { b.i += r.a; tot.i += r.a; if (r.decol) b.decol += r.a; }
   }
-  if (tot.area) T.cent.push([T.cur.y, T.cur.age, Math.round((100 * tot.f) / tot.area), Math.round((100 * tot.i) / tot.area)]);
+  if (tot.area) T.cent.push([T.cur.y, T.cur.age, Math.round((100 * tot.f) / tot.area), Math.round((100 * tot.i) / tot.area), T.cur.alt, Math.round((100 * tot.col) / tot.area), Math.round((100 * tot.pool) / tot.area), T.cur.living, T.cur.cap, T.cur.colPow, T.cur.indPow, tot.area, tot.f, tot.i, tot.col]);   /* (Oct 30) + second clock, colonial %, free pool %, living realms, cap, independent rifle+steam powers, industrial powers, raw sums */
 }
 
 // summary: per leading age, foreign / internal % (with colonial, decolonisation and razed shares), and the
@@ -79,6 +88,6 @@ export function turnoverSummary(T) {
     const p = (v) => (b.area ? +((100 * v) / b.area).toFixed(1) : null), key = 'to' + BUCKETS[k].replace('-', '_');
     out[key + 'F'] = p(b.f); out[key + 'I'] = p(b.i); out[key + 'Col'] = p(b.col); out[key + 'Decol'] = p(b.decol); out[key + 'Raze'] = p(b.raze); out[key + 'C'] = b.cents; out[key + 'Gap'] = p(b.gap);
   });
-  out.toRaw = T.acc.map((b) => [b.area, b.f, b.i, b.col, b.decol, b.raze, b.cents, b.gap, b.fPow, b.fCli]);
+  out.toRaw = T.acc.map((b) => [b.area, b.f, b.i, b.col, b.decol, b.raze, b.cents, b.gap, b.fPow, b.fCli, b.pool, b.colInd, b.poolFree, b.nearCol]);
   return out;
 }
