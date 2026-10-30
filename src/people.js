@@ -88,12 +88,13 @@ function suits(w, c, kind, k) {
 // (Oct 29) how much of what a people sees in another it can take in: a neighbour one age ahead teaches a
 // great deal, one two ages ahead very little (they see the guns, not the foundry). After Cohen & Levinthal.
 export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
-function meet(w, c, o, p) {
+function meet(w, c, o, p, ta, tb) {
   const rnd = w.rnd; if (c === o) return;
+  const kc = ta && ta.k != null ? Math.min(c.know, ta.k) : c.know, ko = tb && tb.k != null ? Math.min(o.know, tb.k) : o.know;   /* (Oct 30) a town passes on what it knows itself: a fort on a far coast is not its court */
   const tg = tongueGap(w, c.langId, o.langId), talk = tg <= 2 ? 1.5 : tg === Infinity ? 0.7 : 1;   // ideas pass easily between close tongues
   // ties, not trips: the tenth caravan of the year between two peoples teaches less than the first
   const yk = w.year, M = c._mt && c._mtY === yk ? c._mt : ((c._mtY = yk), (c._mt = {})), n = (M[o.id] = (M[o.id] || 0) + 1), tie = 1 / n;
-  { const [lo, hi] = o.know > c.know ? [c, o] : [o, c]; lo.know += (hi.know - lo.know) * 0.006 * absorb(hi.tech - lo.tech) * talk * tie; }
+  { const [lo, hiK, loK] = ko > kc ? [c, ko, kc] : [o, kc, ko]; if (hiK > lo.know) lo.know += (hiK - lo.know) * 0.006 * absorb(techOf(hiK) - techOf(loK)) * talk * tie; }
   c.lastMet = o.lastMet = w.year; (c.met || (c.met = {}))[o.id] = 1; (o.met || (o.met = {}))[c.id] = 1;
   for (const [a, b] of [[c, o], [o, c]]) {
     for (const k in b.tame) if (!a.tame[k] && rnd() < 0.12 && suits(w, a, 'beast', k)) { a.tame[k] = w.year; if (TAME_GRAZE[k] && !a.grazer) { a.grazer = k; learn(w, a, 'herding'); } }
@@ -268,7 +269,7 @@ onRoad.trade = (w, m) => {
 };
 arrive.trade = (w, m) => {
   const a = m.from, b = m.to; if (!a || !b || a.dead || b.dead) return; const ca = w.cults[a.cult], cb = w.cults[b.cult];
-  a.trade = Math.min(6, a.trade + 1); b.trade = Math.min(6, b.trade + 1); if (ca !== cb) { meet(w, ca, cb, 0.3); w.meets = (w.meets || 0) + 1; (ca.ties || (ca.ties = {}))[cb.id] = ((ca.ties[cb.id]) || 0) + 1; (cb.ties || (cb.ties = {}))[ca.id] = ((cb.ties[ca.id]) || 0) + 1; }
+  a.trade = Math.min(6, a.trade + 1); b.trade = Math.min(6, b.trade + 1); if (ca !== cb) { meet(w, ca, cb, 0.3, a, b); w.meets = (w.meets || 0) + 1; (ca.ties || (ca.ties = {}))[cb.id] = ((ca.ties[cb.id]) || 0) + 1; (cb.ties || (cb.ties = {}))[ca.id] = ((cb.ties[ca.id]) || 0) + 1; }
   if (m.legs && m.legs.length) relay(w, m, b);
   carry(w, a, b, m.wet0 ? 'ship' : 'trade'); if (w.rnd() < 0.4) carry(w, b, a, m.wet0 ? 'ship' : 'trade');
   for (let k = 0; k < Math.min(5, m.loads || 1); k++) deliver(w, m);   /* a shared caravan delivers each load */
@@ -560,6 +561,7 @@ function gapCached(w, a, b) { if (_gapY !== w.year || _gapW !== w) { _gapY = w.y
 function cultYear(w, c) {
   const rnd = w.rnd, b = c.big, A = c.arts; if (c.pop > c.peak) c.peak = c.pop;
   if (!Number.isFinite(c.know)) c.know = TECH[1]; if (!Number.isFinite(c.surplus)) c.surplus = 0;   // never let one bad number spread to everyone they meet
+  if (!c.arts.engines && c.know > 0.97 * TECH[5]) c.know = 0.97 * TECH[5];   /* (Oct 30) industry is built, not copied: without its own engines (coal) a realm cannot leave the age of powder and print */
   if (c.pid != null && !c._kset && w.year - c.born <= 2) { c._kset = 1; let kp = 0, p = 0; for (const s of w.sets) if (!s.dead && !s.nomad && s.cult === c.id && s.k != null) { kp += s.k * s.pop; p += s.pop; } if (p > 0 && kp / p < c.know) { c.know = kp / p; c.tech = techOf(c.know); } }   /* (Oct 29) a breakaway knows what its own towns knew, not what its old court knew */
   let way = 'forage', mx = 0; for (const k in c._ways) if (c._ways[k] > mx) { mx = c._ways[k]; way = k; }
   // a way of life changes only when the new one clearly wins, and not twice in a generation
@@ -621,7 +623,7 @@ function cultYear(w, c) {
     if (!c.bord || w.year % 20 === c.id % 20) { const B = c.bord = {}; let nT = 0; for (const s of w.sets) { if (s.dead || s.nomad || s.cult !== c.id || (c.count > 40 && (s.id + w.year) % Math.ceil(c.count / 40) !== 0)) continue; nT++; near(w, s.x, s.y, 18 + (A.riding ? 6 : 0) + (A.roads ? 4 : 0), s, true, (u) => { if (u.cult !== c.id && !u.nomad) B[u.cult] = (B[u.cult] || 0) + 1; }); } }
     const nbOf = (k) => Math.max(c.nb[k] || 0, c.bord[k] ? 1.5 + Math.min(1.5, c.bord[k] / 4) : 0), keys = new Set([...Object.keys(c.nb), ...Object.keys(c.bord)]);
     let foe = null, fs = 0, feas = 0; const mine = strength(c, c.pop); for (const k of keys) { const o = w.cults[k]; if (!o || !o.alive || o.war || nbOf(k) <= 1.5 || !(o.env && o.env.sed > 0) || truceLeft(w, c.id, o.id) || termsBetween(w, c.id, o.id) || leagued(w, c.id, o.id) || (c.oath != null && o.oath === c.oath)) continue;
-      const r = mine / Math.max(1, strength(o, o.pop)), fz = r / (r + 1), torn = o.coh < 0.35 || (o.hub && o.hub.st === 'civil') || w.year - (o.born || 0) < 15 && o.pid != null ? 1 : 0, sc = nbOf(k) * fz * (c.tech >= o.tech + 2 && !o.power ? 2.5 : 1) * (1 + torn + (claimGoal(w, c, o) || crownGoal(w, c, o) ? 1 : 0) + (c.over && c.over.kind === 'realm' && c.over.id === o.id ? 0.5 : 0)); if (sc > fs) { fs = sc; foe = o; feas = fz * (1 + torn); } }   /* (Oct 29) a realm coming apart, or one just broken off, is carved up by its neighbours */
+      const r = mine * (o.big && bySea(w, b, o.big) ? (A.steamships ? 1 : A.navigation ? 0.5 : 0.3) : 1) / Math.max(1, strength(o, o.pop)), fz = r / (r + 1),   /* (Oct 30) over the sea only what the ships can carry counts */ torn = o.coh < 0.35 || (o.hub && o.hub.st === 'civil') || w.year - (o.born || 0) < 15 && o.pid != null ? 1 : 0, sc = nbOf(k) * fz * (c.tech >= o.tech + 2 && !o.power ? 2.5 : 1) * (1 + torn + (claimGoal(w, c, o) || crownGoal(w, c, o) ? 1 : 0) + (c.over && c.over.kind === 'realm' && c.over.id === o.id ? 0.5 : 0)); if (sc > fs) { fs = sc; foe = o; feas = fz * (1 + torn); } }   /* (Oct 29) a realm coming apart, or one just broken off, is carved up by its neighbours */
     const horde = c.env.nomads > c.env.sed && c.env.nomads >= 9 && A.riding && (tr === 'great' || (Q && Q.horse > 0.65)) && !c.ruler.rode;
     const same = foe && sameFaith(c, foe), holy = foe && !same && c.faith != null && foe.faith != null && (c.zeal || foe.zeal);
     const deter = (foe && foe.arts.bomb ? (A.bomb ? 0.12 : 0.25) : 1) * ((w.leadAge || 0) >= 8 ? 0.3 : 1) * (foe && c.tech >= 6 && c.tech >= foe.tech + 1 && c.big && foe.big && bySea(w, c.big, foe.big) && (w.leadAge || 0) < 8 ? 3 : 1);   /* (Oct 29) the norm against conquest under the bomb; and the scramble: a people two ages behind is a tempting target */   /* (Oct 29) the norm against conquest under the bomb */

@@ -10,6 +10,7 @@
 import { wrapDx, W } from './core.js';
 import { tally } from './ledger.js';
 import { strength } from './people.js';
+import { bySea } from './capture.js';
 
 const pairKey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
 const conflicts = (w) => w.conflicts || (w.conflicts = {});
@@ -137,6 +138,7 @@ export function warsYear(w, H) {
     const pA = N ? held / N : 0, xa = exhaustion(w, K, 0), xd = exhaustion(w, K, 1);
     // (Oct 29) the balance of strength now weighs on both: the side that is losing the war of numbers knows it
     let sA = 0, sD = 0; for (const s of [0, 1]) for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { const v = strength(c, c.pop); if (s === 0) sA += v; else sD += v; } }
+    if (A.big && D.big && bySea(w, A.big, D.big)) sA *= A.arts.steamships ? 1 : A.arts.navigation ? 0.5 : 0.3;   /* (Oct 30) a war over the sea is fought with what the ships carry */
     const bal = 0.5 * Math.log(Math.max(0.2, Math.min(5, sA / Math.max(1, sD))));
     const willA = K.stakes[0] * (0.7 + pA) - xa.t + bal, willD = K.stakes[1] * (1 - 0.5 * pA) + 0.1 - xd.t - bal;
     { const pk = K.peak || (K.peak = [0, 0]); for (const s of [0, 1]) { let sv = 0, pp = 0; for (const id of K.sides[s].members) { const c = w.cults[id]; if (c && c.alive) { sv += c.serving || 0; pp += c.pop; } } if (pp > 0) pk[s] = Math.max(pk[s], sv / pp); } }
@@ -180,7 +182,7 @@ function settle(w, K, out, how, aimT, H) {
   // (a war that dies down keeps the lines where they stand: towns held three years or more stay with their holders)
   for (const ws of out === 'won' ? [0] : out === 'lost' ? [1] : [0, 1]) { if (conquestNorm(w, w.cults[K.sides[ws].lead])) continue; const keep = new Map();
     for (const s of w.sets) { if (s.dead || !s.occ || s.occ.cid !== K.id || sideOf(K, s.occ.by) !== ws || sideOf(K, s.cult) !== 1 - ws || (out === 'none' && w.year - s.occ.since < 3)) continue; const o = w.cults[s.occ.by], sv = w.cults[s.cult]; if (!o || !o.alive || o.power) continue;
-      let d = 1e9; for (const m of w.sets) if (!m.dead && !m.nomad && m.cult === o.id) { const q = d2(m, s); if (q < d) d = q; }
+      let d = 1e9; const home = o.big ? w.mass[o.big.y * W + o.big.x] : -1; for (const m of w.sets) if (!m.dead && !m.nomad && m.cult === o.id && (o.arts.steamships || w.mass[m.y * W + m.x] === home)) { const q = d2(m, s); if (q < d) d = q; }   /* (Oct 30) a fort on a far coast is no base to rule a province from, until steamships */
       if (d <= 30 * 30 || o.tech >= sv.tech + 2) keep.set(s, o); }
     for (const [s, o] of keep) { const sv = w.cults[s.cult]; if (sv.big === s) r.capital = true; r.annexed.push(s.name); H.annex(w, s, o); tally(w, 'heldKept'); }
     if (keep.size && r.kind === 'status') r.kind = ws === 0 ? 'annex' : 'lost'; }

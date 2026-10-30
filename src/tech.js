@@ -52,6 +52,8 @@ export const ART = {
   sanitation: { say: 'sewers and clean water', tier: 5, req: ['aqueducts', 'medicine'], push: (c) => (c.plagued ? 2 : 0) },
   engines: { say: 'smoke and engines', tier: 5, req: ['steel', 'mills'], can: (c) => (c.metals & 64) !== 0 },
   railways: { say: 'railways', tier: 6, req: ['engines', 'roads'] },
+  steamships: { say: 'steamships', tier: 6, req: ['engines', 'navigation'] },   /* (Oct 30) the sea and the rivers opened to industry: the colonial gates key on these two */
+  quinine: { say: 'quinine against the fevers', tier: 6, req: ['medicine', 'engines'], push: (c) => (c.plagued ? 3 : 0) },
   dynamite: { say: 'blasting powder', tier: 6, req: ['gunpowder', 'engines'] },
   // wires and wings
   electricity: { say: 'electricity', tier: 6, req: ['engines', 'schools'] },
