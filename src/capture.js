@@ -172,8 +172,10 @@ function rivalGrabs(w, o) { const G = w.grabs; if (!G || !o.big) return 0; let n
 function colonise(w, o) {
   const rnd = w.rnd, ob = o.big, mine = w.mass[ob.y * W + ob.x], reach = o.arts.navigation ? 260 : 90, my = strength(o, o.pop);
   let best = null, bs = 0; const why = { far: 0, strong: 0, peer: 0 };
+  const above = new Set(); for (let u = o, k = 0; u && u.over && u.over.kind === 'realm' && k < 8; k++) { above.add(u.over.id); u = w.cults[u.over.id]; }   /* (Oct 30) a client never takes its own masters: overlord loops */
   for (const c of w.cults) {
-    if (!c.alive || c.power || c === o || !c.big) continue;
+    if (!c.alive || c.power || c === o || !c.big || above.has(c.id)) continue;
+    if (c.over && c.over.kind === 'realm' && above.has(c.over.id)) continue;   /* nor its masters' other clients */
     if (c.over) { const ov = c.over.kind === 'realm' ? w.cults[c.over.id] : null; if (!ov || ov === o || !o.arts.steamships || ov.tech > o.tech - 1 || strength(ov, ov.pop) > (o.arts.railways ? 2 : 0.8) * my) continue; }   /* (Oct 30) an industrial power strips a backward empire of its clients (Egypt from the Ottomans) */
     const cb = c.big; if (!bySea(w, ob, cb) || (w.mass[cb.y * W + cb.x] === mine && !cb.port)) continue;   /* across the sea, or a coast far along the same land */
     const dist = Math.hypot(wrapDx(cb.x - ob.x), cb.y - ob.y); if (dist > reach) { why.far++; continue; }
