@@ -61,7 +61,7 @@ function crown(w, c, quiet) {
   if (!quiet && c.count >= 14 && c.big && trait === 'mad') ev(w, `${c.ruler.name} takes the throne of the ${c.name}. It does not go well.`, c.big.x, c.big.y, c.color, 1);
 }
 export function addSet(w, cult, x, y, pop, nomad) {
-  const c = w.cults[cult]; x = wx(x);
+  const c = w.cults[cult]; x = wx(x); if (!(y >= 0 && y < H)) { if (typeof process !== 'undefined' && process.env && process.env.FORMI_TRACE) console.error('addSet y out of range', y, new Error().stack.split('\n').slice(2, 5).join(' / ')); y = Math.max(0, Math.min(H - 1, y || 0)); }   /* (Oct 30) a town off the edge of the map read the weather of nowhere (NaN worlds) */
   const s = { id: w.nextId++, cult, x, y, px: x, py: y, mt: 0, pop, nomad, tier: nomad ? 0 : 1, maxTier: nomad ? 0 : 1, age: 0, R: 2, links: 0, trade: 0, name: nomad ? null : placeName(w, c), lastFam: -99, lastSack: -99, src: [1, 0, 0, 0, 0], way: 'forage', note: 'grow', ores: 0, wonder: 0, plague: 0, immune: 0, dead: false, walls: false, tower: false, port: false, busy: 0, burned: 0, wa: 1, faith: c.faith };
   w.sets.push(s); c.count++; if (nomad) w.nBand = (w.nBand || 0) + 1; else w.nTown = (w.nTown || 0) + 1; return s;
 }
