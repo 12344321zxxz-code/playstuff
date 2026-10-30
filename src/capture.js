@@ -142,10 +142,38 @@ export function captureYear(w) {
     const pushed = o.hub && (o.hub.st === 'press' || o.hub.st === 'factions'); if (rnd() > (pushed ? 0.04 : o.arts.navigation ? 0.03 : 0.008) * (o.arts.railways ? 30 : o.arts.steamships ? 8 : 1) * (o.arts.steamships ? Math.min(4, 1 + 0.5 * rivalGrabs(w, o)) : 1)) continue;   /* (Oct 29) the industrial scramble: once there are railways at home, expeditions go out year after year */
     colonise(w, o);
   }
-  if ((w.leadAge || 0) < 8) footholds(w);
+  if ((w.leadAge || 0) < 8) { spheres(w); footholds(w); }
   for (const o of w.cults) if (o.alive && !o.power && o.big && (o.arts.sailing || o.arts.navigation)) independence(w, o);   /* colonies break away on their own clock, likelier when the crown is at war or divided */
 }
 
+// (Oct 30, council) the loaded spring. Before breech-loaders a colonial power's forts, loans and guns build a stake in
+// the realms over the sea (c.lev[holder], 0..1) that changes no sovereign. Debts drain the court; a crisis (civil war,
+// factions, a heavy defeat, a weak court, a new house) is when the stake is called in: before breech-loaders that
+// installs a friendly ruler (a bigger stake), after them a protectorate. Two holders of about equal stake keep each
+// other out (a buffer, like Siam or Persia); a realm that has caught up expels the resident. Stakes fade.
+function lever(w, c, o, d) { if (!c || !o || c === o || c.power || o.power) return; const L = c.lev || (c.lev = {}); L[o.id] = Math.min(1, (L[o.id] || 0) + d); }
+function crisisOf(w, c) { return !!((c.hub && (c.hub.st === 'civil' || c.hub.st === 'factions')) || (c.shaken != null && w.year - c.shaken < 15) || c.coh < 0.35 || (c.house && w.year - c.house.since < 5) || c.war); }
+function spheres(w) {
+  const rnd = w.rnd;
+  for (const c of w.cults) {
+    if (!c.alive || c.power || !c.lev || !c.big) continue; let top = null, tv = 0, sec = 0;
+    for (const k in c.lev) { const o = w.cults[k]; let v = c.lev[k] * 0.985; if (!o || !o.alive || o.power || o === c) { delete c.lev[k]; continue; }
+      if (c.tech >= o.tech && v > 0.25) { v *= 0.5; if (v < 0.25) { ev(w, `The ${c.name} have caught up with the ${o.name}. Their resident is put on a ship home, and the debts are not paid.`, c.big.x, c.big.y, c.color, 1); record(w, 'expel', [c.id, o.id], { x: c.big.x, y: c.big.y }); } }
+      if (v < 0.02) { delete c.lev[k]; continue; } c.lev[k] = v; if (v > tv) { sec = tv; tv = v; top = o; } else if (v > sec) sec = v; }
+    if (!top || c.over) continue;
+    c.coh = Math.max(0.05, c.coh - 0.004 * tv);   /* the debts drain the court */
+    if (sec > 0.67 * tv && sec > 0.2) continue;   /* two powers of about equal stake hold each other off: a buffer */
+    const crisis = crisisOf(w, c), o = top;
+    if (o.over || !o.big || !bySea(w, o.big, c.big)) continue;
+    if (o.arts.rifles && o.arts.steamships && o.tech >= c.tech + 1) {
+      if (rnd() > tv * (crisis ? 0.4 : 0.03)) continue;
+      tally(w, 'sphereTake'); take(w, c, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(c.id); grab(w, o, c.big); delete c.lev[o.id];
+      record(w, 'capture', [c.id, o.id], { note: `the ${c.name} pass under the ${o.name}${crisis ? ' in their troubles' : ''}`, x: c.big.x, y: c.big.y });
+      ev(w, crisis ? `The ${c.name} are in no state to refuse. The ${o.name} send gunboats to ${c.big.name || 'their coast'} "to protect their loans", and the resident of the ${o.name} rules in the name of the ${c.name} from now on.` : `The ${c.name} owe the ${o.name} more than they can ever pay. A treaty is signed at ${c.big.name || 'their court'}: the ${o.name} will collect the taxes, keep the army and speak for the ${c.name} abroad.`, c.big.x, c.big.y, o.color, c.count >= 8 ? 0 : 1);
+    } else if (crisis && rnd() < 0.15 * tv) { c.lev[o.id] = Math.min(1, tv + 0.15); tally(w, 'sphereFriend');
+      ev(w, `In the troubles of the ${c.name} the ${o.name} back one claimant with guns and money. He wins, and remembers who paid.`, c.big.x, c.big.y, o.color, 1); }
+  }
+}
 // (Oct 30) footholds: a colonial power's forts and towns on a foreign coast draw the realms around them into
 // dependence (trade, debts, a resident at court) until one day they are protectorates: indirect rule, slowly
 // before the engine, fast once railways and the industrial edge come. The further behind, the sooner.
@@ -155,7 +183,8 @@ function footholds(w) {
     if (s.dead || s.nomad) continue; const o = w.cults[s.cult]; if (!o || !o.alive || o.power || o.over || !o.big || !o.arts.sailing || !bySea(w, o.big, s)) continue;
     const pace = o.arts.railways ? 0.03 : o.arts.steamships ? 0.012 : 0.0012; if (rnd() > pace * 4) continue;
     near(w, s.x, s.y, 16, s, true, (u) => { const c = w.cults[u.cult]; if (!c || c === o || !c.alive || c.power || c.over || c.war || !c.big || seen.has(c.id)) return; seen.add(c.id);
-      const gap = o.tech - c.tech; if (gap < (o.arts.steamships ? 1 : 2) || !bySea(w, o.big, c.big)) return; if (!o.arts.quinine && w.tMean[c.big.y * W + c.big.x] > 21 && w.mi[c.big.y * W + c.big.x] > 1.1) return;   /* the fevers keep them at the coast */   /* before the engine only a realm far behind is drawn in */
+      const gap = o.tech - c.tech; if (!o.arts.rifles) { if (gap >= 1 && bySea(w, o.big, c.big)) lever(w, c, o, 0.08 * gap); return; }   /* (Oct 30, the spring) before breech-loaders the fort's reach is money and guns, not rule */
+      if (gap < 1 || !bySea(w, o.big, c.big)) return; if (!o.arts.quinine && w.tMean[c.big.y * W + c.big.x] > 21 && w.mi[c.big.y * W + c.big.x] > 1.1) return;   /* the fevers keep them at the coast */   /* before the engine only a realm far behind is drawn in */
       if (strength(c, c.pop) > (o.arts.railways ? 2 : 0.8) * strength(o, o.pop)) return;
       if (rnd() > 0.25 * gap) return;
       tally(w, 'footholdTake'); take(w, c, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(c.id); grab(w, o, c.big);
@@ -190,7 +219,7 @@ function colonise(w, o) {
     if (fever) { tally(w, 'colFort'); fort(w, o, cb.x, cb.y, best); return; }
     if (best.over) { const ov = w.cults[best.over.id]; free(w, best, `the ${o.name} take the ${best.name} from the ${ov ? ov.name : 'old empire'}`); tally(w, 'colStrip'); take(w, best, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(best.id); grab(w, o, cb); record(w, 'capture', [best.id, o.id], { note: `the ${o.name} take the ${best.name} from the ${ov ? ov.name : 'old empire'}`, x: cb.x, y: cb.y });
       ev(w, `The ${ov ? ov.name : 'old masters'} can no longer protect the ${best.name}. Ships of the ${o.name} come to ${cb.name}, and the resident they leave behind gives the orders now.`, cb.x, cb.y, o.color, best.count >= 8 ? 0 : 1); return; }
-    if (!o.arts.steamships && best.count > 1) { tally(w, 'colFoothold'); fort(w, o, cb.x, cb.y, best); return; }   /* (Oct 30) before the engine: a trading fort on their coast, a foothold, not a conquest */
+    if (!o.arts.rifles && best.count > 1) { tally(w, 'colFoothold'); lever(w, best, o, 0.15); if (!o.arts.steamships) fort(w, o, cb.x, cb.y, best); return; }   /* (Oct 30, the spring) before breech-loaders a realm of towns is not conquered from the sea: a fort, loans, a resident, a stake */   /* (Oct 30) before the engine: a trading fort on their coast, a foothold, not a conquest */
     if (best.pop > 2500 && best.env.towns >= 2 && !(o.arts.steamships && o.arts.rifles && o.tech >= best.tech + 1)) {   /* (Oct 30) gunboats: a steamship power an age ahead dictates terms without a war */
       // (slice 4) a realm of towns is not taken by showing the flag: it is a war, for tribute, fought over the sea
       if (!best.war && declareWar(w, o, best)) { tally(w, 'colonialWar'); record(w, 'colonial-war', [o.id, best.id], { note: `the ${o.name} sail to make the ${best.name} pay`, x: cb.x, y: cb.y, terms: { theirs: strength(best, best.pop), overlord: my } }); ev(w, `Ships of the ${o.name} come to ${cb.name}, and they have not come to trade. The ${o.name} mean to make the ${best.name} pay them tribute.`, cb.x, cb.y, o.color, 0); return; }

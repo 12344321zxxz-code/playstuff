@@ -29,12 +29,17 @@ function chronicle() {
 }
 function roster() {
   const w = state.w, live = w.cults.filter((c) => c.alive && c.count > 0 && !c.power).sort((a, b) => b.pop - a.pop);
-  const key = live.map((c) => c.id + ':' + Math.round(c.pop / 50) + ':' + c.count + c.kind + (c.war ? 'w' : '')).join('|'); if (key === rosterKey) return; rosterKey = key;
+  /* (Oct 30) protectorates are listed under their overlord */
+  const ovOf = (c) => (c.over && c.over.kind === 'realm' && w.cults[c.over.id] && w.cults[c.over.id].alive ? c.over.id : null), subs = new Map();
+  for (const c of live) { const o = ovOf(c); if (o != null) { if (!subs.has(o)) subs.set(o, []); subs.get(o).push(c); } }
+  const order = []; const put = (c, d) => { order.push([c, d]); if (d < 3) for (const k of subs.get(c.id) || []) put(k, d + 1); };
+  for (const c of live) if (ovOf(c) == null || !live.some((x) => x.id === ovOf(c))) put(c, 0);
+  const key = order.map(([c, d]) => c.id + ':' + d + ':' + Math.round(c.pop / 50) + ':' + c.count + c.kind + (c.war ? 'w' : '')).join('|'); if (key === rosterKey) return; rosterKey = key;
   const box = $('roster'); box.textContent = '';
   if (!live.length) box.appendChild(el('p', 'muted', 'Nobody lives here. The People tool wakes a new band wherever you tap.'));
-  for (const c of live) {
-    const b = el('button', 'pp'); b.type = 'button'; const chip = el('span', 'chip'); chip.style.background = c.color;
-    b.append(chip, el('span', 'nm', c.name + (c.realmN >= 2 ? ' ' + ['', '', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][Math.min(10, c.realmN)] : '')), el('span', 'num', folk(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (c.faith != null ? ' · ' + w.faiths[c.faith].name : '') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
+  for (const [c, depth] of order) {
+    const b = el('button', 'pp' + (depth ? ' client' : '')); if (depth) b.style.marginLeft = 12 * depth + 'px'; b.type = 'button'; const chip = el('span', 'chip'); chip.style.background = c.color;
+    b.append(chip, el('span', 'nm', c.name + (c.realmN >= 2 ? ' ' + ['', '', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][Math.min(10, c.realmN)] : '')), el('span', 'num', folk(c.pop)), el('span', 'sub', c.kind + ' · ' + c.count + (c.count === 1 ? ' place' : ' places') + (depth ? ' · protectorate of the ' + w.cults[c.over.id].name : '') + (subs.has(c.id) ? ' · ' + subs.get(c.id).length + (subs.get(c.id).length === 1 ? ' protectorate' : ' protectorates') : '') + (c.faith != null ? ' · ' + w.faiths[c.faith].name : '') + (c.war ? ' · at war with the ' + w.cults[c.war.foe].name : '')));
     if (c.series && c.series.length > 2) { b.appendChild(strip(c)); b.title = `${c.house ? c.house.name + ' rules. ' : ''}${c.parent ? 'Descended from the ' + c.parent + '. ' : ''}Line: people over time; red: more would-be lords than posts; faint: coming apart.`; }
     b.addEventListener('click', () => { const s = c.big; if (!s) return; flyTo(s.x + 0.5, s.y + 0.5, 6); const info = describeSet(w, s); state.sel = info.follow; showInfo(info); });
     box.appendChild(b);
