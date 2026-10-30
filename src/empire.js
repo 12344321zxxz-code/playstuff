@@ -95,7 +95,7 @@ export function empireYear(w) {
 // a province goes: as a client (autonomy) or a realm of its own (secession), with its house on the throne
 export function secede(w, c, R, k, T, how, why) {
   const r = R[k], seat = w.sets.find((s) => s.id === r.seat && !s.dead); if (!seat) return null;
-  const nc = newCult(w, c); let n = 0, big = null;
+  const nc = newCult(w, c); nc.how = how; let n = 0, big = null;
   if (seat.lang != null && seat.lang !== c.langId && w.langs && w.langs[seat.lang]) { nc.langId = seat.lang; nc.lang = w.langs[seat.lang].snd; }
   for (const s of T || w.sets) if (!s.dead && s.cult === c.id && s._reg === r.id && !s.occ && !s.siege && s !== c.big) { s.cult = nc.id; n++; if (!big || s.pop > big.pop) big = s; }
   nc.count = n; nc.big = seat.cult === nc.id ? seat : big; nc.coh = 0.85; if (!n) return null; nc.house = { name: r.name, since: w.year }; hubReset(w, nc, 0.7);

@@ -700,7 +700,7 @@ function schism(w, c, quiet) {
   if (aliveN(w) >= realmCap(w) - 6) { let to = null; near(w, far.x, far.y, 30, far, true, (o) => { if (o.cult !== c.id && (!to || w.cults[o.cult].pop > w.cults[to.cult].pop)) to = o; }); if (!to) return null; const oc = w.cults[to.cult]; let n = 0;
     for (const s of w.sets) { if (s.cult !== c.id) continue; if (wrapDx(s.x - far.x) ** 2 + (s.y - far.y) ** 2 < 0.5 * (wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2)) { s.cult = oc.id; n++; } }
     if (n) { if (!quiet) record(w, 'defect', [c.id, oc.id], Object.assign({ note: `${n} towns go over` }, c._why || { x: far.x, y: far.y })); c.coh = Math.min(1, c.coh + 0.15); if (!quiet) ev(w, `${n === 1 ? far.name + ' goes' : far.name + ' and ' + (n - 1) + ' other ' + (n === 2 ? 'place go' : 'places go')} over to the ${oc.name}. The ${c.name} are too weak to stop it.`, far.x, far.y, oc.color, n < 8 ? 1 : 0); } return n ? { n, to: oc } : null; }
-  const nc = newCult(w, c); let n = 0;
+  const nc = newCult(w, c); nc.how = 'breakaway'; let n = 0;
   if (far.lang != null && far.lang !== c.langId && w.langs && w.langs[far.lang]) { nc.langId = far.lang; nc.lang = w.langs[far.lang].snd; }   /* a breakaway speaks its own tongue at court */
   for (const s of w.sets) { if (s.cult !== c.id) continue; if (wrapDx(s.x - far.x) ** 2 + (s.y - far.y) ** 2 < wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2) { s.cult = nc.id; n++; } }
   nc.count = n; nc.coh = 0.9; c.coh = Math.min(1, c.coh + 0.2); if (c.hub && c.count > 0) c.hub.E *= Math.max(0.3, 1 - n / c.count); hubReset(w, nc, 0.7); if (!quiet) record(w, 'breakaway', [c.id, nc.id], Object.assign({ note: `${n} towns` }, c._why || { x: far.x, y: far.y }));
