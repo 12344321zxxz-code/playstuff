@@ -135,9 +135,28 @@ export function captureYear(w) {
     const pushed = o.hub && (o.hub.st === 'press' || o.hub.st === 'factions'); if (rnd() > (pushed ? 0.04 : 0.008) * (o.arts.railways ? 30 : o.arts.engines ? 8 : 1)) continue;   /* (Oct 29) the industrial scramble: once there are railways at home, expeditions go out year after year */
     colonise(w, o);
   }
+  if ((w.leadAge || 0) < 8) footholds(w);
   for (const o of w.cults) if (o.alive && !o.power && o.big && (o.arts.sailing || o.arts.navigation)) independence(w, o);   /* colonies break away on their own clock, likelier when the crown is at war or divided */
 }
 
+// (Oct 30) footholds: a colonial power's forts and towns on a foreign coast draw the realms around them into
+// dependence (trade, debts, a resident at court) until one day they are protectorates: indirect rule, slowly
+// before the engine, fast once railways and the industrial edge come. The further behind, the sooner.
+function footholds(w) {
+  const rnd = w.rnd, seen = new Set();
+  for (const s of w.sets) {
+    if (s.dead || s.nomad) continue; const o = w.cults[s.cult]; if (!o || !o.alive || o.power || o.over || !o.big || !overseas(w, o, s) || !o.arts.sailing) continue;
+    const pace = o.arts.railways ? 0.03 : o.arts.engines ? 0.012 : 0.003; if (rnd() > pace * 4) continue;
+    near(w, s.x, s.y, 16, s, true, (u) => { const c = w.cults[u.cult]; if (!c || c === o || !c.alive || c.power || c.over || c.war || !c.big || seen.has(c.id)) return; seen.add(c.id);
+      const gap = o.tech - c.tech; if (gap < 1 || w.mass[c.big.y * W + c.big.x] === w.mass[o.big.y * W + o.big.x]) return;
+      if (strength(c, c.pop) > (o.arts.railways ? 2 : 0.8) * strength(o, o.pop)) return;
+      if (rnd() > 0.25 * gap) return;
+      tally(w, 'footholdTake'); take(w, c, { kind: 'realm', id: o.id }); (o.colonies || (o.colonies = [])).push(c.id);
+      const b = c.big; record(w, 'capture', [c.id, o.id], { note: `the ${c.name} fall under the ${o.name} from ${s.name || 'their fort'}`, x: b.x, y: b.y });
+      ev(w, `The ${o.name} at ${s.name || 'their fort'} have lent the ${c.name} money, sold them guns and taken their side in every quarrel. Now a resident of the ${o.name} sits at ${b.name || 'their court'}, and nothing is decided without him.`, b.x, b.y, o.color, c.count >= 8 ? 0 : 1);
+    });
+  }
+}
 // gain over cost: land and how weak or empty it is, against distance and resistance, over the sea
 function colonise(w, o) {
   const rnd = w.rnd, ob = o.big, mine = w.mass[ob.y * W + ob.x], reach = o.arts.navigation ? 260 : 90, my = strength(o, o.pop);
@@ -154,6 +173,7 @@ function colonise(w, o) {
   if (best && !tryEmpty) {
     const cb = best.big, i = cb.y * W + cb.x, fever = w.tMean[i] > 21 && w.mi[i] > 1.1 && !o.arts.medicine;
     if (fever) { tally(w, 'colFort'); fort(w, o, cb.x, cb.y, best); return; }
+    if (!o.arts.engines && best.count > 2) { tally(w, 'colFoothold'); fort(w, o, cb.x, cb.y, best); return; }   /* (Oct 30) before the engine: a trading fort on their coast, a foothold, not a conquest */
     if (best.pop > 2500 && best.env.towns >= 2) {
       // (slice 4) a realm of towns is not taken by showing the flag: it is a war, for tribute, fought over the sea
       if (!best.war && declareWar(w, o, best)) { tally(w, 'colonialWar'); record(w, 'colonial-war', [o.id, best.id], { note: `the ${o.name} sail to make the ${best.name} pay`, x: cb.x, y: cb.y, terms: { theirs: strength(best, best.pop), overlord: my } }); ev(w, `Ships of the ${o.name} come to ${cb.name}, and they have not come to trade. The ${o.name} mean to make the ${best.name} pay them tribute.`, cb.x, cb.y, o.color, 0); return; }
