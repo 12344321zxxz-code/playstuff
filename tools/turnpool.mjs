@@ -18,3 +18,15 @@ gaps.sort((a, b) => a - b); console.log(`steam age, land 2+ ages behind, per wor
 if (per.length >= 3) { const rk = (k) => { const o = [...per].sort((a, b) => a[k] - b[k]); return per.map((p) => o.indexOf(p)); }, a = rk('col'), b = rk('pool'), m = per.length, d2 = a.reduce((t, x, i) => t + (x - b[i]) ** 2, 0);
   console.log(`steam age per world (seed: colonial / pool, centuries): ${per.map((p) => `${p.seed}: ${p.col.toFixed(0)}/${p.pool.toFixed(0)} (${p.c})`).join(', ')}`);
   console.log(`rank correlation colonial~pool ${(1 - (6 * d2) / (m * (m * m - 1))).toFixed(2)} (want clearly positive)`); }
+// (Oct 30, council step 0) diagnostics: who takes the colonial land, the unclaimed pool, a second clock, and how crowded
+{ const rs = []; for (const f of process.argv.slice(2)) { try { const r = JSON.parse(readFileSync(f, 'utf8').trim().split('\n').pop()); if (r.toRaw) rs.push(r); } catch {} }
+  const sum = BUCKETS.map(() => [0, 0, 0, 0, 0]); for (const r of rs) r.toRaw.forEach((v, k) => { sum[k][0] += v[0] || 0; sum[k][1] += v[3] || 0; sum[k][2] += v[11] || 0; sum[k][3] += v[12] || 0; sum[k][4] += v[13] || 0; });
+  console.log('\nage    colonial  of it by industrial takers (tech 6+)  unclaimed pool  near-colonial (far, not by sea)');
+  sum.forEach((b, k) => { if (!b[0]) return; const p = (v) => ((100 * v) / b[0]).toFixed(1).padStart(5); console.log(`${BUCKETS[k].padEnd(5)} ${p(b[1])}     ${b[1] ? ((100 * b[2]) / b[1]).toFixed(0).padStart(3) + '%' : '  - '}                                ${p(b[3])}           ${p(b[4])}`); });
+  const alt = BUCKETS.map(() => [0, 0, 0, 0, 0]), bk = (t) => (t <= 2 ? 0 : t >= 9 ? 7 : t - 2);
+  for (const r of rs) for (const c of r.toCent || []) if (c.length >= 15) { const a = alt[bk(c[4])]; a[0] += c[11]; a[1] += c[12]; a[2] += c[13]; a[3] += c[14]; a[4]++; }
+  console.log('\nsecond clock (most advanced realm with 1% of people): foreign / colonial / internal');
+  alt.forEach((a, k) => { if (!a[0]) return; const p = (v) => ((100 * v) / a[0]).toFixed(1).padStart(5); const t = TGT[BUCKETS[k]]; console.log(`${BUCKETS[k].padEnd(5)} ${String(a[4]).padStart(4)}  ${p(a[1])} (${t[0]})  ${p(a[3])} (${t[1] ?? '-'})  ${p(a[2])} (${t[2]})`); });
+  console.log('\nsteam centuries per world (seed: year colonial%/unclaimed pool% living/cap, rifle+steam powers, industrial powers)');
+  for (const r of rs) { const st = (r.toCent || []).filter((c) => c[1] === 6 && c.length >= 15); if (st.length) console.log(`  ${r.seed}: ` + st.map((c) => `${c[0]} ${c[5]}/${c[6]} ${c[7]}/${c[8]} r${c[9]} i${c[10]}`).join(' | ')); }
+}
