@@ -1,4 +1,5 @@
 // The page: camera, input, tools, panels. The world itself lives in world.js and friends.
+import { realmAt, diplomacy } from './diplomacy.js';
 import { tongueColor, familyOf } from './tongues.js';
 import { W, H, N, TPY, CW, CH, TAU, clamp, idx, wrapDx, wx } from './core.js';
 import { tensions, makeWatch, watchRate } from './watch.js';
@@ -26,7 +27,7 @@ let R = null; try { R = createRenderer(glc); } catch (e) { console.error(e); }
 if (!R) $('nogl').hidden = false;
 
 const cam = { x: W / 2, y: H / 2, z: 3, dpr: 1, w: 0, h: 0, minZ: 1 };
-const pal = new Float32Array(96);
+const pal = new Float32Array(192);
 const S = { w: null, tool: null, brush: 5, lens: 0, speed: 1, acc: 0, last: 0, dirty: true, hover: null, press: null, hold: null, climT: 0, waterT: 0, sel: null, hudT: 0, hintT: 0, plateDrag: null, opt: {}, touched: false, ref: null, ghost: null, perf: { sim: 0, gl: 0, ov: 0, ticks: 0, frame: 16 }, q: 1, qT: 0, adapt: true, sim: null, ranIn: 0, frameT: 0, held: false, pending: null };
 const TPS = HOST_TPS;
 const WATCH = makeWatch();
@@ -212,10 +213,10 @@ function tipAt(p) {
 // itself is described by whoever holds the whole map (the worker, or this page)
 function describeAt(x, y, cb) {
   const w = S.w; if (!w) return cb(null);
-  if (!S.sim) return cb(describe(w, x, y));
+  if (!S.sim) { const rc = S.lens === 6 ? realmAt(w, x, y) : null; return cb(rc ? diplomacy(w, rc) : describe(w, x, y)); }
   const xi = Math.round(x - 0.5), yi = Math.round(y - 0.5); if (yi < 0 || yi >= H) return cb(null);
   for (const fn of w.lookers || []) { const r = fn(w, xi, yi, idx(xi, yi)); if (r) return cb(r); }
-  S.sim.ask('describe', { x, y }).then(cb, () => cb(null));
+  S.sim.ask('describe', { x, y, lens: S.lens }).then(cb, () => cb(null));
 }
 // the big things also appear over the map for a few seconds
 export function toast(e) {
@@ -353,7 +354,7 @@ function frameInner(now) {
 // worker sends twice a second, with the moving things and the clock refreshed every frame, and the
 // map layers the page reads (water, height, rain, ore, owners) swapped in when they change. Every
 // change to the world is a command to the worker; nothing here changes the world itself.
-const LAYER_KEYS = ['water', 'h', 'mi', 'ore', 'owner', 'courtOf', 'plate'];
+const LAYER_KEYS = ['water', 'h', 'mi', 'ore', 'owner', 'courtOf', 'plate', 'polity'];
 function onSim(m) {
   const t0 = performance.now();
   if (m.t === 'frame') {

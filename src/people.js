@@ -34,7 +34,8 @@ import { deadConquest, corpses } from './dead.js';
 import { PLANTS, NP, cropYield, hasCrop, giveCrop, livestock, plantWild } from './origins.js';
 
 export const TIER = ['band', 'village', 'town', 'city'];
-export const COLORS = ['#d7263d', '#8e44d6', '#f46d1b', '#f2efe4', '#22201e', '#e040a8', '#ffd400', '#00c2a8', '#7a3b1d', '#ff8fa3', '#3d5afe', '#9bd636', '#00a1e4', '#b56576', '#6d597a', '#e9c46a', '#577590', '#f94144', '#43aa8b', '#bc6c25', '#a2d2ff', '#cdb4db', '#606c38', '#fb8500'];
+export { COLORS } from './colors.js';
+import { COLORS, NCOL, bestSlot } from './colors.js';
 export const ORES = ['', 'copper', 'tin', 'iron', 'gold', 'salt', 'coal', 'uranium'];
 export const WAR_RATE = 8;   /* (Oct 29) how often realms go to war, tuned to the turnover of land in history */
 const MAXS = 520, MAXB = 420, MAXC = 30, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
@@ -46,9 +47,11 @@ export const colorOf = (c) => c.color;
 const aliveN = (w) => { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; return n; };   // realms of the dead don't take a living people's place
 
 export function newCult(w, parent) {
-  const used = new Uint8Array(COLORS.length); for (const c of w.cults) if (c.alive) used[c.slot] = 1;
-  let slot = 0; while (slot < COLORS.length - 1 && used[slot]) slot++;
-  if (used[slot]) slot = (w.rnd() * COLORS.length) | 0;
+  const used = new Uint8Array(NCOL); for (const c of w.cults) if (c.alive) used[c.slot] = 1;
+  /* (Oct 31) a colour that stands out from its parent and the realms around it (its own dice, so the world's run is not disturbed) */
+  const avoid = []; if (parent) { avoid.push(parent.slot); const b0 = parent.big; if (b0) for (const c of w.cults) if (c.alive && c.big && c !== parent && Math.hypot(wrapDx(c.big.x - b0.x), c.big.y - b0.y) < 70) avoid.push(c.slot); }
+  let seedK = (w.cults.length * 0.6180339887 + 0.137) % 1; const crnd = () => (seedK = (seedK * 9301 + 0.4927) % 1);
+  const slot = bestSlot(used, avoid, crnd);
   const lang = parent ? parent.lang : makeSound(w);   // a daughter people keeps its parent's tongue; tongues fork by drift, not by politics
   const c = { id: w.cults.length, slot, color: COLORS[slot], lang, name: cultName(w, lang), know: parent ? parent.know : 0, tech: parent ? parent.tech : 0, alive: true, count: 0, pop: 0, peak: 0, wit: 0.75 + 0.6 * w.rnd(),
     arts: parent ? Object.assign({}, parent.arts) : {}, tame: parent ? Object.assign({}, parent.tame) : {}, metals: 0, gold: false, coh: 0.85, born: w.year, way: parent ? parent.way : 'forage', kind: 'foragers', parent: parent ? parent.name : null, pid: parent ? parent.id : null, grazer: parent ? parent.grazer : null,

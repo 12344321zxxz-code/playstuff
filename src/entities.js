@@ -19,10 +19,10 @@ import { hook, palette, state } from './main.js';
 import { TENET, MAGIC } from './faith.js';
 
 const setPal = (k, c) => { palette[k * 3] = parseInt(c.slice(1, 3), 16) / 255; palette[k * 3 + 1] = parseInt(c.slice(3, 5), 16) / 255; palette[k * 3 + 2] = parseInt(c.slice(5, 7), 16) / 255; };
-for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]);
+for (let k = 0; k < 64; k++) setPal(k, COLORS[k % COLORS.length]);
 // a realm of the dead borrows a colour slot but is drawn grey while it lasts
 let palKey = '';
-const deadPal = (w) => { let key = ''; for (const c of w.cults) if (c.alive && (c.power || (c.over && c.over.kind === 'dragon'))) key += c.slot + (c.power ? ',' : 'd,'); if (key === palKey) return; palKey = key; for (let k = 0; k < 32; k++) setPal(k, COLORS[k % COLORS.length]); for (const c of w.cults) if (c.alive && c.power) { setPal(c.slot, c.color); setPal(c.slot + 24 < 32 ? c.slot + 24 : c.slot, c.color); } else if (c.alive && c.over && c.over.kind === 'dragon') setPal(c.slot, '#e8962c'); };   /* a dragon kingdom is drawn in the dragon's gold */
+const deadPal = (w) => { let key = ''; for (const c of w.cults) if (c.alive && (c.power || (c.over && c.over.kind === 'dragon'))) key += c.slot + (c.power ? ',' : 'd,'); if (key === palKey) return; palKey = key; for (let k = 0; k < 64; k++) setPal(k, COLORS[k % COLORS.length]); for (const c of w.cults) if (c.alive && c.power) { setPal(c.slot, c.color); } else if (c.alive && c.over && c.over.kind === 'dragon') setPal(c.slot, '#e8962c'); };   /* a dragon kingdom is drawn in the dragon's gold */
 hook('tick', (w) => { deadPal(w); }); hook('newWorld', (w) => { palKey = '?'; deadPal(w); });
 
 const A = [0, 0], B = [0, 0];
@@ -74,6 +74,7 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
     let p;
     if (st.nomad && st.mt) { const f = clamp((w.tickN - st.mt + frac) / TPY, 0, 1), e = f * f * (3 - 2 * f); p = at(cam, st.px + wrapDx(st.x - st.px) * e + 0.5, st.py + (st.y - st.py) * e + 1); } else p = at(cam, st.x + 0.5, st.y + 1);
     const x = p[0], y = p[1];
+    if (lens === 6) { if (st.nomad && z < 8) continue; if (!st.nomad && !(c && c.big === st) && !(st.tier === 3 && z >= 5) && !(st.tier === 2 && z >= 9) && z < 14) continue; }   /* (Oct 31) the political map shows capitals and, closer in, the cities */
     if (st.nomad) { if (z < 2.4 && st.pop < 60) continue; blit(ctx, 'camp', x, y, k, col); continue; }
     if (z < 1.8 && st.tier < 2) { ctx.fillStyle = col; ctx.fillRect(Math.round(x - cam.dpr), Math.round(y - 2 * cam.dpr), 2 * cam.dpr, 2 * cam.dpr); continue; }
     if (st.walls && st.tier >= 2 && z >= 3) blit(ctx, 'walls', x, y + k, k, col);
@@ -95,7 +96,7 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
     if (st.name && (st.tier === 3 ? z >= 2.2 : st.tier === 2 ? z >= 5 : z >= 10)) names.push(st, x, y + 2 * cam.dpr);
   }
   for (let q = 0; q < names.length; q += 3) { const st = names[q]; label(ctx, st.name, names[q + 1], names[q + 2], Math.round((st.tier === 3 ? 13 : st.tier === 2 ? 11.5 : 10.5) * cam.dpr), '#fff', false, st.tier * 100 + Math.log(st.pop + 1)); }
-  if (lens === 6 || lens === 0) for (const c of w.cults) if (lens === 6 || (z < 4 && (c.count >= 8 || (c.over && c.over.kind === 'dragon')))) { if (!c.alive || c.power || !c.big || c.count < 2 || !seen(c.big.x, c.big.y, 10)) continue; const p = at(cam, c.big.x + 0.5, c.big.y + 0.5); const px = Math.round(clamp(9 + Math.sqrt(c.count) * 1.6, 11, 20) * cam.dpr), yy = p[1] - clamp(z * 2.4, 22, 46) * cam.dpr; const dk = c.over && c.over.kind === 'dragon'; label(ctx, dk ? 'DRAGON KINGDOM OF ' + c.name.toUpperCase() : c.name.toUpperCase(), p[0], yy, px, dk ? '#f0a43a' : colorOf(c), false, 1000 + c.pop / 100); }
+  if (lens === 6 || lens === 0) for (const c of w.cults) if (lens === 6 || (z < 4 && (c.count >= 8 || (c.over && c.over.kind === 'dragon')))) { if (!c.alive || c.power || !c.big || (c.count < 2 && lens !== 6)) continue; const T = lens === 6 && c.terr ? c.terr : null; if (lens === 6 && !T) continue; const lx = T ? T.x : c.big.x, ly = T ? T.y : c.big.y; if (!seen(lx, ly, 10)) continue; const p = at(cam, lx + 0.5, ly + 0.5); const px = T ? Math.round(clamp(Math.sqrt(T.n) * 0.22 * z, 9, 34) * cam.dpr) : Math.round(clamp(9 + Math.sqrt(c.count) * 1.6, 11, 20) * cam.dpr), yy = T ? p[1] : p[1] - clamp(z * 2.4, 22, 46) * cam.dpr; if (T && px < 9 * cam.dpr + 0.5 && T.n < 40) continue;   /* (Oct 31) on the political map the name sits across the realm's land, sized by it */ const dk = c.over && c.over.kind === 'dragon'; label(ctx, dk ? 'DRAGON KINGDOM OF ' + c.name.toUpperCase() : c.name.toUpperCase(), p[0], yy, px, dk ? '#f0a43a' : T ? '#fbf7ee' : colorOf(c), false, 1000 + c.pop / 100); }
   if (lens === 9) { const top = new Map(); for (const st of w.sets) if (!st.dead && st.faith != null && (!top.has(st.faith) || top.get(st.faith).pop < st.pop)) top.set(st.faith, st);
     for (const [id, st] of top) { const f = w.faiths[id]; if (!f.alive || f.towns < 2 || !seen(st.x, st.y, 10)) continue; const p = at(cam, st.x + 0.5, st.y + 0.5); label(ctx, f.name.replace(/^the /, '').toUpperCase(), p[0], p[1] - clamp(z * 2.4, 22, 46) * cam.dpr, Math.round(clamp(10 + Math.sqrt(f.towns), 12, 20) * cam.dpr), f.color, false, 1000 + f.towns); } }
 }
@@ -316,7 +317,9 @@ hook('overlay', (ctx, w, cam, S, now) => {
   const s = cam.z * cam.dpr, z = cam.z, frac = clamp(S.acc, 0, 1);
   view = { x: cam.x, y: cam.y, hw: cam.w / (2 * s), hh: cam.h / (2 * s) };
   const bare = S.lens === 4 || S.lens === 5;
-  if (!bare) { if (S.lens === 17) drawTongues(ctx, w, cam, s); drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawWays(ctx, w, cam, z, S.lens); drawRoutes(ctx, w, cam, z, S.lens); drawCourts(ctx, w, cam, s); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
+  const pol = S.lens === 6;   /* (Oct 31) the political map is a clean wall map: states, capitals, armies close in */
+  if (pol) { drawPeople(ctx, w, cam, z, S.lens, frac); if (z >= 6) drawMovers(ctx, w, cam, z, frac); drawDragons(ctx, w, cam, z, now, frac); }
+  else if (!bare) { if (S.lens === 17) drawTongues(ctx, w, cam, s); drawOre(ctx, w, cam, z); drawVolcanoes(ctx, w, cam, z); drawRuins(ctx, w, cam, z); drawSea(ctx, w, cam, z, now); drawPeople(ctx, w, cam, z, S.lens, frac); drawMovers(ctx, w, cam, z, frac); drawSwarms(ctx, w, cam, z, now, frac); drawWays(ctx, w, cam, z, S.lens); drawRoutes(ctx, w, cam, z, S.lens); drawCourts(ctx, w, cam, s); drawOther(ctx, w, cam, z, now, frac); drawDragons(ctx, w, cam, z, now, frac); drawStorms(ctx, w, cam, s, now, frac); }
   flushLabels(ctx); drawFx(ctx, w, cam, s, now); drawSel(ctx, cam, S, now);
 });
 
