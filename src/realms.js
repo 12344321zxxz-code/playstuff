@@ -73,7 +73,7 @@ function survey(w, R) {
     const r = R[y * W + wx(x + 1)], d = y + 1 < H ? R[i + W] : -1; for (const b of [r, d]) if (b >= 0 && b !== a) { const A = nb.get(a) || nb.set(a, {}).get(a), B = nb.get(b) || nb.set(b, {}).get(b); A[b] = (A[b] || 0) + 1; B[a] = (B[a] || 0) + 1; } }
   for (const c of w.cults) { if (!c.alive) { c.terr = null; continue; } const k = n.get(c.id); if (!k) { c.terr = null; continue; }
     let ang = Math.atan2(sc.get(c.id), sx.get(c.id)); if (ang < 0) ang += 6.2832; const tx = Math.round((ang / 6.2832) * W) % W, ty = Math.round(sy.get(c.id) / k);
-    let best = -1, bd = 1e9; for (const s of w.sets) if (!s.dead && !s.nomad && s.cult === c.id) { const d = Math.hypot(wrapDx(s.x - tx), s.y - ty); if (d < bd) { bd = d; best = s; } }   /* keep the name on its own land */
+    let best = null, bd = 1e9; for (const s of w.sets) if (!s.dead && !s.nomad && s.cult === c.id) { const d = Math.hypot(wrapDx(s.x - tx), s.y - ty); if (d < bd) { bd = d; best = s; } }   /* keep the name on its own land */
     const at = R[ty * W + tx] === c.id || !best ? [tx, ty] : [Math.round(tx + wrapDx(best.x - tx) * 0.6 + W) % W, Math.round(ty + (best.y - ty) * 0.6)];
     c.terr = { n: k, x: at[0], y: at[1], nb: nb.get(c.id) || {} }; }
 }
