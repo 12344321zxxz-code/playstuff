@@ -482,7 +482,7 @@ export function* peopleSteps(w) {
     // short of what the land could feed.
     let feed = food; if (A.railways && !s.nomad) { if (s.tier <= 2) { const out = food * 0.2; feed -= out; c._pool += out; } else { const wt = 1 + Math.min(2, s.pop / 6000); c._poolW += wt; feed += c._poolWLast > 0 ? (c._poolLast * wt) / c._poolWLast : 0; } }
     const cap = Math.max(1, feed * (A.computers || A.networks ? 0.88 : 1)); s.cap = cap;
-    if (s.pop < cap) { s.pop += s.pop * (s.nomad ? 0.036 : A.computers || A.networks ? 0.015 : 0.025) * (1 - s.pop / cap); s.note = s.pop > cap * 0.92 ? 'full' : 'grow'; if (s.note === 'full' && !s.nomad) c._full++; }
+    if (s.pop < cap) { s.pop += s.pop * (s.nomad ? 0.036 : A.computers || A.networks ? 0.018 : A.sanitation && A.railways ? 0.04 : 0.025) * (1 - s.pop / cap);   /* (Oct 31) clean water and the railway age: death rates fall before birth rates do, the industrial population boom */ s.note = s.pop > cap * 0.92 ? 'full' : 'grow'; if (s.note === 'full' && !s.nomad) c._full++; }
     else {
       const loss = (s.pop - cap) * (A.granaries ? 0.1 : 0.18), farmer = s.way === 'farm' || (farms > 0 && fA + 1 >= mx * 0.6);
       const why = w.aerosol > 0.3 ? 'ash' : s.plague > 0 ? 'plague' : farmer ? (blight > farms * 0.3 ? 'locusts' : wa < 0.78 ? 'drought' : wa > 1.5 && irrg > rain ? 'flood' : farms && soilS / farms < 0.66 ? 'soil' : 'crowded') : s.way === 'fish' ? (fishGap < 0.75 ? 'fish' : 'crowded') : wa < 0.78 ? 'drought' : s.way === 'hunt' || s.way === 'herd' ? (past + hunt < 2 ? 'game' : 'crowded') : 'crowded';
@@ -493,7 +493,7 @@ export function* peopleSteps(w) {
         if (s.pop > 80 && !s.nomad) flee(w, s, loss * 0.6); }
       s.pop -= loss;
     }
-    if (s.plague > 0) { const st = w.plagues[s.pid], dead = s.pop * st.v * (A.sanitation && !st.engineered ? 0.45 : A.medicine ? 0.8 : 1) * (st.engineered ? 1 : st.virgin != null && st.virgin !== c.id && c.germ > 0.3 ? 0.15 : 1 - 0.7 * c.germ); s.pop -= dead; st.killed += dead; corpses(w, s.x, s.y, dead); st.now++; s.plague--; if (s.plague === 0) s.immune = 70; c.germ = Math.min(1, c.germ + 0.03);
+    if (s.plague > 0) { const st = w.plagues[s.pid], dead = s.pop * st.v * (A.sanitation && !st.engineered ? 0.45 : A.medicine ? 0.8 : 1) * (st.engineered ? (A.genetics ? 0.4 : A.computers ? 0.7 : 1) : A.genetics ? 0.08 : A.computers ? 0.15 : A.electricity ? 0.35 : 1) * (   /* (Oct 31) germ theory, vaccines and antibiotics: modern epidemics kill a small fraction of what the old ones did (they were eating most of the industrial age's growth) */st.engineered ? 1 : st.virgin != null && st.virgin !== c.id && c.germ > 0.3 ? 0.15 : 1 - 0.7 * c.germ); s.pop -= dead; st.killed += dead; corpses(w, s.x, s.y, dead); st.now++; s.plague--; if (s.plague === 0) s.immune = 70; c.germ = Math.min(1, c.germ + 0.03);
       near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (st.engineered ? 1 : 1 - 0.8 * w.cults[o.cult].germ) * (w.cults[o.cult].arts.quarantine ? 0.5 : 1)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;

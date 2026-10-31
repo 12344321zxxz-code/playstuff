@@ -45,7 +45,7 @@ export function doomYear(w) {
     let p = 0; const alarmAt = crisisWith(w, c, nuclear);
     if (war && foe && foe.alive) {
       const x = crisisOf(w, c.id, foe.id);
-      p = (0.0003 + 0.06 * x * x * x) * (c.ruler.trait === 'mad' ? 4 : 1) * (c.zeal && foe.faith !== c.faith ? 1.5 : 1) * (c.hurt > 3 ? 1.3 : 1) * (foe.arts.bomb ? 0.6 : 1);   // they would answer
+      p = (0.0001 + 0.03 * x * x * x) * (c.ruler.trait === 'mad' ? 4 : 1) * (c.zeal && foe.faith !== c.faith ? 1.5 : 1) * (c.hurt > 3 ? 1.3 : 1) * (foe.arts.bomb ? 0.3 : 1);   /* (Oct 31) rarer: most nuclear worlds never fire in anger, and two nuclear powers deter each other harder (mutual destruction) */   // they would answer
     } else if (alarmAt) p = 0.0004 * crisisOf(w, c.id, alarmAt.id) ** 2 * warning(c);   // a flock of geese on the screen, at night: only in a crisis, and rarer with better warning
     p *= memoryOf(w, c);
     if (w.exchange && w.year <= w.exchange.until) { if (war && foe && foe.alive && (c.struck || -99) >= w.exchange.from && (foe.fired || -99) >= w.exchange.from && rnd() < 0.7) strike(w, c, foe, 'answer'); continue; }   // (slice 0) in an exchange, only those already trading blows go on firing at each other
@@ -113,7 +113,7 @@ function crisisYear(w, nuclear) {
 function rootOf(w, c) { return w.langs && c.langId != null && w.langs[c.langId] ? w.langs[c.langId].root : null; }
 function memoryOf(w, c) {
   // the whole world learns something from any exchange: a taboo, weaker than the memory of those who lived it
-  const ta = w.lastExchange != null ? 0.25 + 0.75 * Math.min(1, (w.year - w.lastExchange) / 600) : 1;
+  const ta = w.lastExchange != null ? 0.04 + 0.96 * Math.min(1, (w.year - w.lastExchange) / 1500) ** 2 : 1;   /* (Oct 31) the lesson is learned by everyone, and it lasts: a second exchange within a few centuries is rare (was: a quarter of the risk at once, all of it back after 600 years) */
   const r = rootOf(w, c), M = w.nukeMem; if (r == null || !M || M[r] == null) return ta; const age = w.year - M[r];
   const v = lessonOf(w, c), f = 0.03 + 0.97 * Math.min(1, age / 800) ** 2;
   if (v === 'never') { const b = c.big; return b && (b.occ || b.siege) ? Math.min(ta, f * 3) : 0; }   /* never again defenceless: they fire only when the end is at the gates */
