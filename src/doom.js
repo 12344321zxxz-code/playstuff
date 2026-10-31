@@ -113,7 +113,7 @@ function crisisYear(w, nuclear) {
 function rootOf(w, c) { return w.langs && c.langId != null && w.langs[c.langId] ? w.langs[c.langId].root : null; }
 function memoryOf(w, c) {
   // the whole world learns something from any exchange: a taboo, weaker than the memory of those who lived it
-  const ta = w.lastExchange != null ? 0.25 + 0.75 * Math.min(1, (w.year - w.lastExchange) / 600) : 1;
+  const ta = w.lastExchange != null ? 0.04 + 0.96 * Math.min(1, (w.year - w.lastExchange) / 1500) ** 2 : 1;   /* (Oct 31) the lesson is learned by everyone, and it lasts: a second exchange within a few centuries is rare (was: a quarter of the risk at once, all of it back after 600 years) */
   const r = rootOf(w, c), M = w.nukeMem; if (r == null || !M || M[r] == null) return ta; const age = w.year - M[r];
   const v = lessonOf(w, c), f = 0.03 + 0.97 * Math.min(1, age / 800) ** 2;
   if (v === 'never') { const b = c.big; return b && (b.occ || b.siege) ? Math.min(ta, f * 3) : 0; }   /* never again defenceless: they fire only when the end is at the gates */
