@@ -482,7 +482,7 @@ export function* peopleSteps(w) {
     // short of what the land could feed.
     let feed = food; if (A.railways && !s.nomad) { if (s.tier <= 2) { const out = food * 0.2; feed -= out; c._pool += out; } else { const wt = 1 + Math.min(2, s.pop / 6000); c._poolW += wt; feed += c._poolWLast > 0 ? (c._poolLast * wt) / c._poolWLast : 0; } }
     const cap = Math.max(1, feed * (A.computers || A.networks ? 0.88 : 1)); s.cap = cap;
-    if (s.pop < cap) { s.pop += s.pop * (s.nomad ? 0.036 : A.computers || A.networks ? 0.015 : 0.025) * (1 - s.pop / cap); s.note = s.pop > cap * 0.92 ? 'full' : 'grow'; if (s.note === 'full' && !s.nomad) c._full++; }
+    if (s.pop < cap) { s.pop += s.pop * (s.nomad ? 0.036 : A.computers || A.networks ? 0.018 : A.sanitation && A.railways ? 0.04 : 0.025) * (1 - s.pop / cap);   /* (Oct 31) clean water and the railway age: death rates fall before birth rates do, the industrial population boom */ s.note = s.pop > cap * 0.92 ? 'full' : 'grow'; if (s.note === 'full' && !s.nomad) c._full++; }
     else {
       const loss = (s.pop - cap) * (A.granaries ? 0.1 : 0.18), farmer = s.way === 'farm' || (farms > 0 && fA + 1 >= mx * 0.6);
       const why = w.aerosol > 0.3 ? 'ash' : s.plague > 0 ? 'plague' : farmer ? (blight > farms * 0.3 ? 'locusts' : wa < 0.78 ? 'drought' : wa > 1.5 && irrg > rain ? 'flood' : farms && soilS / farms < 0.66 ? 'soil' : 'crowded') : s.way === 'fish' ? (fishGap < 0.75 ? 'fish' : 'crowded') : wa < 0.78 ? 'drought' : s.way === 'hunt' || s.way === 'herd' ? (past + hunt < 2 ? 'game' : 'crowded') : 'crowded';

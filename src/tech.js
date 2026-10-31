@@ -103,7 +103,7 @@ export const carriersFor = (tier) => (tier >= 6 ? MODERN_CARRY[Math.min(10, tier
 // The modern harvest: engines, railways, oil, the grid, new seed and machines each multiply what a
 // field (or a herd) feeds: by the age of railways and oil about thirteen times what a farm fed
 // before, and nearly thirty times with the new seed and the machines.
-export const boomOf = (A) => (A.engines ? 1.5 : 1) * (A.railways ? 1.6 : 1) * (A.oil ? 2.2 : 1) * (A.electricity ? 1.4 : 1) * (A.dynamite ? 1.8 : 1) * (A.genetics ? 1.8 : 1) * (A.automation ? 1.2 : 1);   /* dynamite: the same chemistry makes fertiliser */
+export const boomOf = (A) => (A.engines ? 1.5 : 1) * (A.railways ? 1.6 : 1) * (A.oil ? 2.2 : 1) * (A.electricity ? 1.4 : 1) * (A.dynamite ? 1.8 : 1) * (A.genetics ? 1.8 : 1) * (A.automation ? 1.2 : 1) * (A.computers ? 1.4 : 1);   /* dynamite: the same chemistry makes fertiliser */   /* (Oct 31) computers: the green revolution (bred seed, tractors, sprays) */
 export const techOf = (k) => { let t = 0; while (t < TECH.length && k >= TECH[t]) t++; return t; };
 
 export function canLearn(c, k, easy) {
