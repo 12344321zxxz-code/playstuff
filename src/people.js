@@ -493,7 +493,7 @@ export function* peopleSteps(w) {
         if (s.pop > 80 && !s.nomad) flee(w, s, loss * 0.6); }
       s.pop -= loss;
     }
-    if (s.plague > 0) { const st = w.plagues[s.pid], dead = s.pop * st.v * (A.sanitation && !st.engineered ? 0.45 : A.medicine ? 0.8 : 1) * (st.engineered ? 1 : st.virgin != null && st.virgin !== c.id && c.germ > 0.3 ? 0.15 : 1 - 0.7 * c.germ); s.pop -= dead; st.killed += dead; corpses(w, s.x, s.y, dead); st.now++; s.plague--; if (s.plague === 0) s.immune = 70; c.germ = Math.min(1, c.germ + 0.03);
+    if (s.plague > 0) { const st = w.plagues[s.pid], dead = s.pop * st.v * (A.sanitation && !st.engineered ? 0.45 : A.medicine ? 0.8 : 1) * (st.engineered ? (A.genetics ? 0.4 : A.computers ? 0.7 : 1) : A.genetics ? 0.08 : A.computers ? 0.15 : A.electricity ? 0.35 : 1) * (   /* (Oct 31) germ theory, vaccines and antibiotics: modern epidemics kill a small fraction of what the old ones did (they were eating most of the industrial age's growth) */st.engineered ? 1 : st.virgin != null && st.virgin !== c.id && c.germ > 0.3 ? 0.15 : 1 - 0.7 * c.germ); s.pop -= dead; st.killed += dead; corpses(w, s.x, s.y, dead); st.now++; s.plague--; if (s.plague === 0) s.immune = 70; c.germ = Math.min(1, c.germ + 0.03);
       near(w, s.x, s.y, st.bad ? 14 : 9, s, false, (o) => { if (rnd() < st.catchy * (o.cult === s.cult ? 0.8 : 0.5) * (st.engineered ? 1 : 1 - 0.8 * w.cults[o.cult].germ) * (w.cults[o.cult].arts.quarantine ? 0.5 : 1)) infect(w, o, s.pid); }); } else if (s.immune > 0) s.immune--;
     if (s.pop < 5) { endSet(w, s, s.plague > 0 || s.immune > 55 ? 'plague' : s.note === 'grow' || s.note === 'full' ? 'abandoned' : 'starved'); continue; }
     s.trade *= 0.8;
