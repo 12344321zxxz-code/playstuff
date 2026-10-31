@@ -57,7 +57,7 @@ export function empireYear(w) {
     for (let k = 0; k < R.length; k++) {
       const r = R[k], seat = seats[k]; if (!seat || r.towns < 3 || w.year - r.since < 30) continue;
       const gap = tongueGap(w, seat.lang, c.langId), far = mass(w, seat) !== mass(w, b);
-      const p = 0.001 + 0.04 * Math.max(0, r.share - 0.3) + (h.A < 0.35 ? 0.008 : 0) + (h.st === 'civil' ? 0.02 : h.st === 'factions' ? 0.006 : 0) + (gap > 2 ? 0.004 : 0) + (far ? 0.004 : 0) + ((w.leadAge || 0) >= 8 && (gap > 2 || far) ? 0.06 : 0);   /* (Oct 29) foreign provinces go in the age of the bomb */
+      const p = (0.001 + 0.04 * Math.max(0, r.share - 0.3) + (h.A < 0.35 ? 0.008 : 0) + (h.st === 'civil' ? 0.02 : h.st === 'factions' ? 0.006 : 0) + (gap > 2 ? 0.004 : 0) + (far ? 0.004 : 0)) * (c.arts.telegraph ? 0.35 : c.arts.railways ? 0.55 : 1) + (   /* (Oct 30) rails and wires bring the provinces to the capital: the nation-state age, fewer regional houses break away */(w.leadAge || 0) >= 8 && (gap > 2 || far) ? 0.06 : 0);   /* (Oct 29) foreign provinces go in the age of the bomb */
       if (w.rnd() >= p) continue;
       const why = { x: seat.x, y: seat.y, terms: { share: +r.share.toFixed(2), eff: +r.eff.toFixed(2), A: +h.A.toFixed(2), gap: gap === Infinity ? 99 : gap } };
       if (h.A >= 0.45 && r.eff < 0.55) { if (living(w) >= realmCap(w)) continue; const nc = secede(w, c, R, k, T, 'autonomy', why); if (nc && subjugate(w, nc, c)) nc.over.house = r.name; break; }   /* the court can still make them pay, not govern them */
@@ -95,7 +95,7 @@ export function empireYear(w) {
 // a province goes: as a client (autonomy) or a realm of its own (secession), with its house on the throne
 export function secede(w, c, R, k, T, how, why) {
   const r = R[k], seat = w.sets.find((s) => s.id === r.seat && !s.dead); if (!seat) return null;
-  const nc = newCult(w, c); let n = 0, big = null;
+  const nc = newCult(w, c); nc.how = how; let n = 0, big = null;
   if (seat.lang != null && seat.lang !== c.langId && w.langs && w.langs[seat.lang]) { nc.langId = seat.lang; nc.lang = w.langs[seat.lang].snd; }
   for (const s of T || w.sets) if (!s.dead && s.cult === c.id && s._reg === r.id && !s.occ && !s.siege && s !== c.big) { s.cult = nc.id; n++; if (!big || s.pop > big.pop) big = s; }
   nc.count = n; nc.big = seat.cult === nc.id ? seat : big; nc.coh = 0.85; if (!n) return null; nc.house = { name: r.name, since: w.year }; hubReset(w, nc, 0.7);

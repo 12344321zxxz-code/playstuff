@@ -90,7 +90,7 @@ export function hubYear(w, c, hooks) {
       const kill = 0.3 + 0.3 * rnd(); h.E *= 1 - kill;
       const id = record(w, 'civilwar', [c.id], why(`the lords fight for ${h.pi.toFixed(1)}× too few posts; ${Math.round(kill * 100)}% of the great houses die`));
       c._why = { terms: c.press, note: 'civil war', trig: 'strife', age: w.year - (c.hub && c.hub.since0 != null ? c.hub.since0 : c.born), cause: id, x: b.x, y: b.y };
-      if (h.A < 0.2 && c.count >= 10 && w.year - (c.fellAt || -999) > 100) hooks.collapse(w, c); else hooks.civilWar(w, c);
+      if (h.A < 0.2 && c.count >= 10 && w.year - (c.fellAt || -999) > 100 && !((c.tech === 6 || c.tech === 7) && rnd() < 0.75)) hooks.collapse(w, c);   /* (Oct 31) an industrial state fights its civil war out on railways and telegraph lines and comes out whole, as a rule (the American and Swiss civil wars, the Paris Commune) */ else hooks.civilWar(w, c);
       c._why = null;
     } else if (h.st === 'civil' && w.year >= h.until) { h.st = 'grow'; h.since = w.year; h.hiPi = 0; }
     // the common people rise when they have been squeezed for ten years

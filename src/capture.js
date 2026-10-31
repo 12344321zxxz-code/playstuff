@@ -269,7 +269,7 @@ function independence(w, o) {
   if (w.rnd() > (0.0012 + 0.025 * Math.max(0, X - 0.2) + 0.006 * drift) * able * window + decol) return;
   const byMass = new Map(); for (const s of away) { const m = w.mass[s.y * W + s.x]; (byMass.get(m) || byMass.set(m, []).get(m)).push(s); }
   let grp = null; for (const g of byMass.values()) if (!grp || g.length > grp.length) grp = g; if (grp.length < minG) return;
-  const nc = newCult(w, o); let big = grp[0]; for (const s of grp) { s.cult = nc.id; if (s.pop > big.pop) big = s; } nc.count = grp.length; nc.coh = 0.95;
+  const nc = newCult(w, o); nc.how = 'colony'; let big = grp[0]; for (const s of grp) { s.cult = nc.id; if (s.pop > big.pop) big = s; } nc.count = grp.length; nc.coh = 0.95;
   if (big.lang != null) { nc.langId = big.lang; nc.lang = w.langs[big.lang].snd; nc.culId = big.cul; }
   { let age = 0; for (const s of grp) age += s.age || 0; age /= grp.length; record(w, 'independence', [o.id, nc.id], { note: `${grp.length} towns`, x: big.x, y: big.y, terms: { take: X, drift, lag: +lag.toFixed(2), age: Math.round(age), window } }); }
   ev(w, `The colonies of the ${o.name} ${whereAbouts(w, big.x, big.y)} stop paying. They call themselves the ${nc.name} and send the governor home.`, big.x, big.y, nc.color, 2); discover(w, 'independence', big.x, big.y);
