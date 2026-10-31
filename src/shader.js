@@ -9,14 +9,15 @@ export const FRAG = `#version 300 es
 precision highp float; precision highp int;
 uniform sampler2D uElev, uA, uB, uC, uD, uF;
 uniform vec3 uFaith[16];
-uniform vec3 uPal[32];
+uniform vec3 uPal[64];
 uniform vec3 uSpec[20];
 uniform float uTame[20];
 uniform vec3 uSpecL[20];
 uniform vec3 uZone[20];
 uniform vec3 uKind[6];
 uniform vec3 uFlora[8];
-uniform vec3 uStance[32];
+uniform vec3 uStance[64];
+uniform float uOver[64];
 uniform vec2 uRes, uCenter;
 uniform float uZoom, uSea, uTime, uDpr;
 uniform int uLens;
@@ -159,9 +160,12 @@ void main(){
     if (onLey) col = mix(col, vec3(.85, .80, 1.), cellPx >= 6. ? (abs(f.x - .5) < .2 || abs(f.y - .5) < .2 ? .45 : .12) : .3);
     if (kept && (cellPx < 6. || mod(floor(f.x * 6.) + floor(f.y * 6.), 2.) < 1.)) col = mix(col, vec3(1.), .25);
   }
+  else if (uLens == 6) {   // (Oct 31) the political map: flat colours, as on a wall map, pale seas and inked coasts
+    col = sea ? vec3(.68, .77, .82) * (.97 + .05 * lit) : vec3(.82, .78, .68) * (.9 + .14 * lit);
+  }
   else if (uLens == 14 || uLens == 17) col = col * .42 + .04;
   else if (uLens == 16) { col = sea ? vec3(.08, .1, .14) : vec3(.22, .21, .2) * (.85 + .3 * lit); if (fo > 0.) col = mix(col, vec3(.75, 1., .2), .3 + .7 * fo); }
-  else if (uLens == 15) { col = col * .4 + .04; int ow = int(cc.r * 255. + .5); if (!sea && ow > 0) col = mix(col, uStance[(ow - 1) % 32], .75); }
+  else if (uLens == 15) { col = col * .4 + .04; int ow = int(cc.r * 255. + .5); if (!sea && ow > 0) col = mix(col, uStance[(ow - 1) % 64], .75); }
   else if (uLens == 13) {  // beasts: which wild animal lives where, bright if a people could tame it
     int sp = int(ff.b * 255. + .5); col = sea ? vec3(.10, .12, .18) : vec3(.24, .23, .22) * (.85 + .3 * lit);
     if (!sea && sp < 20) { float tm = uTame[sp]; col = mix(col, uSpecL[sp], tm > .5 ? .95 : .6); if (tm < .5 && cellPx >= 5. && mod(floor(f.x * 4.) + floor(f.y * 4.), 2.) < 1.) col *= .7; }
@@ -175,18 +179,22 @@ void main(){
   // peoples: their land outlined in their colour (filled, in the Peoples lens)
   int own = int(cc.r * 255. + .5);
   if (!sea && uLens != 4 && uLens != 5 && uLens != 17 && uLens != 10 && uLens != 11 && uLens != 13 && uLens != 16 && uLens != 1 && uLens != 2) {
-    vec3 pc0 = own > 0 ? (uLens == 7 || uLens == 15 ? uStance[(own - 1) % 32] : uPal[(own - 1) % 32]) : vec3(0.);
+    vec3 pc0 = own > 0 ? (uLens == 7 || uLens == 15 ? uStance[(own - 1) % 64] : uPal[(own - 1) % 64]) : vec3(0.);
     if (uLens == 9) { ivec2 q = ivec2(c.x / 4, c.y / 4); int fid = int(texelFetch(uD, ivec2(q.x % 128, clamp(q.y, 0, 63)), 0).g * 255. + .5); if (fid > 0) col = mix(col, uFaith[(fid - 1) % 16], .6); }
     else if (own > 0) {
       vec3 pc = pc0;
-      if (uLens == 6) col = mix(col * .6 + .1, pc, .6);
+      if (uLens == 6) { col = pc * (.84 + .18 * lit); int ov = int(uOver[(own - 1) % 64] + .5); if (ov > 0) { float sx = float(c.x) + (cellPx >= 6. ? f.x : 0.), sy = float(c.y) + (cellPx >= 6. ? f.y : 0.); if (mod(sx + sy, 3.) < 1.) col = uPal[(ov - 1) % 64] * (.84 + .18 * lit); } }
+      else if (uLens == 0) col = mix(col, pc, .2);   // (Oct 31) the land view: each state lightly tinted in its colour
       bool edge = int(C(c + ivec2(1, 0)).r * 255. + .5) != own || int(C(c + ivec2(-1, 0)).r * 255. + .5) != own || int(C(c + ivec2(0, 1)).r * 255. + .5) != own || int(C(c + ivec2(0, -1)).r * 255. + .5) != own;
-      if (edge) {
+      if (edge && uLens == 6) { vec3 bc = pc * .45; if (cellPx < 6.) col = bc; else { bool e3 = (f.x < .22 && int(C(c + ivec2(-1, 0)).r * 255. + .5) != own) || (f.x > .78 && int(C(c + ivec2(1, 0)).r * 255. + .5) != own) || (f.y < .22 && int(C(c + ivec2(0, -1)).r * 255. + .5) != own) || (f.y > .78 && int(C(c + ivec2(0, 1)).r * 255. + .5) != own); if (e3) col = bc; } }
+      else if (edge) {
         if (cellPx < 6.) col = mix(col, pc, .75);
         else { bool e2 = (f.x < .18 && int(C(c + ivec2(-1, 0)).r * 255. + .5) != own) || (f.x > .82 && int(C(c + ivec2(1, 0)).r * 255. + .5) != own) || (f.y < .18 && int(C(c + ivec2(0, -1)).r * 255. + .5) != own) || (f.y > .82 && int(C(c + ivec2(0, 1)).r * 255. + .5) != own); if (e2) col = pc; }
       }
     }
   }
+  if (uLens == 6 && !sea) { bool cx = hAt(c + ivec2(1, 0)) < 0. || hAt(c + ivec2(-1, 0)) < 0. || hAt(c + ivec2(0, 1)) < 0. || hAt(c + ivec2(0, -1)) < 0.;
+    if (cx) { bool e4 = cellPx < 6. || (f.x < .2 && hAt(c + ivec2(-1, 0)) < 0.) || (f.x > .8 && hAt(c + ivec2(1, 0)) < 0.) || (f.y < .2 && hAt(c + ivec2(0, -1)) < 0.) || (f.y > .8 && hAt(c + ivec2(0, 1)) < 0.); if (e4) col *= cellPx < 6. ? .72 : .45; } }
   // a faint grid when you are close enough to count cells
   if (cellPx >= 14.) { vec2 gd = min(f, 1. - f) * cellPx; if (min(gd.x, gd.y) < .6) col *= .94; }
   o = vec4(col, 1.);

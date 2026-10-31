@@ -7,6 +7,7 @@
 //   tex    — a few times a second: the map textures, built here, handed over as bytes
 // and takes commands: speed, tools, plates, dials, new world, load, save, questions.
 // Nothing here touches a page; the same code would run in Node.
+import { realmAt, diplomacy } from './diplomacy.js';
 import { W, H, N } from './core.js';
 import { makeWorld, tick, settle, background, queueClimate, refreshWater, movePlates } from './world.js';
 import { encodeWorld, gzip, readSave } from './save.js';
@@ -32,7 +33,7 @@ export function landRows(w) {
 // what the page never needs, or rebuilds itself
 const SKIP = new Set(['rnd', 'census', 'job', 'actions', 'lookers', 'flowQ', 'onces', 'travel', 'pushedW', 'hist', 'seenActs', 'events', 'fx', 'movers']);
 // the map layers the page reads itself (the rest of the map reaches it only as textures), and the stamp that says when each changed
-const LAYERS = [['water', (w) => w.stamp.land], ['h', (w) => w.stamp.land], ['mi', (w) => w.climateStamp || 0], ['ore', (w) => w.oreStamp || 0], ['owner', (w) => w.tickN >> 3], ['courtOf', (w) => w.courtStamp || 0], ['plate', (w) => w.plateStamp || 0]];
+const LAYERS = [['water', (w) => w.stamp.land], ['h', (w) => w.stamp.land], ['mi', (w) => w.climateStamp || 0], ['ore', (w) => w.oreStamp || 0], ['owner', (w) => w.tickN >> 3], ['courtOf', (w) => w.courtStamp || 0], ['plate', (w) => w.plateStamp || 0], ['polity', (w) => w.polityYear ?? -1]];
 const slimTravel = (T) => (T ? { edges: T.edges, routeWays: T.routeWays, lanes: T.lanes } : null);
 // a mover without its luggage: the towns it links are reduced to what a caption needs
 const stub = (s) => (s ? { id: s.id, name: s.name, dead: !!s.dead, x: s.x, y: s.y } : null);
@@ -125,7 +126,7 @@ export function createHost(post0) {
           case 'ask': {
             let r = null, tr = [];
             if (m.q === 'load') { readSave(m.bytes).then((x) => { adopt(x); post({ t: 'reply', id: m.id, r: { year: x.year, seed: x.seed } }); }, () => post({ t: 'reply', id: m.id, r: { bad: true } })); return; }
-            if (m.q === 'describe') r = describe(w, m.x, m.y);
+            if (m.q === 'describe') { const rc = m.lens === 6 ? realmAt(w, m.x, m.y) : null; r = rc ? diplomacy(w, rc) : describe(w, m.x, m.y); }   /* (Oct 31) on the political map a tap reads the state */
             else if (m.q === 'report') r = report(w, m.build);
             else if (m.q === 'save') { try { settle(w); } catch (e) { /* save it as it is */ } gzip(encodeWorld(w)).then((gz) => post({ t: 'reply', id: m.id, r: { gz, seed: w.seed, year: w.year } }, [gz.buffer]), (e) => post({ t: 'reply', id: m.id, r: null, err: String(e) })); return; }
             else if (m.q === 'ticks') { for (let k = 0; k < m.n; k++) { tick(w); drain(); } simDirty = true; worldDirty = true; r = { tickN: w.tickN }; }
