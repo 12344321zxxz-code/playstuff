@@ -6,6 +6,7 @@
 import { hubYear, hubPush, hubReset, HUB } from './hub.js';
 import { captureYear, subjugate, release, bySea } from './capture.js';
 import { empireYear, regionSuccessors } from './empire.js';
+import { realmMap } from './realms.js';
 import { frontierYear, termsBetween, nomadic, bandCap } from './frontier.js';
 import { relicsYear, newHouse, crownGoal, claimGoal } from './relics.js';
 import { powersYear as greatPowersYear } from './greatpowers.js';
@@ -406,6 +407,9 @@ function territory(w) {
     for (const o of DISC[R]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]), d = o[2] * o[2] - bias; if (d < ownD[i]) { ownD[i] = d; owner[i] = k; ocult[i] = slot; } }
     if (s.tier >= 2) { const ur = s.tier === 3 ? (s.pop > 2500 ? 2 : 1) : 0; for (const o of DISC[ur]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); if (!w.water[i]) urban[i] = 1; } }
   }
+  // (Oct 31) the map shows the political layer (borders that follow the land), not the towns' catchments
+  if (!w.polity || w.year - (w.polityYear ?? -99) >= 5 || w.year < w.polityYear) realmMap(w);
+  const RM = w.polity, cs = w.cults; for (let i = 0; i < N; i++) { const id = RM[i]; if (id < 0) { ocult[i] = -1; continue; } const c = cs[id]; ocult[i] = c && c.alive && !c.power ? c.slot : -1; }
 }
 const FAMINE = { drought: 'The rains fail around %. Its people go hungry.', flood: 'The river takes the fields of %.', soil: 'The fields of % are worn out. They give less every year.', fish: 'The nets come up empty at %.', locusts: 'Locusts strip the fields of %.', ash: 'No summer comes to %. Nothing ripens.', game: 'The herds are gone from around %.', crowded: 'There are more mouths in % than the land can feed.' };
 
