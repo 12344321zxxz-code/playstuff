@@ -54,6 +54,7 @@ vec3 landCol(float Tm, float mi, float g, float t, float hh, bool ice, float cel
   }
   return c;
 }
+const vec3 ERA_C[11] = vec3[11](vec3(0.541, 0.541, 0.541), vec3(0.373, 0.722, 0.290), vec3(0.722, 0.525, 0.169), vec3(0.753, 0.224, 0.169), vec3(0.247, 0.388, 0.839), vec3(0.604, 0.310, 0.839), vec3(1.000, 0.541, 0.165), vec3(0.247, 0.816, 0.816), vec3(1.000, 0.310, 0.620), vec3(0.957, 0.878, 0.302), vec3(1.000, 1.000, 1.000));   // render.js ERA_COL
 vec3 seaCol(float d){ return d < .02 ? vec3(.30, .58, .76) : d < .07 ? vec3(.21, .47, .70) : d < .2 ? vec3(.15, .36, .60) : d < .45 ? vec3(.11, .27, .50) : vec3(.08, .20, .40); }
 vec3 heatPal(float t){ t = clamp(t, 0., 1.); vec3 a = vec3(.16,.20,.55), b = vec3(.35,.62,.80), c = vec3(.93,.93,.80), d = vec3(.93,.60,.25), e = vec3(.70,.12,.12);
   return t < .25 ? mix(a,b,t*4.) : t < .5 ? mix(b,c,(t-.25)*4.) : t < .75 ? mix(c,d,(t-.5)*4.) : mix(d,e,(t-.75)*4.); }
@@ -167,7 +168,7 @@ void main(){
   }
   else if (uLens == 14 || uLens == 17) col = col * .42 + .04;
   else if (uLens == 16) { col = sea ? vec3(.08, .1, .14) : vec3(.22, .21, .2) * (.85 + .3 * lit); if (fo > 0.) col = mix(col, vec3(.75, 1., .2), .3 + .7 * fo); }
-  else if (uLens == 15) { col = col * .4 + .04; int ow = int(cc.r * 255. + .5); if (!sea && ow > 0) col = mix(col, uStance[(ow - 1) % 64], .75); }
+  else if (uLens == 15) { col = col * .4 + .04; int lv = int(cc.a * 255. + .5); int ow = int(cc.r * 255. + .5); if (!sea && lv > 0) col = mix(col, ERA_C[min(lv - 1, 10)], .75); else if (!sea && ow > 0) col = mix(col, uStance[(ow - 1) % 64], .4); }   // (Nov 2, holistic) filled by each district's own age; outlined in its realm's
   else if (uLens == 13) {  // beasts: which wild animal lives where, bright if a people could tame it
     int sp = int(ff.b * 255. + .5); col = sea ? vec3(.10, .12, .18) : vec3(.24, .23, .22) * (.85 + .3 * lit);
     if (!sea && sp < 20) { float tm = uTame[sp]; col = mix(col, uSpecL[sp], tm > .5 ? .95 : .6); if (tm < .5 && cellPx >= 5. && mod(floor(f.x * 4.) + floor(f.y * 4.), 2.) < 1.) col *= .7; }

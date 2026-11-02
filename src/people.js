@@ -24,7 +24,7 @@ import { planLand, planSea, legCells, stepOf, relayAt, clearRelay, seaLane, land
 export { send };
 import { holySite, carry, convert, faithYear, sameFaith, tenetOf, docsOf } from './faith.js';
 import { pickGoods, deliver, importedMetals, leagued, G as GD, GOODS } from './trade.js';
-import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst, carriersFor, boomOf } from './tech.js';
+import { ART, ART_KEYS, TECH, techOf, canLearn, nextInvention, warMult, wallsAgainst, carriersFor, boomOf, kl } from './tech.js';
 export { ART, TECH, techOf };
 import { wallBetween } from './works.js';
 import { ignite } from './life.js';
@@ -98,7 +98,7 @@ function meet(w, c, o, p, ta, tb) {
   const tg = tongueGap(w, c.langId, o.langId), talk = tg <= 2 ? 1.5 : tg === Infinity ? 0.7 : 1;   // ideas pass easily between close tongues
   // ties, not trips: the tenth caravan of the year between two peoples teaches less than the first
   const yk = w.year, M = c._mt && c._mtY === yk ? c._mt : ((c._mtY = yk), (c._mt = {})), n = (M[o.id] = (M[o.id] || 0) + 1), tie = 1 / n;
-  { const [lo, hiK, loK] = ko > kc ? [c, ko, kc] : [o, kc, ko]; if (hiK > lo.know) lo.know += (hiK - lo.know) * 0.006 * absorb(techOf(hiK) - techOf(loK)) * talk * tie; }
+  { const [lo, hiK, loK] = ko > kc ? [c, ko, kc] : [o, kc, ko]; if (hiK > lo.know) lo.know += kl(lo, 'meet', (hiK - lo.know) * 0.006 * absorb(techOf(hiK) - techOf(loK)) * talk * tie); }
   c.lastMet = o.lastMet = w.year; (c.met || (c.met = {}))[o.id] = 1; (o.met || (o.met = {}))[c.id] = 1;
   for (const [a, b] of [[c, o], [o, c]]) {
     for (const k in b.tame) if (!a.tame[k] && rnd() < 0.12 && suits(w, a, 'beast', k)) { a.tame[k] = w.year; if (TAME_GRAZE[k] && !a.grazer) { a.grazer = k; learn(w, a, 'herding'); } }
@@ -323,7 +323,7 @@ function occupy(w, o, c, oc, war, home) {
 // the peace gives a town to the winner
 function annexTown(w, s, c) {
   const oc = w.cults[s.cult], wasCap = oc && oc.big === s; s.cult = c.id; s.occ = null; s.trade = 0; s.tollTo = null; tally(w, 'annexed');
-  if (oc && !oc.power && oc.know > c.know) c.know += (oc.know - c.know) * 0.08;   /* conquerors learn from the conquered */
+  if (oc && !oc.power && oc.know > c.know) c.know += kl(c, 'conq', (oc.know - c.know) * 0.08);   /* conquerors learn from the conquered */
   carry(w, c.big && !c.big.dead ? c.big : { faith: c.faith }, s, 'conquest');
   if (wasCap) { oc.coh = Math.max(0.05, oc.coh - 0.2); oc.big = null; }
 }
@@ -389,7 +389,7 @@ arrive.army = (w, m) => {
   }
   if (!raider && (war || c.power || oc.power) && (o.pop * 0.72 < hp * 0.5 || rnd() < 0.55) && ((war && !c.power && !oc.power) || w.year - o.lastSack > (c.power ? 8 : 25))) {   /* (slice 1a) towns change hands only in a war; a raid in peacetime takes loot, not the town */
     if (war && !c.power && !oc.power) { occupy(w, o, c, oc, war, home); bleed(w, c, m.n * 0.4); bleed(w, oc, o.pop * 0.05 + rein * 0.5); flee(w, o, o.pop * 0.03); o.pop *= 0.95; lost('conquest'); back(0.6); return; }
-    o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); const fromDead = oc.power; if (!c.power && !oc.power && oc.know > c.know) c.know += (oc.know - c.know) * (m.nomad ? 0.2 : 0.08);   /* conquerors learn from the conquered */ o.cult = m.cult; o.trade = 0; if (c.power || fromDead) deadConquest(w, o, c, oc); if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
+    o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); const fromDead = oc.power; if (!c.power && !oc.power && oc.know > c.know) c.know += kl(c, 'conq', (oc.know - c.know) * (m.nomad ? 0.2 : 0.08));   /* conquerors learn from the conquered */ o.cult = m.cult; o.trade = 0; if (c.power || fromDead) deadConquest(w, o, c, oc); if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
     ev(w, wasCap ? `${o.name}, seat of the ${oc.name}, falls to the ${c.name}.` : `${o.name} falls to the ${c.name}.`, o.x, o.y, c.color, wasCap && oc.count > 24 ? 2 : wasCap || o.tier === 3 ? 0 : 1);
     if (wasCap) { oc.coh = Math.max(0.05, oc.coh - (oc.power ? 0.1 : 0.25)); oc.big = null; if (war) { war.capital = true; war.until = Math.min(war.until, w.year + 2); const K = conflictOf(w, c); if (K) K.until = Math.min(K.until, w.year + 2); } }
     if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.05); flee(w, o, o.pop * 0.03); o.pop *= 0.95; lost(war ? 'conquest' : 'peaceConquest'); back(0.6); return;
@@ -507,7 +507,7 @@ export function* peopleSteps(w) {
         const tie = Math.min(1, (1 / (1 + dx / Math.max(20, c.reachR || 30))) * (tg === Infinity ? 0.5 : tg > 2 ? 0.75 : 1) * (s.links ? 1.25 : 1)); s._tie = tie;
         if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * 0.05 * tie * (gap >= 2 ? 0.3 : 1); } else s.k += (c.know - s.k) * 0.01; }
       s.lvl = techOf(s.k); wt = 0.15 + 0.85 * s._tie * Math.min(1, s.k / Math.max(1, c.know)); }   /* (Nov 2, play tall) far, loosely held provinces add little to what the court knows: a giant learns from its well-tied core (roads, bureaucracy, rail and the telegraph widen it) */
-    { const dk = (1 - (c.tech >= 5 ? 0.8 : 0.5) * (c.orth || 0)) * wt * 0.78 * (c.kq || 1) * learnDrag(w, c, i0) * ((c.tech >= 5 ? Math.min(1.6 * s.pop, s.pop * (0.15 + 5.5 * (s.urb ?? 0.06))) : s.pop) / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); if (Number.isFinite(dk)) { c.know += dk; c._dk = (c._dk || 0) + dk; } }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); from the age of print, new ideas come from the towns and the trade, not the peasantry (a district counts by its townspeople); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    { const dk = (1 - (c.tech >= 5 ? 0.8 : 0.5) * (c.orth || 0)) * wt * 0.78 * (c.kq || 1) * learnDrag(w, c, i0) * ((c.tech >= 5 ? s.pop * Math.min(3, 0.15 + 3.4 * Math.pow(s.urb ?? 0.06, 0.81)) : s.pop)   /* (Nov 2, holistic) no plateau: a district half in town keeps out-thinking one a third in town (it was capped at 26% urban); same output as before at the usual 8% and 35% */ / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); if (Number.isFinite(dk)) { c.know += kl(c, 'own', dk); c._dk = (c._dk || 0) + dk; } }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); from the age of print, new ideas come from the towns and the trade, not the peasantry (a district counts by its townspeople); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -544,7 +544,7 @@ function ruinsYear(w) {
     if (!r.looted && r.kind !== 'drowned' && rnd() < 0.03) { const s = near(w, r.x, r.y, 8, null, true); if (s) { const c = w.cults[s.cult];
         if (r.kind === 'nuked') { r.looted = true; if (rnd() < 0.2 && c.tech >= 3) { c.arts.bomb = w.year; c.bombs = (c.bombs || 0) + 1; ev(w, `Diggers from ${s.name} find something in the glass under ${r.name}, still sealed, still heavy. The old ones' writing on it says what it is. They take it home.`, r.x, r.y, c.color, 2); discover(w, 'relicbomb', r.x, r.y); } else { s.pop *= 0.8; ev(w, `Diggers from ${s.name} go into the ruins of ${r.name}. They come back sick, and they do not get better.`, r.x, r.y, c.color, 1); } }
         else if (r.haunt) { r.looted = true; infect(w, s, null, true); ev(w, `Diggers from ${s.name} open the ruins of ${r.name}. What they bring home kills half the town.`, r.x, r.y, c.color); discover(w, 'curse', r.x, r.y); }
-        else if (c.know < r.know * 0.9) { c.know += Math.min((r.know - c.know) * 0.35, c.know * (w.darkUntil > w.year ? 0.08 : 0.3) + 2000); r.looted = true; ev(w, `Diggers from ${s.name} find old writings in the ruins of ${r.name}.`, r.x, r.y, c.color, (w.relics = (w.relics || 0) + 1) <= 2 ? 0 : 1); discover(w, 'relic', r.x, r.y); } } }
+        else if (c.know < r.know * 0.9) { c.know += kl(c, 'ruin', Math.min((r.know - c.know) * 0.35, c.know * (w.darkUntil > w.year ? 0.08 : 0.3) + 2000)); r.looted = true; ev(w, `Diggers from ${s.name} find old writings in the ruins of ${r.name}.`, r.x, r.y, c.color, (w.relics = (w.relics || 0) + 1) <= 2 ? 0 : 1); discover(w, 'relic', r.x, r.y); } } }
     // most ruins are only ruins; now and then one where something terrible happened is not
     if (!r.haunt && r.tier >= 2 && w.year - r.year > 80 && memAt(w, i, DEATH) > 0.3 && rnd() < 0.012) { r.haunt = HAUNT[(rnd() * HAUNT.length) | 0]; holySite(w, r.x, r.y, 'haunt', 0.5); ev(w, `No one goes near the ruins of ${r.name} any more. ${r.haunt.replace('%', r.cult)}`, r.x, r.y, null, discover(w, 'haunt', r.x, r.y) ? 0 : 1); }
   }
@@ -585,7 +585,7 @@ function cultYear(w, c) {
   // the two (a few loads a year is a full tie); ties fade by a fifth a year
   { let carry = c.pop, tAll = 0, tInd = 0, letters = 0; const T = c.ties || {}; for (const k in T) { const o = w.cults[k]; T[k] *= 0.8; if (T[k] < 0.05) { delete T[k]; continue; } if (o && o.alive && !o.power) { const t = Math.min(1, T[k] / 3), dt = Math.abs(o.tech - c.tech); carry += (dt <= 1 ? 1 : 0.5) * o.pop * t; tAll += t; if ((o.arts.railways || o.arts.steamships) && !c.arts.engines) tInd += o.tech - c.tech >= 2 ? t : 0.5 * t;
         if (dt <= 1) letters += 0.3 * t * (o.dkLast || 0) * absorb(dt); } } c.carry = carry;
-    if (Number.isFinite(letters)) c.know += Math.min(letters, (c.tech >= 5 ? 2 : 1) * (c.dkLast || 0));   /* (Nov 2) from the age of print, ideas cross borders fast inside a cluster of rivals */ c.letters = letters > 0 ? Math.min(1, letters / Math.max(1e-9, c.dkLast || 0)) : 0;   /* (Nov 2) a republic of letters: peers tied by trade share what each finds (only their own finds, at most as much again as a realm finds itself), so a cluster learns like one realm of its combined size */
+    if (Number.isFinite(letters)) c.know += kl(c, 'letters', Math.min(letters, (c.tech >= 5 ? 2 : 1) * (c.dkLast || 0)));   /* (Nov 2) from the age of print, ideas cross borders fast inside a cluster of rivals */ c.letters = letters > 0 ? Math.min(1, letters / Math.max(1e-9, c.dkLast || 0)) : 0;   /* (Nov 2) a republic of letters: peers tied by trade share what each finds (only their own finds, at most as much again as a realm finds itself), so a cluster learns like one realm of its combined size */
     c._undercut = tAll > 0 ? tInd / tAll : 0;   /* (Oct 30, council) how much of their trade is with factory powers: cheap cloth and iron ruin their own workshops */
     let hold = 0; while (hold < 10 && carry >= carriersFor(hold + 1)) hold++; c.hold = hold;
     if (hold < 9 && c.know > TECH[Math.max(0, hold)]) c.know -= (c.know - TECH[Math.max(0, hold)] * 0.97) * 0.06;
@@ -949,7 +949,7 @@ export function addBand(w, x, y) {
 // a leap of knowledge, handed down
 export const FAMILY = [null, ['pottery', 'farming', 'granaries', 'plough', 'irrigation', 'terraces', 'mills', 'dikes', 'canals', 'sanitation', 'reactors'], ['copper', 'bronze', 'iron', 'steel', 'engines', 'electricity', 'oil', 'atomic'], ['boats', 'wheel', 'riding', 'roads', 'sailing', 'bridges', 'navigation', 'railways', 'flight', 'rockets'], ['counting', 'writing', 'laws', 'alphabet', 'coinage', 'medicine', 'schools', 'bureaucracy', 'banking', 'printing', 'quarantine', 'telegraph', 'radio', 'computers', 'networks', 'genetics', 'ai', 'orbital', 'starships'], ['masonry', 'chariots', 'stirrups', 'siege', 'gunpowder', 'cannon', 'dynamite', 'rifles', 'bomb', 'missiles', 'germlabs']];
 export function gift(w, c, fam) {
-  c.know += Math.max(3000, c.know * 0.3); c.tech = techOf(c.know); c.coh = Math.min(1, c.coh + 0.15);
+  c.know += kl(c, 'gift', Math.max(3000, c.know * 0.3)); c.tech = techOf(c.know); c.coh = Math.min(1, c.coh + 0.15);
   const got = (FAMILY[fam || 0] || ART_KEYS).filter((k) => canLearn(c, k, true)); if (got.length) { learn(w, c, got[0]); return ART[got[0]].say; } return null;
 }
 

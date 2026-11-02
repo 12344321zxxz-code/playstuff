@@ -104,6 +104,8 @@ export const carriersFor = (tier) => (tier >= 6 ? MODERN_CARRY[Math.min(10, tier
 // field (or a herd) feeds: by the age of railways and oil about thirteen times what a farm fed
 // before, and nearly thirty times with the new seed and the machines.
 export const boomOf = (A) => (A.engines ? 1.5 : 1) * (A.railways ? 1.6 : 1) * (A.oil ? 2.2 : 1) * (A.electricity ? 1.4 : 1) * (A.dynamite ? 1.8 : 1) * (A.genetics ? 1.8 : 1) * (A.automation ? 1.2 : 1) * (A.computers ? 1.4 : 1);   /* dynamite: the same chemistry makes fertiliser */   /* (Oct 31) computers: the green revolution (bred seed, tractors, sprays) */
+// (Nov 2, holistic) where a realm's knowledge comes from: own finds, contact, letters, migrants, conquest, ruins (a ledger for the tools; cheap)
+export const kl = (c, k, v) => { if (v > 0) { const L = c.kl || (c.kl = {}); L[k] = (L[k] || 0) + v; } return v; };
 export const techOf = (k) => { let t = 0; while (t < TECH.length && k >= TECH[t]) t++; return t; };
 
 export function canLearn(c, k, easy) {
