@@ -506,8 +506,8 @@ export function* peopleSteps(w) {
       else { const dx = b0 ? Math.hypot(wrapDx(s.x - b0.x), s.y - b0.y) : 0, tg = s.lang != null && c.langId != null && s.lang !== c.langId ? gapCached(w, s.lang, c.langId) : 0;
         const tie = Math.min(1, (1 / (1 + dx / Math.max(20, c.reachR || 30))) * (tg === Infinity ? 0.5 : tg > 2 ? 0.75 : 1) * (s.links ? 1.25 : 1)); s._tie = tie;
         if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * 0.05 * tie * (gap >= 2 ? 0.3 : 1); } else s.k += (c.know - s.k) * 0.01; }
-      s.lvl = techOf(s.k); wt = 0.4 + 0.6 * s._tie * Math.min(1, s.k / Math.max(1, c.know)); }
-    { const dk = (1 - 0.5 * (c.orth || 0)) * wt * 0.65 * (c.kq || 1) * learnDrag(w, c, i0) * (s.pop / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c.know += dk; c._dk = (c._dk || 0) + dk; }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+      s.lvl = techOf(s.k); wt = 0.15 + 0.85 * s._tie * Math.min(1, s.k / Math.max(1, c.know)); }   /* (Nov 2, play tall) far, loosely held provinces add little to what the court knows: a giant learns from its well-tied core (roads, bureaucracy, rail and the telegraph widen it) */
+    { const dk = (1 - 0.6 * (c.orth || 0)) * wt * 0.65 * (c.kq || 1) * learnDrag(w, c, i0) * (s.pop / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c.know += dk; c._dk = (c._dk || 0) + dk; }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -965,7 +965,7 @@ function originsYear(w, c, b) {
   // an equal at the border, a lost war or a civil war breaks it up again. It slows what the realm finds, and it is
   // what makes a court forbid the new and dangerous
   { let peer = false; const my = strength(c, c.pop); for (const k in c.nb) { const o = w.cults[k]; if (o && o.alive && !o.power && c.nb[k] > 0.3 && o.tech >= c.tech - 1 && strength(o, o.pop) >= 0.5 * my) { peer = true; break; } }
-    c.peerless = !peer; const o0 = c.orth || 0; c.orth = peer ? o0 * 0.95 : c.count >= 15 && c.coh > 0.45 ? Math.min(1, o0 + 0.008) : o0 * 0.99;
+    c.peerless = !peer; const o0 = c.orth || 0; c.orth = peer ? o0 * 0.95 : c.count >= 15 && c.coh > 0.45 ? Math.min(1, o0 + 0.012) : o0 * 0.99;
     if (c.shaken != null && w.year - c.shaken < 2) c.orth *= 0.7; if (c.hub && c.hub.st === 'civil') c.orth *= 0.97;
     if (c.orth > 0.25 && o0 <= 0.25 && b && c.count >= 20) ev(w, `No one at the court of the ${c.name} remembers an enemy worth fearing. New ideas are looked at with suspicion now.`, b.x, b.y, c.color, 1); }
   // one realm alone in its world can afford to stop: a court decides the ships are a waste
