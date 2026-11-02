@@ -408,7 +408,7 @@ function territory(w) {
     const s = sets[k]; s._k = k; if (s.dead) continue; if (s.nomad) { s.R = w.cults[s.cult].grazer ? 3 : 2; continue; }
     if (!(s.pop >= 0)) s.pop = 0;   /* a broken number must not stop the world */ const R = (s.R = Math.min(9, 2 + Math.floor(Math.sqrt(s.pop) / 7))), bias = s.pop * 0.0015, slot = w.cults[s.cult].slot;
     for (const o of DISC[R]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]), d = o[2] * o[2] - bias; if (d < ownD[i]) { ownD[i] = d; owner[i] = k; ocult[i] = slot; } }
-    if (s.tier >= 2) { const ur = s.tier === 3 ? (s.pop > 2500 ? 2 : 1) : 0; for (const o of DISC[ur]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); if (!w.water[i]) urban[i] = 1; } }
+    if (s.tier >= 2) { const Ub = s.pop * (s.urb ?? 0.06), ur = Ub >= 1500 ? 3 : Ub >= 300 ? 2 : Ub >= 80 ? 1 : 0; for (const o of DISC[ur]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); if (!w.water[i]) urban[i] = 1; } }
   }
   // (Oct 31) the map shows the political layer (borders that follow the land), not the towns' catchments
   if (!w.polity || w.year - (w.polityYear ?? -99) >= 5 || w.year < w.polityYear) realmMap(w);
@@ -770,12 +770,26 @@ function nomadStep(w, s, c, seaN, fishGap) {
   if (herder && s.pop > 70 && w.year >= s.busy && rnd() < (A.riding ? 0.07 : 0.02) * (war ? (war.horde ? 6 : 3) : 1)) raid(w, s, c);
 }
 
+// (Nov 2) Every settlement is a district: a seat and the country around it. Most of its people live on the land;
+// a share lives in the town itself (s.urb). That share follows the district's means: spare grain, a market, trade,
+// a court, a harbour, and in the industrial age the railway, the factory and the tractor. Before the engine a
+// district rarely keeps more than a tenth of its people in town; in the information age most of them live there.
+// A district's rank is set by its town, not by its countryside: villages everywhere, towns where there is trade,
+// cities only where a large town can be fed.
+export function urbanTarget(c, s) {
+  const A = c.arts; let u = 0.02 + 0.05 * Math.min(1, Math.max(0, c.surplus || 0)) + (s.market ? 0.03 : 0) + 0.01 * Math.min(4, s.trade || 0) + (c.big === s ? 0.04 : 0) + (s.port ? 0.02 : 0);
+  if (A.writing) u += 0.01; if (A.coinage) u += 0.01; if (A.printing) u += 0.02;
+  if (A.engines) u += 0.03; if (A.railways) u += 0.08; if (A.electricity) u += 0.06; if (A.oil) u += 0.04; if (A.computers) u += 0.1; if (A.networks) u += 0.08; if (A.automation) u += 0.05;
+  return Math.max(0.02, Math.min(0.9, u));
+}
+export const urbanOf = (s) => (s.nomad ? 0 : s.pop * (s.urb ?? 0.06));
 function townStep(w, s, c) {
-  const rnd = w.rnd, A = c.arts, nt = s.pop >= 700 ? 3 : s.pop >= 150 ? 2 : 1;
+  const rnd = w.rnd, A = c.arts; if (s.urb == null) s.urb = 0.06; s.urb += (urbanTarget(c, s) - s.urb) * 0.04;
+  const U = s.pop * s.urb, nt = U >= 80 ? 3 : U >= 12 ? 2 : 1;
   if (nt > s.tier) { s.tier = nt; if (nt > s.maxTier) { s.maxTier = nt;
       if (nt === 2 && !c.flags.town) { c.flags.town = 1; ev(w, `${s.name} grows into the first town of the ${c.name}.`, s.x, s.y, c.color, once(w, 'town') ? 0 : 1); }
       else if (nt === 3) { const first = once(w, 'city'); ev(w, first ? `${s.name} becomes the first city in the world.` : c.flags.city ? `${s.name} is now a city of the ${c.name}.` : `${s.name} becomes the first city of the ${c.name}.`, s.x, s.y, c.color, first ? 2 : 1); c.flags.city = 1; discover(w, 'city', s.x, s.y); if (s.way === 'farm' && w.fresh[s.y * W + s.x] <= 1 && A.irrigation) discover(w, 'river', s.x, s.y); } } }
-  else if (nt < s.tier && s.pop < (s.tier === 3 ? 500 : 100)) s.tier = nt;
+  else if (nt < s.tier && U < (s.tier === 3 ? 60 : 9)) s.tier = nt;
   if (A.masonry && s.tier >= 2) s.walls = true;
   if (!s.tower && c.tech >= 2 && s.tier >= 2 && c.stance !== 'forget' && c.stance !== 'fear' && w.magic[s.y * W + s.x] > (c.stance === 'use' ? 0.35 : 0.55) && rnd() < (c.stance === 'use' ? 0.05 : 0.02)) { s.tower = true; if (!A.craft) c.arts.craft = w.year; ev(w, `A tower goes up at ${s.name}, where the air hums. Nobody admits to building it.`, s.x, s.y, c.color); discover(w, 'tower', s.x, s.y); }
   if (s.tower && s.wa < 0.7 && rnd() < 0.2) { for (const o of DISC[7]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); w.wetBias[i] = Math.min(2.5, w.wetBias[i] + 0.25 * (1 - o[2] / 8)); } w.need.climate = true; if (discover(w, 'rainmaker', s.x, s.y)) ev(w, `In the third dry year, the tower at ${s.name} calls the rain. It comes.`, s.x, s.y, c.color); }

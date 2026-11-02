@@ -356,7 +356,7 @@ function relationLines(w, c) {
 }
 export function cultLines(w, c) {
   const L = [];
-  L.push(`${c.kind[0].toUpperCase() + c.kind.slice(1)}. ${big(c.pop)} people in ${c.count} ${c.count === 1 ? 'place' : 'places'}.`);
+  { let U = 0; for (const s of w.sets) if (!s.dead && !s.nomad && s.cult === c.id) U += s.pop * (s.urb ?? 0.06); L.push(`${c.kind[0].toUpperCase() + c.kind.slice(1)}. ${big(c.pop)} people in ${c.count} ${c.count === 1 ? 'place' : 'places'}; ${Math.round((100 * U) / Math.max(1, c.pop))}% of them in towns.`); }
   if (c.langId != null && w.langs) { const qs = quirksOf(w, c); L.push(`They speak ${w.langs[c.langId].name}${w.langs[c.langId].root !== c.langId ? ', of the ' + w.langs[w.langs[c.langId].root].name + ' family' : ''}${c.foreignShare > 0.15 ? `; ${Math.round(c.foreignShare * 100)}% of their subjects speak a stranger's tongue` : ''}.${qs.length ? ' ' + qs[0][0].toUpperCase() + qs.join(', ').slice(1) + '.' : ''}`); }
   if (c.over) L.push(`They pay tribute to ${overlordOf(w, c)}, collected by ${c.over.house} (${Math.round(c.over.take * 100)}% of the harvest).`);
   if (c.lev && !c.over) { let top = null, tv = 0; for (const k in c.lev) if (c.lev[k] > tv && w.cults[k]) { tv = c.lev[k]; top = w.cults[k]; } if (top && tv >= 0.25) L.push(tv >= 0.6 ? `They owe the ${top.name} more than they can pay. A resident of the ${top.name} sits at their court, and little is decided without him.` : `The ${top.name} lend them money and sell them guns, and their merchants have the run of the ports.`); }   /* (Oct 30) the spring, before it is called in */
@@ -383,7 +383,7 @@ function setInfo(w, s) {
   const c = w.cults[s.cult], L = [], tot = s.src.reduce((a, b) => a + b, 0) || 1;
 const FOOD = [['#8fbf6a', 'wild food'], ['#b5653f', 'hunting'], ['#4fa3d1', 'fish'], ['#e3b23c', 'fields'], ['#9a7b5b', 'herds']];
   const bar = s.src.map((v, k) => [v / tot, FOOD[k][0], FOOD[k][1]]);
-  if (s.nomad) L.push(`${big(s.pop)} people on the move.`); else L.push(`A ${TIER[s.tier]} with its country around it: ${big(s.pop)} people. It is ${s.age} years old.`);
+  if (s.nomad) L.push(`${big(s.pop)} people on the move.`); else { const u = Math.max(0, Math.min(1, s.urb ?? 0.06)), U = s.pop * u; L.push(s.tier >= 2 ? `A ${TIER[s.tier]} of ${big(U)}; the country around it holds ${big(s.pop - U)} more. ${Math.round(u * 100)}% of its people live in town. It is ${s.age} years old.` : `Villages and farms: ${big(s.pop)} people on the land, ${big(U)} of them at the market. It is ${s.age} years old.`); }   /* (Nov 2) the town and its country */
   L.push(s.plague > 0 ? NOTE.plague : NOTE[s.note] || NOTE.grow);
   if (s.siege && w.cults[s.siege.by]) L.push(`Besieged by the ${w.cults[s.siege.by].name} since year ${s.siege.since}: ${big(s.siege.n)} men outside the ${s.walls ? 'walls' : 'town'}, and the town ${s.siege.prog > 0.66 ? 'cannot hold out much longer' : s.siege.prog > 0.33 ? 'is going hungry' : 'still holds'}.`);
   if (!s.nomad && s.lvl != null && s.lvl < Math.min(10, c.tech)) L.push(s.lvl <= c.tech - 2 ? `It lives far behind its rulers, in the age of ${ERA[s.lvl]}: what ${c.big && c.big !== s ? c.big.name || 'the court' : 'the court'} knows has hardly reached it.` : `It lags its rulers: here it is still the age of ${ERA[s.lvl]}.`);   /* (Oct 29) a town's own development */
