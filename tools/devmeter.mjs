@@ -31,7 +31,7 @@ export function devYear(w, D) {
     const L = w.cults.filter((c) => live(c) && c.count > 0); D.hist.push({ y: w.year, r: ranks(L, (c) => c.pop) }); if (D.hist.length > 14) D.hist.shift();
     const F = frontier(w, 0.005), S = L.filter((c) => !c.over), rp = ranks(S, (c) => c.pop), rl = ranks(S, landOf);
     if (F >= 4) for (const c of L) if (c.tech === F && !c.over) { D.tallN++; if (rp.get(c.id) > 3 && rl.get(c.id) > 3) D.tallT++; }   /* from the iron age on (before it everyone is at the frontier) */
-    if (F >= 4) D._tallN = (D._tallN || 0) + L.filter((c) => c.tech === F && !c.over).length; D._tallT = (D._tallT || 0) + L.filter((c) => c.tech === F && !c.over && rp.get(c.id) > 3 && rl.get(c.id) > 3).length;
+    if (F >= 4) D._tallN = (D._tallN || 0) + L.filter((c) => c.tech === F && !c.over).length; if (F >= 4) D._tallT = (D._tallT || 0) + L.filter((c) => c.tech === F && !c.over && rp.get(c.id) > 3 && rl.get(c.id) > 3).length;
   }
   if (w.year % 100 !== 0) return;
   const F = frontier(w, 0.01), area = new Map(); for (let i = 0; i < N; i++) { const k = w.owner[i]; if (k >= 0) area.set(k, (area.get(k) || 0) + 1); }
@@ -45,7 +45,7 @@ export function devYear(w, D) {
   if (Q.length >= 5) { const a = ranks(Q, (c) => c.pop), k = ranks(Q, (c) => c.know), n = Q.length; let d2 = 0; for (const c of Q) d2 += (a.get(c.id) - k.get(c.id)) ** 2; rho = +(1 - (6 * d2) / (n * (n * n - 1))).toFixed(2); }
   // knowledge sources by size tercile (realms with >= 0.5% of people), then reset
   const Z = w.cults.filter((c) => settled(c) && c.pop >= 0.005 * tot).sort((a, b) => b.pop - a.pop), era = F >= 5 ? 'late' : 'early';
-  Z.forEach((c, i) => { const tq = i < Z.length / 3 ? 'big' : i < (2 * Z.length) / 3 ? 'mid' : 'small', B = ((D.kl[era] ||= {})[tq] ||= {}); for (const k in c.kl || {}) B[k] = (B[k] || 0) + c.kl[k] / Math.max(1, c.know); B.n = (B.n || 0) + 1; });
+  Z.forEach((c, i) => { const tq = i < Z.length / 3 ? 'big' : i < (2 * Z.length) / 3 ? 'mid' : 'small', B = ((D.kl[era] ||= {})[tq] ||= {}); let sum = 0; for (const k in c.kl || {}) sum += c.kl[k]; if (sum > 0) { for (const k in c.kl) B[k] = (B[k] || 0) + c.kl[k] / sum; B.n = (B.n || 0) + 1; }   /* each realm's own mix, weighted equally */ });
   for (const c of w.cults) c.kl = null;
   D.cent.push({ y: w.year, F, lag: P.map((v) => pc(v, sp)), land: A.map((v) => pc(v, sa)), rland: R.map((v) => pc(v, sa)), within: wp ? pc(wl, wp) : null, rho, tall: D._tallN ? +(D._tallT / D._tallN).toFixed(2) : null, n: Q.length });
   D._tallN = 0; D._tallT = 0;
