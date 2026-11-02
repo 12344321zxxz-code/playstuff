@@ -35,6 +35,10 @@ export function diplomacy(w, c) {
   if (c.war) { const foes = enemiesOf(w, c), al = alliesOf(w, c), s = K ? sideOf(K, c.id) : -1;
     L.push(`At war${K && K.name ? ` (${K.name})` : ''} with ${list(foes.map((id) => nm(w, id)))} since year ${c.war.since}${al.length ? `, alongside ${list(al.map((id) => nm(w, id)))}` : ''}.${s >= 0 && K.sides[s].lead !== c.id ? ` They joined for ${nm(w, K.sides[s].lead)}.` : ''}`); }
   const truces = live.filter((q) => q !== c && truceLeft(w, c.id, q.id) > 0); if (truces.length) L.push(`At peace by treaty with ${list(truces.map((q) => `the ${q.name} (${truceLeft(w, c.id, q.id)} more years)`))}.`);
+  // (Nov 2, play tall) who they learn with, who keeps them sharp, and whether the court has gone stale
+  { const T = c.ties || {}, lw = Object.keys(T).map((k) => [w.cults[k], Math.min(1, T[k] / 3)]).filter(([o, t]) => o && o.alive && !o.power && t >= 0.3 && Math.abs(o.tech - c.tech) <= 1).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (lw.length) L.push(`Learns with ${list(lw.map(([o]) => 'the ' + o.name))}${(c.letters || 0) > 0.3 ? ': much of what they know comes from abroad' : ''}.`);
+    if (c.peerless) L.push((c.orth || 0) > 0.5 ? 'No equal anywhere near them for generations, and it shows: the court distrusts anything new.' : 'No equal anywhere near them.'); }
   // neighbours
   const nb = c.terr && c.terr.nb ? Object.entries(c.terr.nb).map(([k, v]) => [w.cults[k], v]).filter(([q]) => q && q.alive && !q.power).sort((a, b) => b[1] - a[1]) : [];
   if (nb.length) {

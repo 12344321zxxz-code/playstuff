@@ -421,7 +421,7 @@ export function peopleYear(w) { for (const _ of peopleSteps(w)); }
 export function* peopleSteps(w) {
   buildGrid(w); territory(w);
   const sets = w.sets, n0 = sets.length, rnd = w.rnd, { water, river, farm, soil, g, t, fresh, owner, fireT, ore, mi, crop, h } = w, sea = w.params.sea;
-  for (const c of w.cults) { c.boom = boomOf(c.arts); c.boomL = c.boomL ? c.boomL + (c.boom - c.boomL) * 0.05 : c.boom;   /* the numbers take a generation or two to catch up with a new harvest */ c._poolLast = c._pool || 0; c._poolWLast = c._poolW || 0; c._pool = 0; c._poolW = 0; c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
+  for (const c of w.cults) { c.boom = boomOf(c.arts); c.boomL = c.boomL ? c.boomL + (c.boom - c.boomL) * 0.05 : c.boom;   /* the numbers take a generation or two to catch up with a new harvest */ c._poolLast = c._pool || 0; c._poolWLast = c._poolW || 0; c.dkLast = c._dk || 0; c._dk = 0; c._pool = 0; c._poolW = 0; c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
   let total = 0, smoke = 0; const sun = 1 - Math.min(0.6, w.aerosol * 0.8);
   const chunk = Math.max(6, Math.ceil(n0 / 22));   /* the towns in 22 even steps, then the peoples, faiths and tongues in three: the year fits in its eight ticks */
   for (let k = 0; k < n0; k++) {
@@ -507,7 +507,7 @@ export function* peopleSteps(w) {
         const tie = Math.min(1, (1 / (1 + dx / Math.max(20, c.reachR || 30))) * (tg === Infinity ? 0.5 : tg > 2 ? 0.75 : 1) * (s.links ? 1.25 : 1)); s._tie = tie;
         if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * 0.05 * tie * (gap >= 2 ? 0.3 : 1); } else s.k += (c.know - s.k) * 0.01; }
       s.lvl = techOf(s.k); wt = 0.4 + 0.6 * s._tie * Math.min(1, s.k / Math.max(1, c.know)); }
-    c.know += wt * 0.65 * (c.kq || 1) * learnDrag(w, c, i0) * (s.pop / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    { const dk = (1 - 0.5 * (c.orth || 0)) * wt * 0.65 * (c.kq || 1) * learnDrag(w, c, i0) * (s.pop / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); c.know += dk; c._dk = (c._dk || 0) + dk; }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -583,7 +583,9 @@ function cultYear(w, c) {
   // realm costs nothing; a crash that breaks every network costs whole eras, unevenly.
   // (slice 16) the contact that counts is trade: half of each partner's people, as far as trade ties
   // the two (a few loads a year is a full tie); ties fade by a fifth a year
-  { let carry = c.pop, tAll = 0, tInd = 0; const T = c.ties || {}; for (const k in T) { const o = w.cults[k]; T[k] *= 0.8; if (T[k] < 0.05) { delete T[k]; continue; } if (o && o.alive && !o.power) { const t = Math.min(1, T[k] / 3); carry += 0.5 * o.pop * t; tAll += t; if (o.arts.railways || o.arts.steamships) tInd += t; } } c.carry = carry;
+  { let carry = c.pop, tAll = 0, tInd = 0, letters = 0; const T = c.ties || {}; for (const k in T) { const o = w.cults[k]; T[k] *= 0.8; if (T[k] < 0.05) { delete T[k]; continue; } if (o && o.alive && !o.power) { const t = Math.min(1, T[k] / 3), dt = Math.abs(o.tech - c.tech); carry += (dt <= 1 ? 1 : 0.5) * o.pop * t; tAll += t; if ((o.arts.railways || o.arts.steamships) && !c.arts.engines) tInd += o.tech - c.tech >= 2 ? t : 0.5 * t;
+        if (dt <= 1) letters += 0.3 * t * (o.dkLast || 0) * absorb(dt); } } c.carry = carry;
+    c.know += Math.min(letters, c.dkLast || 0); c.letters = letters > 0 ? Math.min(1, letters / Math.max(1e-9, c.dkLast || 0)) : 0;   /* (Nov 2) a republic of letters: peers tied by trade share what each finds (only their own finds, at most as much again as a realm finds itself), so a cluster learns like one realm of its combined size */
     c._undercut = tAll > 0 ? tInd / tAll : 0;   /* (Oct 30, council) how much of their trade is with factory powers: cheap cloth and iron ruin their own workshops */
     let hold = 0; while (hold < 10 && carry >= carriersFor(hold + 1)) hold++; c.hold = hold;
     if (hold < 9 && c.know > TECH[Math.max(0, hold)]) c.know -= (c.know - TECH[Math.max(0, hold)] * 0.97) * 0.06;
@@ -642,7 +644,8 @@ function cultYear(w, c) {
 export function declareWar(w, c, f) { if (c.war || f.war || !c.big) return false; startWar(w, c, f, false, false); return true; }   /* (slice 4) for wars begun elsewhere: colonial conquest */
 function startWar(w, c, f, horde, holy) {
   // friends of the attacked come in: leagues, fellow believers, close neighbours; then the war is everyone's
-  const allies = []; for (const o of w.cults) { if (!o.alive || o === c || o === f || o.war || c.war || o.count < 3) continue; const close = (o.nb[f.id] || 0) > 1 && (o.nb[c.id] || 0) < (o.nb[f.id] || 0); if ((leagued(w, o.id, f.id) || (sameFaith(o, f) && !sameFaith(o, c)) || (tongueGap(w, o.langId, f.langId) <= 2 && tongueGap(w, o.langId, c.langId) > 2) || close) && w.rnd() < 0.35) allies.push(o); }
+  const allies = []; for (const o of w.cults) { if (!o.alive || o === c || o === f || o.war || c.war || o.count < 3) continue; const close = (o.nb[f.id] || 0) > 1 && (o.nb[c.id] || 0) < (o.nb[f.id] || 0); const fear = (o.nb[c.id] || 0) > 0.3 ? strength(c, c.pop) / Math.max(1, strength(o, o.pop)) : 0;   /* (Nov 2) the balance of power: a neighbour of a rising giant joins whoever it attacks */
+    if (((leagued(w, o.id, f.id) || (sameFaith(o, f) && !sameFaith(o, c)) || (tongueGap(w, o.langId, f.langId) <= 2 && tongueGap(w, o.langId, c.langId) > 2) || close) && w.rnd() < 0.35 * Math.min(2, Math.max(1, fear / 2))) || (fear > 2.5 && w.rnd() < Math.min(0.5, 0.1 * fear))) allies.push(o); }
   const joinAllies = () => { const K = conflictOf(w, c); for (const o of allies) { if (o.war || !c.alive || !K || truceLeft(w, o.id, c.id)) continue; w.rnd(); if (joinConflict(w, o, K, 1)) tally(w, 'allied'); if (o.big) ev(w, `The ${o.name} come into the war on the side of the ${f.name}.`, o.big.x, o.big.y, o.color, 1); }
     const n = 2 + allies.length; if (n >= 4 && c.tech >= 4) { const b = c.big; if (b && discover(w, 'worldwar', b.x, b.y)) ev(w, `${n} peoples are at war at once, and there is hardly a town in the known world that has not sent its sons. They will call it the Great War.`, b.x, b.y, null, 2); } };
   const until = w.year + 6 + ((w.rnd() * 18) | 0), b = c.big, big = c.count >= 20 && f.count >= 16, again = c.fought === f.id; c.fought = f.id; f.fought = c.id; c.foughtAt = f.foughtAt = w.year;
@@ -958,10 +961,17 @@ function originsYear(w, c, b) {
   const gT = Math.min(1, c._L.germs * (0.2 + 0.35 * dense) + dense * 0.15);   // how hard their herds and crowds have made them
   c.germ += (gT - c.germ) * (gT > c.germ ? 0.012 : 0.004);
   let rivals = 0; for (const k in c.nb) { const o = w.cults[k]; if (o.alive && o.pop > c.pop * 0.3 && c.nb[k] > 0.3) rivals++; } c.rivals = rivals;
+  // (Nov 2, play tall) orthodoxy: a court with no equal near it, generation after generation, hardens (Cardwell's law);
+  // an equal at the border, a lost war or a civil war breaks it up again. It slows what the realm finds, and it is
+  // what makes a court forbid the new and dangerous
+  { let peer = false; const my = strength(c, c.pop); for (const k in c.nb) { const o = w.cults[k]; if (o && o.alive && !o.power && c.nb[k] > 0.3 && o.tech >= c.tech - 1 && strength(o, o.pop) >= 0.5 * my) { peer = true; break; } }
+    c.peerless = !peer; const o0 = c.orth || 0; c.orth = peer ? o0 * 0.95 : c.count >= 15 && c.coh > 0.45 ? Math.min(1, o0 + 0.008) : o0 * 0.99;
+    if (c.shaken != null && w.year - c.shaken < 2) c.orth *= 0.7; if (c.hub && c.hub.st === 'civil') c.orth *= 0.97;
+    if (c.orth > 0.25 && o0 <= 0.25 && b && c.count >= 20) ev(w, `No one at the court of the ${c.name} remembers an enemy worth fearing. New ideas are looked at with suspicion now.`, b.x, b.y, c.color, 1); }
   // one realm alone in its world can afford to stop: a court decides the ships are a waste
-  if (b && b.name && c.count >= 36 && rivals === 0 && c.coh > 0.45 && rnd() < 0.006) {
-    const k = ['sailing', 'engines', 'roads'].find((q) => A[q]);
-    if (k) { delete A[k]; c.banned[k] = w.year; ev(w, k === 'sailing' ? `The court at ${b.name} burns the great ships. No one of the ${c.name} may sail past sight of land.` : k === 'engines' ? `The court at ${b.name} forbids the smoking engines. Nobody nearby is strong enough to make them regret it.` : `The ${c.name} let their roads go. There is no one to trade with that they need.`, b.x, b.y, c.color, 0); discover(w, 'ban', b.x, b.y); }
+  if (b && b.name && c.count >= 20 && (c.orth || 0) > 0.3 && c.coh > 0.45 && rnd() < 0.012 * (c.orth || 0)) {
+    const k = ['sailing', 'engines', 'printing', 'navigation', 'roads'].find((q) => A[q]);
+    if (k) { delete A[k]; c.banned[k] = w.year; ev(w, k === 'sailing' ? `The court at ${b.name} burns the great ships. No one of the ${c.name} may sail past sight of land.` : k === 'engines' ? `The court at ${b.name} forbids the smoking engines. Nobody nearby is strong enough to make them regret it.` : k === 'printing' ? `The court at ${b.name} licenses every press and closes the rest. Printers who want to print what they like take ship for the neighbours.` : k === 'navigation' ? `The court at ${b.name} forbids voyages beyond the known coasts. The charts are locked away.` : `The ${c.name} let their roads go. There is no one to trade with that they need.`, b.x, b.y, c.color, 0); discover(w, 'ban', b.x, b.y); }
   }
   for (const k in c.banned) if (w.year - c.banned[k] > 160) delete c.banned[k];
   // a small people cut off from all others forgets things it has no one to relearn from
