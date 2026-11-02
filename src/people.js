@@ -568,7 +568,6 @@ function gapCached(w, a, b) { if (_gapY !== w.year || _gapW !== w) { _gapY = w.y
 function cultYear(w, c) {
   const rnd = w.rnd, b = c.big, A = c.arts; if (c.pop > c.peak) c.peak = c.pop;
   if (!Number.isFinite(c.know)) c.know = TECH[1]; if (c.know > TECH[9] * 3) c.know = TECH[9] * 3;   /* (Oct 30) past the last age knowledge kept compounding until it overflowed (NaN worlds): it tops out */ if (!Number.isFinite(c.surplus)) c.surplus = 0;   // never let one bad number spread to everyone they meet
-  if (c.know > TECH[4]) c.know -= (c.know - TECH[4]) * 0.005;   /* (Nov 2, play tall) the knowledge of the commercial and industrial ages has to be kept up: what is not renewed by a realm's own towns and trade, or by its partners, goes stale. A realm's standing then follows what it finds now, not the lead it brought out of the middle ages */
   if (!c.arts.engines && c.know > 0.97 * TECH[5]) c.know = 0.97 * TECH[5];   /* (Oct 30) industry is built, not copied: without its own engines (coal) a realm cannot leave the age of powder and print */
   if (c.pid != null && !c._kset && w.year - c.born <= 2) { c._kset = 1; let kp = 0, p = 0; for (const s of w.sets) if (!s.dead && !s.nomad && s.cult === c.id && s.k != null) { kp += s.k * s.pop; p += s.pop; } if (p > 0 && kp / p < c.know) { c.know = kp / p; c.tech = techOf(c.know); } }   /* (Oct 29) a breakaway knows what its own towns knew, not what its old court knew */
   let way = 'forage', mx = 0; for (const k in c._ways) if (c._ways[k] > mx) { mx = c._ways[k]; way = k; }
