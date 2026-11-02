@@ -100,7 +100,7 @@ function suits(w, c, kind, k) {
 //          (a railway is known at court long before the provinces have one)
 //   adopt: how fast a district takes up what its court knows (times its tie; institutions and towns scale it)
 //   kq5:   the pace of discovery from the age of print (rescales what the cap takes away)
-export const KN = { M: 2.5, core: 0.5, use: 5, adopt: 0.05, kq5: 1 };
+export const KN = { M: 2.5, core: 0.5, use: 5, adopt: 0.05, kq5: 1, arm: 1 };   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
 export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
 function meet(w, c, o, p, ta, tb) {
   const rnd = w.rnd; if (c === o) return;
@@ -293,7 +293,12 @@ arrive.trade = (w, m) => {
   if (m.wet0 && ca !== cb && w.mass[a.y * W + a.x] !== w.mass[b.y * W + b.x] && once(w, 'back-' + ca.id + '-' + cb.id) && w.rnd() < 0.35 && infect(w, a, null)) { const st = w.plagues[a.pid]; st.v = 0.09; st.catchy = 0.5; ev(w, `Sailors home from ${b.name} bring a fever no one on this shore has seen. It spreads through ${a.name} and the ports beyond.`, a.x, a.y, ca.color, 0); discover(w, 'backwash', a.x, a.y); }
   if (m.wet0 && discover(w, 'trade', b.x, b.y)) ev(w, `A ship from ${a.name} ties up at ${b.name} and sells everything aboard.`, b.x, b.y, ca.color);
 };
-export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * warMult(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1) * (c.q ? 1 + 0.15 * c.q.war : 1); }
+// (Nov 3, holistic) from the age of print the age's arms (rifles, railways, steam) come from the districts that have adopted them: a giant
+// whose provinces still live an age behind arms them with the weapons of the age before (its core, and at least 30%, with the new ones)
+const armsOf = (c) => { const m = warMult(c); if (c.tech < KN.use || !(KN.arm > 0) || (c.modShare ?? 1) >= 1) return m;
+  const lo = {}; for (const k in c.arts) { const T = ART[k]; if (!T || T.tier < c.tech) lo[k] = c.arts[k]; } const mLo = warMult({ arts: lo, bronzeCut: c.bronzeCut }), sh = 1 - KN.arm * 0.7 * (1 - c.modShare);
+  return mLo + (m - mLo) * sh; };   /* the districts an age behind fight with the arms of the age before */
+export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * armsOf(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1) * (c.q ? 1 + 0.15 * c.q.war : 1); }
 // (slice 2) the besiegers go home (part of them; the rest are dead or deserted)
 function liftSiege(w, o, frac) { const sg = o.siege; o.siege = null; if (!sg) return; const home = sg.from != null ? w.sets.find((q) => q.id === sg.from && !q.dead) : null; if (home) home.pop += sg.n * frac; }
 // Every year: count who is serving, and work the sieges. A siege advances with the force ratio
@@ -431,7 +436,7 @@ export function peopleYear(w) { for (const _ of peopleSteps(w)); }
 export function* peopleSteps(w) {
   buildGrid(w); territory(w);
   const sets = w.sets, n0 = sets.length, rnd = w.rnd, { water, river, farm, soil, g, t, fresh, owner, fireT, ore, mi, crop, h } = w, sea = w.params.sea;
-  for (const c of w.cults) { c.boom = boomOf(c.arts); c.boomL = c.boomL ? c.boomL + (c.boom - c.boomL) * 0.05 : c.boom;   /* the numbers take a generation or two to catch up with a new harvest */ c._poolLast = c._pool || 0; c._poolWLast = c._poolW || 0; c.dkLast = Number.isFinite(c._dk) ? c._dk : 0; c._dk = 0; c._dkc = 0; c._dkp = 0; if (!Number.isFinite(c.orth)) c.orth = 0; c._pool = 0; c._poolW = 0; c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
+  for (const c of w.cults) { c.boom = boomOf(c.arts); c.boomL = c.boomL ? c.boomL + (c.boom - c.boomL) * 0.05 : c.boom;   /* the numbers take a generation or two to catch up with a new harvest */ c._poolLast = c._pool || 0; c._poolWLast = c._poolW || 0; c.dkLast = Number.isFinite(c._dk) ? c._dk : 0; c._dk = 0; c._dkc = 0; c._dkp = 0; if (!Number.isFinite(c.orth)) c.orth = 0; c._pool = 0; c._poolW = 0; c._n = 0; c._p = 0; c._pm = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
   let total = 0, smoke = 0; const sun = 1 - Math.min(0.6, w.aerosol * 0.8);
   const chunk = Math.max(6, Math.ceil(n0 / 22));   /* the towns in 22 even steps, then the peoples, faiths and tongues in three: the year fits in its eight ticks */
   for (let k = 0; k < n0; k++) {
@@ -517,7 +522,7 @@ export function* peopleSteps(w) {
         const tie = Math.min(1, (1 / (1 + dx / Math.max(20, c.reachR || 30))) * (tg === Infinity ? 0.5 : tg > 2 ? 0.75 : 1) * (s.links ? 1.25 : 1)); s._tie = tie;
         if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * KN.adopt * tie * (gap >= 2 ? 0.3 : 1) * (c.tech >= KN.use ? uptake(c, s) : 1); } else s.k += (c.know - s.k) * 0.01; }
       s.lvl = techOf(s.k); wt = 0.15 + 0.85 * s._tie * Math.min(1, s.k / Math.max(1, c.know)); }   /* (Nov 2, play tall) far, loosely held provinces add little to what the court knows: a giant learns from its well-tied core (roads, bureaucracy, rail and the telegraph widen it) */
-    { const dk = (1 - (c.tech >= 5 ? 0.8 : 0.5) * (c.orth || 0)) * wt * 0.78 * (c.kq || 1) * learnDrag(w, c, i0) * ((c.tech >= 5 ? s.pop * Math.min(3, 0.15 + 3.4 * Math.pow(s.urb ?? 0.06, 0.81)) : s.pop)   /* (Nov 2, holistic) no plateau: a district half in town keeps out-thinking one a third in town (it was capped at 26% urban); same output as before at the usual 8% and 35% */ / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); if (Number.isFinite(dk)) { if (c.tech >= 5) { if (s === c.big || (!s.nomad && s._tie >= KN.core)) c._dkc = (c._dkc || 0) + dk * KN.kq5; else c._dkp = (c._dkp || 0) + dk * KN.kq5; } else { c.know += kl(c, 'own', dk); c._dk = (c._dk || 0) + dk; } } }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); from the age of print, new ideas come from the towns and the trade, not the peasantry (a district counts by its townspeople); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    { const dk = (1 - (c.tech >= 5 ? 0.8 : 0.5) * (c.orth || 0)) * wt * 0.78 * (c.kq || 1) * learnDrag(w, c, i0) * ((c.tech >= 5 ? s.pop * Math.min(3, 0.15 + 3.4 * Math.pow(s.urb ?? 0.06, 0.81)) : s.pop)   /* (Nov 2, holistic) no plateau: a district half in town keeps out-thinking one a third in town (it was capped at 26% urban); same output as before at the usual 8% and 35% */ / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); if (Number.isFinite(dk)) { if (c.tech >= 5) { if (s === c.big || (!s.nomad && s._tie >= KN.core)) c._dkc = (c._dkc || 0) + dk * KN.kq5; else c._dkp = (c._dkp || 0) + dk * KN.kq5; } else { c.know += kl(c, 'own', dk); c._dk = (c._dk || 0) + dk; } } }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); from the age of print, new ideas come from the towns and the trade, not the peasantry (a district counts by its townspeople); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; if (s.nomad || s.lvl == null || s.lvl >= c.tech) c._pm += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -526,7 +531,7 @@ export function* peopleSteps(w) {
   let alive = 0;
   for (const c of w.cults) {
     if (!c.alive) continue; if (c._n < 0) { alive++; continue; }   // too new to have been counted
-    c.count = c._n; c.pop = c._p; c.big = c._b && !c._b.dead ? c._b : null;
+    c.count = c._n; c.pop = c._p; c.modShare = c._p > 0 ? Math.min(1, c._pm / c._p) : 1; c.big = c._b && !c._b.dead ? c._b : null;
     if (c.count === 0) { if (!w.sets.some((s) => s.cult === c.id) && !w.movers.some((m) => m.cult === c.id && (m.kind === 'refugees' || m.kind === 'settlers'))) { c.alive = false; record(w, 'gone', [c.id], { note: 'the last of them' }); endWar(w, c, true); ev(w, `The ${c.name} are gone from the world.`, null, null, c.color, c.peak > 2000 ? 2 : c.peak > 300 ? 0 : 1); if (c.peak > 300) discover(w, 'gone', null, null); } continue; }
     alive++; if (c.power) { POWER[c.power](w, c); continue; } cultYear(w, c);
   }
