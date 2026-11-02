@@ -76,6 +76,7 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
     const x = p[0], y = p[1];
     if (lens === 6) { if (st.nomad && z < 8) continue; if (!st.nomad && !(c && c.big === st) && !(st.tier === 3 && z >= 5) && !(st.tier === 2 && z >= 9) && z < 14) continue; }   /* (Oct 31) the political map shows capitals and, closer in, the cities */
     if (st.nomad) { if (z < 2.4 && st.pop < 60) continue; blit(ctx, 'camp', x, y, k, col); continue; }
+    if (st.tier < 2 && z < 5 && !(c && c.big === st)) continue;   /* (Nov 2) the countryside reads as hamlets on the land; a village district's own marker shows only close in */
     if (z < 1.8 && st.tier < 2) { ctx.fillStyle = col; ctx.fillRect(Math.round(x - cam.dpr), Math.round(y - 2 * cam.dpr), 2 * cam.dpr, 2 * cam.dpr); continue; }
     if (st.walls && st.tier >= 2 && z >= 3) blit(ctx, 'walls', x, y + k, k, col);
     if (st.undead) {   // a town of the dead: the old houses, grey, with a cold light over them

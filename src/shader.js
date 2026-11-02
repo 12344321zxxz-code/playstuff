@@ -107,6 +107,8 @@ void main(){
       if (cellPx >= 7.) fc *= mod(floor((fl == 0 ? f.x : (c.x % 2 == 0 ? f.x : f.y)) * 6.), 2.) < 1. ? 1. : .86;
       col = fc * (.9 + .2 * lit);
     }
+    { int rd = (riv < .1 && rdir >= 10) ? rdir - 10 : 0; float dens = float(rd) / 245.;   // (Nov 2) the countryside: hamlets and farmsteads, as thick as the district's rural people
+      if (!sea && !urban && dens > 0.) { if (cellPx >= 6.) { vec2 sp = floor(f * 5.); float k = hash(vec2(c) * 7.13 + sp); if (k < dens * .2) col = hash(vec2(c) + sp * 1.7) < .55 ? vec3(.58, .29, .21) : vec3(.80, .74, .62); } else col = mix(col, vec3(.74, .63, .42), .14 * dens); } }
     if (urban) {
       col = vec3(.60, .55, .50);
       if (cellPx >= 7.) { vec2 sp = floor(f * 4.); float k = hash(vec2(c) * 3. + sp); col = k < .5 ? vec3(.70, .36, .26) : k < .8 ? vec3(.80, .76, .68) : vec3(.42, .40, .38); }
