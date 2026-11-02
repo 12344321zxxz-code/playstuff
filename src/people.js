@@ -91,6 +91,16 @@ function suits(w, c, kind, k) {
 }
 // (Oct 29) how much of what a people sees in another it can take in: a neighbour one age ahead teaches a
 // great deal, one two ages ahead very little (they see the guns, not the foundry). After Cohen & Levinthal.
+// (Nov 3, holistic) knowing and using, and how much one court can take in. Exported so experiments can patch them.
+//   M:     from the age of print a court takes in at most M times what its own well-tied core finds, from its far
+//          provinces and from foreign letters together (absorptive capacity): a giant's hinterland stops adding
+//          once its court is saturated, and a small state in a cluster of peers fills the same budget from abroad
+//   core:  how well tied to the court a district must be to count as its core (roads, rail and the telegraph widen it)
+//   use:   from this tier on an art works in a district only once the district itself has reached that age
+//          (a railway is known at court long before the provinces have one)
+//   adopt: how fast a district takes up what its court knows (times its tie; institutions and towns scale it)
+//   kq5:   the pace of discovery from the age of print (rescales what the cap takes away)
+export const KN = { M: 2.5, core: 0.5, use: 5, adopt: 0.05, kq5: 1 };
 export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
 function meet(w, c, o, p, ta, tb) {
   const rnd = w.rnd; if (c === o) return;
@@ -421,12 +431,12 @@ export function peopleYear(w) { for (const _ of peopleSteps(w)); }
 export function* peopleSteps(w) {
   buildGrid(w); territory(w);
   const sets = w.sets, n0 = sets.length, rnd = w.rnd, { water, river, farm, soil, g, t, fresh, owner, fireT, ore, mi, crop, h } = w, sea = w.params.sea;
-  for (const c of w.cults) { c.boom = boomOf(c.arts); c.boomL = c.boomL ? c.boomL + (c.boom - c.boomL) * 0.05 : c.boom;   /* the numbers take a generation or two to catch up with a new harvest */ c._poolLast = c._pool || 0; c._poolWLast = c._poolW || 0; c.dkLast = Number.isFinite(c._dk) ? c._dk : 0; c._dk = 0; if (!Number.isFinite(c.orth)) c.orth = 0; c._pool = 0; c._poolW = 0; c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
+  for (const c of w.cults) { c.boom = boomOf(c.arts); c.boomL = c.boomL ? c.boomL + (c.boom - c.boomL) * 0.05 : c.boom;   /* the numbers take a generation or two to catch up with a new harvest */ c._poolLast = c._pool || 0; c._poolWLast = c._poolW || 0; c.dkLast = Number.isFinite(c._dk) ? c._dk : 0; c._dk = 0; c._dkc = 0; c._dkp = 0; if (!Number.isFinite(c.orth)) c.orth = 0; c._pool = 0; c._poolW = 0; c._n = 0; c._p = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
   let total = 0, smoke = 0; const sun = 1 - Math.min(0.6, w.aerosol * 0.8);
   const chunk = Math.max(6, Math.ceil(n0 / 22));   /* the towns in 22 even steps, then the peoples, faiths and tongues in three: the year fits in its eight ticks */
   for (let k = 0; k < n0; k++) {
     if (k % chunk === chunk - 1) yield;
-    const s = sets[k]; if (s.dead) continue; const c = w.cults[s.cult], A = c.arts, i0 = s.y * W + s.x; s.age++;
+    const s = sets[k]; if (s.dead) continue; const c = w.cults[s.cult], A = (s._A = artsHere(w, c, s)), i0 = s.y * W + s.x; s.age++;
     if (water[i0] === 1) { let to = -1, bd = 99; for (const o of DISC[4]) { const yy = s.y + o[1]; if (yy < 1 || yy >= H - 1) continue; const j = yy * W + wx(s.x + o[0]); if (!water[j] && !w.lava[j] && o[2] < bd) { bd = o[2]; to = j; } }
       if (to < 0 || s.pop < 30) { endSet(w, s, 'drowned'); continue; }   /* (slice 17) a rising sea moves a town uphill if there is land close by; only a town with nowhere to go drowns */
       s.x = to % W; s.y = (to / W) | 0; s.pop *= 0.85; buildGrid(w); if (s.tier >= 2 && once(w, 'moved-' + s.id)) ev(w, `The sea takes the lower town of ${s.name}. Its people rebuild on higher ground.`, s.x, s.y, c.color, 1); continue; }
@@ -464,12 +474,12 @@ export function* peopleSteps(w) {
       if (sp && sp.tame && !c.tame[sp.tame]) { c.tame[sp.tame] = w.year; if (TAME_GRAZE[sp.tame] && !c.grazer) { c.grazer = sp.tame; learn(w, c, 'herding'); } if (once(w, 'tame' + sp.tame)) ev(w, `The ${c.name} tame the ${sp.tame === 'cattle' ? 'aurochs' : sp.tame === 'pig' ? 'boar' : sp.tame}. Others will learn it from them.`, s.x, s.y, c.color); } }
     s.ores = ores; c._metals |= ores; s.port = seaN >= 3 && !s.nomad;
     if (!c.boom) { c.boom = c.boomL = boomOf(A); c._pool = c._pool || 0; c._poolW = c._poolW || 0; }   /* a people born during this census */
-    const L = c._L || (c._L = livestock(c)), yieldF = 15 * (1 + (A.plough ? 0.3 : 0.08) * L.plough) * (A.pottery ? 1.03 : 1) * (A.mills ? 1.15 : 1) * (A.aqueducts && s.tier >= 3 ? 1.15 : 1) * (A.dikes ? 1.05 : 1) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * c.boom;
+    const L = c._L || (c._L = livestock(c)), yieldF = 15 * (1 + (A.plough ? 0.3 : 0.08) * L.plough) * (A.pottery ? 1.03 : 1) * (A.mills ? 1.15 : 1) * (A.aqueducts && s.tier >= 3 ? 1.15 : 1) * (A.dikes ? 1.05 : 1) * (A.iron ? 1.1 : 1) * (A.writing ? 1.12 : 1) * c.boom * (A === c.arts ? 1 : boomHere(c, A));
     const fW = wildF * (s.nomad ? 3.2 : 1.1) * (0.55 + 0.45 * Math.min(wa, 1.3)) * sun, fH = hunt * 6;
     const fFr = Math.min(freshF * (A.boats ? 2.2 : 1.5), s.pop * 0.9 + 10), want = seaN ? Math.max(0, Math.min(s.pop * 0.95 + 12 - fFr, seaN * (A.sailing ? 4.5 : A.boats ? 3 : 1.1) * (!!(c.docs && c.docs.sea) ? 1.3 : 1))) : 0;
     const fSea = want > 0 ? catchFish(w, s.x, s.y, s.R + (A.sailing ? 10 : A.boats ? 4 : 1), want) : 0, fF = fFr + fSea, fishGap = want > 8 ? fSea / want : 1;
     const fA = (rain * clamp(wa, 0.2, 1.3) + irrg * (A.irrigation ? 1.15 : 1) * (0.72 + 0.28 * Math.min(wa, 1.2)) * (wa > 1.5 ? 0.8 : 1)) * yieldF * sun;
-    const fP = herder ? c.boom * past * (s.nomad ? 3.4 : 2) * (c.tame.horse ? 1.15 : 1) * (0.5 + 0.5 * Math.min(wa, 1.3)) * sun : 0;
+    const fP = herder ? c.boom * (A === c.arts ? 1 : boomHere(c, A)) * past * (s.nomad ? 3.4 : 2) * (c.tame.horse ? 1.15 : 1) * (0.5 + 0.5 * Math.min(wa, 1.3)) * sun : 0;
     const imp = s.imp || {}, food = (fW + fH + fF + fA + fP) * (s.blessed && w.year - s.blessed < 3 ? 1.15 : 1) * (w.year - (s.fed ?? -99) < 3 ? 1.12 : 1) * (w.year - (imp[GD.salt] ?? -99) < 5 && (herder || seaN) ? 1.05 : 1) * (s.market ? 1.1 : 1) * (1 + 0.06 * Math.min(4, s.trade)) * (c.tame.pig ? 1.05 : 1) * (s.plague > 0 ? 0.8 : 1); s.src = [fW, fH, fF, fA, fP]; c._sur += s.pop * clamp((fA + fP) / Math.max(1, food), 0, 1);
     const mx = Math.max(fW, fH, fF, fA, fP); s.way = mx === fA ? 'farm' : mx === fP ? 'herd' : mx === fF ? 'fish' : mx === fH ? 'hunt' : 'forage'; c._ways[s.way] += s.pop;
     if (!s.nomad && A.farming && bestI >= 0 && farms < Math.ceil((s.pop * 1.3) / (yieldF * 0.6))) { farm[bestI] = 1; t[bestI] = 0; g[bestI] = 0.25; }
@@ -505,9 +515,9 @@ export function* peopleSteps(w) {
       if (s === b0) { s.k = c.know; s._tie = 1; }
       else { const dx = b0 ? Math.hypot(wrapDx(s.x - b0.x), s.y - b0.y) : 0, tg = s.lang != null && c.langId != null && s.lang !== c.langId ? gapCached(w, s.lang, c.langId) : 0;
         const tie = Math.min(1, (1 / (1 + dx / Math.max(20, c.reachR || 30))) * (tg === Infinity ? 0.5 : tg > 2 ? 0.75 : 1) * (s.links ? 1.25 : 1)); s._tie = tie;
-        if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * 0.05 * tie * (gap >= 2 ? 0.3 : 1); } else s.k += (c.know - s.k) * 0.01; }
+        if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * KN.adopt * tie * (gap >= 2 ? 0.3 : 1) * (c.tech >= KN.use ? uptake(c, s) : 1); } else s.k += (c.know - s.k) * 0.01; }
       s.lvl = techOf(s.k); wt = 0.15 + 0.85 * s._tie * Math.min(1, s.k / Math.max(1, c.know)); }   /* (Nov 2, play tall) far, loosely held provinces add little to what the court knows: a giant learns from its well-tied core (roads, bureaucracy, rail and the telegraph widen it) */
-    { const dk = (1 - (c.tech >= 5 ? 0.8 : 0.5) * (c.orth || 0)) * wt * 0.78 * (c.kq || 1) * learnDrag(w, c, i0) * ((c.tech >= 5 ? s.pop * Math.min(3, 0.15 + 3.4 * Math.pow(s.urb ?? 0.06, 0.81)) : s.pop)   /* (Nov 2, holistic) no plateau: a district half in town keeps out-thinking one a third in town (it was capped at 26% urban); same output as before at the usual 8% and 35% */ / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); if (Number.isFinite(dk)) { c.know += kl(c, 'own', dk); c._dk = (c._dk || 0) + dk; } }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); from the age of print, new ideas come from the towns and the trade, not the peasantry (a district counts by its townspeople); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
+    { const dk = (1 - (c.tech >= 5 ? 0.8 : 0.5) * (c.orth || 0)) * wt * 0.78 * (c.kq || 1) * learnDrag(w, c, i0) * ((c.tech >= 5 ? s.pop * Math.min(3, 0.15 + 3.4 * Math.pow(s.urb ?? 0.06, 0.81)) : s.pop)   /* (Nov 2, holistic) no plateau: a district half in town keeps out-thinking one a third in town (it was capped at 26% urban); same output as before at the usual 8% and 35% */ / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); if (Number.isFinite(dk)) { if (c.tech >= 5) { if (s === c.big || (!s.nomad && s._tie >= KN.core)) c._dkc = (c._dkc || 0) + dk * KN.kq5; else c._dkp = (c._dkp || 0) + dk * KN.kq5; } else { c.know += kl(c, 'own', dk); c._dk = (c._dk || 0) + dk; } } }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); from the age of print, new ideas come from the towns and the trade, not the peasantry (a district counts by its townspeople); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
   }
   yield;
@@ -565,6 +575,17 @@ function kindOf(c) {
 // tongue distances, cached for a year (they change only as tongues split)
 let _gapY = -1, _gapW = null; const _gapM = new Map();
 function gapCached(w, a, b) { if (_gapY !== w.year || _gapW !== w) { _gapY = w.year; _gapW = w; _gapM.clear(); } const k = a * 65536 + b; let g = _gapM.get(k); if (g === undefined) { g = tongueGap(w, a, b); _gapM.set(k, g); } return g; }
+// (Nov 3, holistic) the arts that work in this district: from tier KN.use on, only those of an age the district itself
+// has reached. Cached per realm and level for the year.
+function artsHere(w, c, s) {
+  const A = c.arts; if (s.nomad || s.lvl == null || c.tech < KN.use || s.lvl >= c.tech) return A;
+  const C = c._AH && c._AH.y === w.year ? c._AH : (c._AH = { y: w.year, m: {} }); let o = C.m[s.lvl];
+  if (!o) { o = {}; for (const k in A) { const T = ART[k]; if (!T || T.tier < KN.use || T.tier <= s.lvl) o[k] = A[k]; } C.m[s.lvl] = o; } return o; }
+const boomHere = (c, A) => boomOf(A) / Math.max(1e-9, boomOf(c.arts));
+// how readily a district takes up its court's methods: towns with their own craftsmen first (key finding of the
+// adoption research: local capability followed within a year or two where specialists existed), a cohesive state,
+// a court not grown suspicious of novelty, and rivals that press it (the military tournament)
+const uptake = (c, s) => (0.45 + 1.8 * Math.min(0.35, s.urb ?? 0.06)) * (0.55 + 0.45 * (c.coh ?? 0.7)) * (1 - 0.6 * (c.orth || 0)) * (c.rivals > 0 || c.war ? 1.25 : 1);
 function cultYear(w, c) {
   const rnd = w.rnd, b = c.big, A = c.arts; if (c.pop > c.peak) c.peak = c.pop;
   if (!Number.isFinite(c.know)) c.know = TECH[1]; if (c.know > TECH[9] * 3) c.know = TECH[9] * 3;   /* (Oct 30) past the last age knowledge kept compounding until it overflowed (NaN worlds): it tops out */ if (!Number.isFinite(c.surplus)) c.surplus = 0;   // never let one bad number spread to everyone they meet
@@ -583,9 +604,10 @@ function cultYear(w, c) {
   // realm costs nothing; a crash that breaks every network costs whole eras, unevenly.
   // (slice 16) the contact that counts is trade: half of each partner's people, as far as trade ties
   // the two (a few loads a year is a full tie); ties fade by a fifth a year
+  let budget = Infinity; if ((c._dkc || 0) + (c._dkp || 0) > 0) { const core = c._dkc || 0, used = Math.min(c._dkp || 0, KN.M * core); c.know += kl(c, 'own', core + used); c._dk = core + used; budget = Math.max(0, KN.M * core - used); }   /* (Nov 3, holistic) the court takes in its core's finds, and its far provinces' up to what it can absorb; what is left of that capacity is open to foreign letters */
   { let carry = c.pop, tAll = 0, tInd = 0, letters = 0; const T = c.ties || {}; for (const k in T) { const o = w.cults[k]; T[k] *= 0.8; if (T[k] < 0.05) { delete T[k]; continue; } if (o && o.alive && !o.power) { const t = Math.min(1, T[k] / 3), dt = Math.abs(o.tech - c.tech); carry += (dt <= 1 ? 1 : 0.5) * o.pop * t; tAll += t; if ((o.arts.railways || o.arts.steamships) && !c.arts.engines) tInd += o.tech - c.tech >= 2 ? t : 0.5 * t;
         if (dt <= 1) letters += 0.3 * t * (o.dkLast || 0) * absorb(dt); } } c.carry = carry;
-    if (Number.isFinite(letters)) c.know += kl(c, 'letters', Math.min(letters, (c.tech >= 5 ? 2 : 1) * (c.dkLast || 0)));   /* (Nov 2) from the age of print, ideas cross borders fast inside a cluster of rivals */ c.letters = letters > 0 ? Math.min(1, letters / Math.max(1e-9, c.dkLast || 0)) : 0;   /* (Nov 2) a republic of letters: peers tied by trade share what each finds (only their own finds, at most as much again as a realm finds itself), so a cluster learns like one realm of its combined size */
+    if (Number.isFinite(letters)) c.know += kl(c, 'letters', Math.min(letters, c.tech >= 5 && budget < Infinity ? budget : (c.tech >= 5 ? 2 : 1) * (c.dkLast || 0)));   /* (Nov 2) from the age of print, ideas cross borders fast inside a cluster of rivals */ c.letters = letters > 0 ? Math.min(1, letters / Math.max(1e-9, c.dkLast || 0)) : 0;   /* (Nov 2) a republic of letters: peers tied by trade share what each finds (only their own finds, at most as much again as a realm finds itself), so a cluster learns like one realm of its combined size */
     c._undercut = tAll > 0 ? tInd / tAll : 0;   /* (Oct 30, council) how much of their trade is with factory powers: cheap cloth and iron ruin their own workshops */
     let hold = 0; while (hold < 10 && carry >= carriersFor(hold + 1)) hold++; c.hold = hold;
     if (hold < 9 && c.know > TECH[Math.max(0, hold)]) c.know -= (c.know - TECH[Math.max(0, hold)] * 0.97) * 0.06;
@@ -777,7 +799,7 @@ function nomadStep(w, s, c, seaN, fishGap) {
 // A district's rank is set by its town, not by its countryside: villages everywhere, towns where there is trade,
 // cities only where a large town can be fed.
 export function urbanTarget(c, s) {
-  const A = c.arts; let u = 0.015 + 0.035 * Math.min(1, Math.max(0, c.surplus || 0)) + (s.market ? 0.03 : 0) + 0.008 * Math.min(4, s.trade || 0) + (c.big === s ? 0.04 : 0) + (s.port ? 0.02 : 0);
+  const A = s._A || c.arts; let u = 0.015 + 0.035 * Math.min(1, Math.max(0, c.surplus || 0)) + (s.market ? 0.03 : 0) + 0.008 * Math.min(4, s.trade || 0) + (c.big === s ? 0.04 : 0) + (s.port ? 0.02 : 0);
   if (A.writing) u += 0.01; if (A.coinage) u += 0.01; if (A.printing) u += 0.02;
   if (A.engines) u += 0.03; if (A.railways) u += 0.08; if (A.electricity) u += 0.06; if (A.oil) u += 0.04; if (A.computers) u += 0.1; if (A.networks) u += 0.08; if (A.automation) u += 0.05;
   return Math.max(0.02, Math.min(0.9, u));
