@@ -7,15 +7,26 @@
 //   tall:   share of frontier realm-decades held by a sovereign realm outside the top 3 by people AND by land
 //   kl:     where knowledge came from (own finds, contact, letters, migrants, conquest, ruins), by realm size tercile
 import { N, W } from '../src/core.js';
+import { ART, ART_KEYS } from '../src/tech.js';
 const settled = (c) => c && c.alive && !c.power && !(c.env && c.env.nomads > c.env.sed);
 const live = (c) => c && c.alive && !c.power;
-export function makeDev() { return { cent: [], hist: [], kl: {}, tallN: 0, tallT: 0 }; }
+export function makeDev() { return { cent: [], hist: [], kl: {}, tallN: 0, tallT: 0, seen: new Set(), first: {}, al: {} }; }
+// (Nov 2, research doc) how long each art took to reach other realms after the first: tied to the first holder by trade,
+// on its landmass, or far (other landmasses, no ties); realms born holding it inherited it and don't count
+const massOf = (w, c) => (c && c.big ? w.mass[c.big.y * W + c.big.x] : -1);
+function artLags(w, D) {
+  for (const c of w.cults) { if (!settled(c) || c.count <= 0) continue; const young = w.year - c.born <= 2;
+    for (const k of ART_KEYS) { if (!c.arts[k]) continue; const key = c.id + ':' + k; if (D.seen.has(key)) continue; D.seen.add(key); if (young) continue;
+      const f = D.first[k]; if (!f) { D.first[k] = { y: w.year, id: c.id, m: massOf(w, c) }; continue; }
+      const F = w.cults[f.id], tied = F && ((c.ties || {})[F.id] >= 1 || (F.ties || {})[c.id] >= 1), g = tied ? 'tied' : massOf(w, c) === f.m ? 'land' : 'far', t = ART[k].tier;
+      ((D.al[t] ||= {})[g] ||= []).push(w.year - f.y); } } }
 const landOf = (c) => (c.terr && c.terr.n) || c.count;
 function frontier(w, share) { let tot = 0; for (const c of w.cults) if (settled(c)) tot += c.pop; let F = 0; for (const c of w.cults) if (settled(c) && c.pop >= share * tot && c.tech > F) F = c.tech; return F; }
 const ranks = (L, f) => { const m = new Map(); L.slice().sort((a, b) => f(b) - f(a)).forEach((c, i) => m.set(c.id, i + 1)); return m; };
 // the pop rank this realm (or the realm it came from) held `back` years ago
 export function rankAgo(w, D, c, back) { const snap = D.hist.find((h) => h.y === Math.floor((w.year - back) / 10) * 10); if (!snap) return null; let q = c; for (let k = 0; k < 6 && q; k++) { if (snap.r.has(q.id)) return snap.r.get(q.id); q = q.pid != null ? w.cults[q.pid] : null; } return null; }
 export function devYear(w, D) {
+  artLags(w, D);
   if (w.year % 10 === 0) {
     const L = w.cults.filter((c) => live(c) && c.count > 0); D.hist.push({ y: w.year, r: ranks(L, (c) => c.pop) }); if (D.hist.length > 14) D.hist.shift();
     const F = frontier(w, 0.005), S = L.filter((c) => !c.over), rp = ranks(S, (c) => c.pop), rl = ranks(S, landOf);
@@ -39,4 +50,7 @@ export function devYear(w, D) {
   D.cent.push({ y: w.year, F, lag: P.map((v) => pc(v, sp)), land: A.map((v) => pc(v, sa)), rland: R.map((v) => pc(v, sa)), within: wp ? pc(wl, wp) : null, rho, tall: D._tallN ? +(D._tallT / D._tallN).toFixed(2) : null, n: Q.length });
   D._tallN = 0; D._tallT = 0;
 }
-export function devSummary(D) { return { dev: D.cent, devKl: D.kl, tallShare: D.tallN ? +(D.tallT / D.tallN).toFixed(3) : null }; }
+export function devSummary(D, w) {
+  // censored: realms alive now still without an art the first holder got 100+ years ago
+  const cens = {}; if (w) for (const k in D.first) { const f = D.first[k]; if (w.year - f.y < 100) continue; const t = ART[k].tier; for (const c of w.cults) if (settled(c) && c.count > 0 && !c.arts[k] && w.year - c.born > 100) { const g = massOf(w, c) === f.m ? 'land' : 'far'; cens[t] = cens[t] || {}; cens[t][g] = (cens[t][g] || 0) + 1; } }
+  return { dev: D.cent, devKl: D.kl, tallShare: D.tallN ? +(D.tallT / D.tallN).toFixed(3) : null, artLag: D.al, artCens: cens, artFirst: Object.fromEntries(Object.entries(D.first).map(([k, f]) => [k, f.y])) }; }
