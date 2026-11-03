@@ -94,14 +94,15 @@ function suits(w, c, kind, k) {
 // (Nov 3, holistic) knowing and using, and how much one court can take in. Exported so experiments can patch them.
 //   lam:   from the age of print, one realm's scholars and workshops step on each other's toes (Jones): a realm's own
 //          finds grow as its raw effort to the power lam once it is above what a leading realm of the world puts in
-//          (ref), so ten times the people find about four times as much; separate courts work separate lines and
+//          (ref), so ten times the people find about two and a half times as much; separate courts work separate lines and
 //          share by letters, so a cluster of rivals escapes it (the Europe-vs-China pattern, emerging from the map)
-//   M:     a realm takes in foreign letters only up to M times what it finds itself (absorptive capacity)
+//   M:     a realm takes in foreign letters only up to M times what it finds itself (at 2.5 it starved small states in
+//          clusters of their peers' letters, the opposite of what it was for; now only a loose guard)
 //   use:   from this tier on an art works in a district only once the district itself has reached that age
 //          (a railway is known at court long before the provinces have one)
 //   adopt: how fast a district takes up what its court knows (times its tie; institutions and towns scale it)
 //   kq5:   the pace of discovery from the age of print (rescales what the cap takes away)
-export const KN = { lam: 0.6, ref: 0.75, M: 2.5, use: 5, adopt: 0.05, kq5: 1, arm: 1 };   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
+export const KN = { lam: 0.4, ref: 0.75, M: 10, use: 5, adopt: 0.03, kq5: 1, arm: 1 };   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
 export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
 function meet(w, c, o, p, ta, tb) {
   const rnd = w.rnd; if (c === o) return;
