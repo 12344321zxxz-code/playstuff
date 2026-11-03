@@ -466,6 +466,7 @@ export function* peopleSteps(w) {
       const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]);
       if (!s.nomad && owner[i] !== k) continue;
       if (water[i] === 1) { seaN++; continue; } if (water[i] === 2) { freshF += 1.2; continue; }
+      if (!(g[i] >= 0)) g[i] = 0; if (!(t[i] >= 0)) t[i] = 0;   /* (Nov 3) a broken grass or forest cell (seed 13, year 1993) must not make a district's food NaN */
       landN++; const cy = A.farming ? cropYield(w, c, i) : 0; cropS += cy;
       if (w.flora[i] !== 255 && !hasCrop(c, w.flora[i])) { (domS || (domS = new Float32Array(NP)))[w.flora[i]] += w.pSuit[w.flora[i] * N + i] / 255; }
       if (river[i]) freshF += 0.4 * river[i];
