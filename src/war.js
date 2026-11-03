@@ -7,6 +7,7 @@
 // peace, a draw a short one.
 //   w.conflicts[id] = { id, since, until, name, sides: [{ lead, members: [ids] }, { lead, members }] }
 //   w.rel['a-b'] = { truce: untilYear, by: conflict id }
+import { FX } from './flags.js';
 import { wrapDx, W } from './core.js';
 import { tally } from './ledger.js';
 import { strength } from './people.js';
@@ -121,9 +122,9 @@ export function leadAge(w) {
 // (Oct 29) how many living realms the world can hold: more once the leading powers reach the world-war age and the bomb,
 // when empires break into many states (about 70 states in 1945, about 160 by 1990)
 export const realmCap = (w) => ((w.leadAge || 0) >= 8 ? 58 : (w.leadAge || 0) === 7 ? 56 : 54);
-export const conquestNorm = (w, c) => (w.leadAge || 0) >= 8 && !c.power;   /* once the leaders have the bomb, the norm binds everyone (a world order, not only the great) */
+export const conquestNorm = (w, c) => (FX.inst ? (w.bombPowers || 0) >= 2 : (w.leadAge || 0) >= 8) && !c.power;   /* (FX.inst) the norm holds once two or more powers can destroy each other, whatever the world's age */   /* once the leaders have the bomb, the norm binds everyone (a world order, not only the great) */
 export function warsYear(w, H) {
-  w.leadAge = leadAge(w);
+  w.leadAge = leadAge(w); if (FX.inst) { let n = 0; for (const c of w.cults) if (c.alive && !c.power && c.arts.bomb) n++; w.bombPowers = n; }
   const byId = new Map(); for (const s of w.sets) if (!s.dead) byId.set(s.id, s);
   // an occupation lasts as long as the war that made it
   for (const c of w.cults) c._occP = 0;
