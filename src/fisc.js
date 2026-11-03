@@ -32,5 +32,6 @@ export function fiscYear(w) {
   const v = [];
   for (const c of w.cults) { if (!c.alive || c.power) continue; c.rev = c._rev - c._hold; c.tradeShare = c._out > 0 ? c._tr / c._out : 0; c.revPH = c._fp > 0 ? Math.max(0, c.rev) / c._fp : 0; if (c._fp > 0) v.push(c.revPH); }
   v.sort((a, b) => a - b); const ref = v.length ? v[v.length >> 1] : 1; w.revRef = ref;
-  for (const c of w.cults) { if (!c.alive || c.power) continue; const credit = c.arts.banking ? 1.25 : c.arts.coinage ? 1.1 : 1; c.payF = Math.max(0.35, Math.min(2, ((c.revPH || 0) / Math.max(1e-9, ref)) * credit)); }
+  /* a herding people with no settled districts is not a fiscal state: its riders pay themselves (factor 1, not the floor) */
+  for (const c of w.cults) { if (!c.alive || c.power) continue; if (!(c._fp > 0)) { c.payF = 1; continue; } const credit = c.arts.banking ? 1.25 : c.arts.coinage ? 1.1 : 1; c.payF = Math.max(0.35, Math.min(2, ((c.revPH || 0) / Math.max(1e-9, ref)) * credit)); }
 }
