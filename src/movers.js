@@ -9,12 +9,13 @@ import { pirateNear } from './trade.js';
 
 export const arrive = {};
 export const onRoad = {};          // kind -> what can happen to them on the way (checked every fourth tick); filled in by people.js          // kind -> what happens when they get there; filled in by people.js
-const MAXM = 300;
+const MAXM0 = 300;
+import { FX } from './flags.js';
 const LOST = { tribute: ['A tribute caravan', 'goes'], settlers: ['Settlers', 'go'], army: ['A war band', 'goes'], trade: ['A trading ship', 'goes'], refugees: ['People fleeing', 'go'], home: ['A war band', 'goes'] };
 
 export function send(w, m) {
-  if (w.movers.length >= MAXM && (m.kind === 'trade' || m.kind === 'home')) { const T = w.tally || (w.tally = {}); T['capMovers_' + m.kind] = (T['capMovers_' + m.kind] || 0) + 1; return null; }   /* (Nov 3) counted: how much trade a world-wide cap on travellers turns away */
-  if (w.movers.length >= MAXM + 60) { const T = w.tally || (w.tally = {}); T['capMovers_' + m.kind] = (T['capMovers_' + m.kind] || 0) + 1; return null; }
+  if (w.movers.length >= (FX.towns ? 420 : MAXM0) && (m.kind === 'trade' || m.kind === 'home')) { const T = w.tally || (w.tally = {}); T['capMovers_' + m.kind] = (T['capMovers_' + m.kind] || 0) + 1; return null; }   /* (Nov 3) counted: how much trade a world-wide cap on travellers turns away */
+  if (w.movers.length >= (FX.towns ? 420 : MAXM0) + 60) { const T = w.tally || (w.tally = {}); T['capMovers_' + m.kind] = (T['capMovers_' + m.kind] || 0) + 1; return null; }
   m.id = w.moverN = (w.moverN || 0) + 1;   /* so the page can follow it from copy to copy */
   m.px = m.x; m.py = m.y; m.born = w.tickN; m.pi = 0; m.land = m.land || 0.75; m.sea = m.sea || 1.7; w.movers.push(m); return m;
 }

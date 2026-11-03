@@ -55,7 +55,7 @@ function recolour(w, R) {
     const r = R[y * W + wx(x + 1)]; if (r >= 0 && r !== a) adj.set(key(a, r), 1); if (y + 1 < H) { const d = R[i + W]; if (d >= 0 && d !== a) adj.set(key(a, d), 1); } }
   const nb = new Map(); for (const k of adj.keys()) { const a = Math.floor(k / 65536), b = k % 65536; (nb.get(a) || nb.set(a, []).get(a)).push(b); (nb.get(b) || nb.set(b, []).get(b)).push(a); }
   const used = new Uint8Array(NCOL), owner = new Map(); let seedK = (w.year * 0.37 + 0.11) % 1; const crnd = () => (seedK = (seedK * 9301 + 0.4927) % 1);
-  for (const c of w.cults) if (c.alive) { if (owner.has(c.slot)) { const o = owner.get(c.slot); const small = o.count < c.count ? o : c; small._dup = true; } else owner.set(c.slot, c); used[c.slot] = 1; }
+  for (const c of w.cults) if (c.alive) { if (owner.has(c.slot)) { const o = owner.get(c.slot); const far = o.big && c.big && Math.hypot(wrapDx(o.big.x - c.big.x), o.big.y - c.big.y) > 120; if (!far) { const small = o.count < c.count ? o : c; small._dup = true; } } else owner.set(c.slot, c); used[c.slot] = 1; }   /* two realms far apart may wear one colour */
   let n = 0;
   for (const [id, list] of nb) { const c = w.cults[id]; if (!c || !c.alive || c.power) continue;
     let bad = !!c._dup; if (!bad) for (const o of list) { const d = w.cults[o]; if (d && d.alive && d.count >= c.count && (d.slot === c.slot || colDist(c.slot, d.slot) < TOO_CLOSE)) { bad = true; break; } }

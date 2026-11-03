@@ -19,8 +19,8 @@ const LAB = COLORS.map(toLab);
 export const colDist = (i, j) => { const a = LAB[i], b = LAB[j]; return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); };
 export const TOO_CLOSE = 0.13;
 // the free colour slot that stands furthest from the given slots (ties broken by the world's dice)
-export function bestSlot(used, avoid, rnd) {
+export function bestSlot(used, avoid, rnd, none) {
   let best = -1, bd = -1;
   for (let k = 0; k < NCOL; k++) { if (used[k]) continue; let d = 9; for (const a of avoid) d = Math.min(d, colDist(k, a)); d += 0.01 * rnd(); if (d > bd) { bd = d; best = k; } }
-  return best < 0 ? (rnd() * NCOL) | 0 : best;
+  return best < 0 ? (none ? -1 : (rnd() * NCOL) | 0) : best;
 }

@@ -53,7 +53,8 @@ export function newCult(w, parent) {
   /* (Oct 31) a colour that stands out from its parent and the realms around it (its own dice, so the world's run is not disturbed) */
   const avoid = []; if (parent) { avoid.push(parent.slot); const b0 = parent.big; if (b0) for (const c of w.cults) if (c.alive && c.big && c !== parent && Math.hypot(wrapDx(c.big.x - b0.x), c.big.y - b0.y) < 70) avoid.push(c.slot); }
   let seedK = (w.cults.length * 0.6180339887 + 0.137) % 1; const crnd = () => (seedK = (seedK * 9301 + 0.4927) % 1);
-  const slot = bestSlot(used, avoid, crnd);
+  let slot = bestSlot(used, avoid, crnd, true);
+  if (slot < 0) { /* (FX.realms) every colour is worn: share the one whose wearers are furthest from here */ const at = parent && parent.big ? parent.big : null; let bd = -1; slot = 0; for (let k = 0; k < NCOL; k++) { let d = 1e9; for (const c of w.cults) if (c.alive && c.slot === k && c.big && at) d = Math.min(d, Math.hypot(wrapDx(c.big.x - at.x), c.big.y - at.y)); if (d > bd) { bd = d; slot = k; } } }
   const lang = parent ? parent.lang : makeSound(w);   // a daughter people keeps its parent's tongue; tongues fork by drift, not by politics
   const c = { id: w.cults.length, slot, color: COLORS[slot], lang, name: cultName(w, lang), know: parent ? parent.know : 0, tech: parent ? parent.tech : 0, alive: true, count: 0, pop: 0, peak: 0, wit: 0.75 + 0.6 * w.rnd(),
     arts: parent ? Object.assign({}, parent.arts) : {}, tame: parent ? Object.assign({}, parent.tame) : {}, metals: 0, gold: false, coh: 0.85, born: w.year, way: parent ? parent.way : 'forage', kind: 'foragers', parent: parent ? parent.name : null, pid: parent ? parent.id : null, grazer: parent ? parent.grazer : null,

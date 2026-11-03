@@ -27,4 +27,6 @@
 //           communications (print, then rails or wires) instead of the world's age, new colonies stop when a power's own
 //           colonies are rising rather than when the world reaches the bomb, and migration across borders from the iron
 //           age (to open societies one knows) instead of only from the steam age
-export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0, mills: 0, council: 0, allies: 0, bastion: 0, towns: 0, fisc: 0, econ: 0, know: 0, inst: 0 };
+//   realms: the realm cap is 90 at every age (was 54-58 by the world's age, bounded by 64 map colours): a colour may be worn
+//           by two realms far apart; and the world-wide cap on travellers grows with the town cap
+export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0, mills: 0, council: 0, allies: 0, bastion: 0, towns: 0, fisc: 0, econ: 0, know: 0, inst: 0, realms: 0 };
