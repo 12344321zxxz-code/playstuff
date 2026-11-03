@@ -106,7 +106,7 @@ function suits(w, c, kind, k) {
 //          fits its age, per head and against the world's typical realm at that age (powder and print: markets,
 //          harbours, trade; steam: its own coal and its towns; wires and after: its towns and its schools), to this power
 //   fresh: entering an age from the age of print keeps nothing above the threshold: the next age is earned inside this one
-export const KN = { lam: 0.4, ref: 0.25, M: 10, use: 5, adopt: 0.03, kq5: 2.2, arm: 1, fitP: 1.5, fresh: 1, pull: 0.04 };   // pull: how fast a realm closes the gap to a tied rival at most one age ahead (a year, at a full tie)   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
+export const KN = { lam: 0.1, ref: 0.25, M: 10, use: 5, adopt: 0.03, kq5: 3, arm: 1, fitP: 1.5, fresh: 1, pull: 0.04 };   // pull: how fast a realm closes the gap to a tied rival at most one age ahead (a year, at a full tie)   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
 export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
 function meet(w, c, o, p, ta, tb) {
   const rnd = w.rnd; if (c === o) return;
