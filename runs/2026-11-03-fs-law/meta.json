@@ -1,0 +1,53 @@
+{
+ "name": "fs-law",
+ "note": "Screen: law and civil service gated by towns only",
+ "commit": "2230d97b117137c13632969aae359912a4103674",
+ "branch": "holistic",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.law": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-03T15:54:00.103Z",
+ "finished": "2026-11-03T16:24:26.764Z",
+ "ok": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "failed": [],
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
