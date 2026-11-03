@@ -24,9 +24,9 @@ const FORMS = {          // government forms: base take, how many posts they mak
 };
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
-function formFor(c) {
+function formFor(c, w) {
   const A = c.arts;
-  if (FX.inst) { if (A.printing && A.schools && (A.railways || A.telegraph)) return 'nation'; if (A.printing && (c.markets || 0) >= 1 && (c.tradeShare || 0) > 0.12) return 'council'; }   /* (FX.inst) a mass public makes a nation; a trading purse makes a council */
+  if (FX.inst) { if (A.printing && A.schools && (A.railways || A.telegraph)) return 'nation'; if (A.printing && (c.markets || 0) >= 1 && (c.tradeShare || 0) > 1.3 * ((w && w.tradeRef) || 0.3)) return 'council'; }   /* (FX.inst) a mass public makes a nation; a trading purse makes a council: (Nov 4) towns and trade a third above the world's typical share (an absolute 12% of output from trade alone was never reached: a stuck rule) */
   else if (A.railways || A.engines || A.industry) return 'nation';
   if (!FX.inst && A.printing && (c.markets || 0) >= (FX.council ? Math.max(1, Math.ceil(c.count / 8)) : 3)) return 'council';
   if (A.bureaucracy && c.count >= 20) return 'empire';
@@ -43,7 +43,7 @@ export function postsOf(c) {
 
 export function makeHub(c, w, pi0) {
   const P = postsOf(c);
-  return { E: P * (pi0 ?? 0.8), P, pi: pi0 ?? 0.8, X: 0.12, L: 1, A: 0.6, inc: null, st: 'grow', since: w.year, form: formFor(c), formAt: w.year, hiPi: 0, loPi: 0, lowL: 0, until: 0, eased: 0 };
+  return { E: P * (pi0 ?? 0.8), P, pi: pi0 ?? 0.8, X: 0.12, L: 1, A: 0.6, inc: null, st: 'grow', since: w.year, form: formFor(c, w), formAt: w.year, hiPi: 0, loPi: 0, lowL: 0, until: 0, eased: 0 };
 }
 
 // hooks: { schism(w, c), collapse(w, c) }. Returns the cohesion pressures from the hub.
@@ -53,7 +53,7 @@ export function hubYear(w, c, hooks) {
   const settled = c.env.sed >= 4 && c.env.sed >= c.env.nomads;
   if (settled && h.since0 == null) h.since0 = w.year;   /* when this realm, as a settled state, began */
   // government form changes slowly: at most once in 30 years
-  const nf = formFor(c); if (nf !== h.form && w.year - h.formAt >= 30) { h.form = nf; h.formAt = w.year; }
+  const nf = formFor(c, w); if (nf !== h.form && w.year - h.formAt >= 30) { h.form = nf; h.formAt = w.year; }
   const F = FORMS[h.form];
   h.P = postsOf(c);
   const fed = 1 - Math.min(1, (c.hungry || 0) / Math.max(1, c.count));

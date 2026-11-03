@@ -5,6 +5,7 @@
 //   until it is integrated (a decade for one of the court's own tongue, a generation for strangers).
 //   Holding a district costs garrisons and officials, more where it is foreign, newly taken or occupied; a far, foreign,
 //   fresh conquest can cost more than it pays.
+//   c.tradeShare  the share of output from towns and trade (w.tradeRef: the world's median).
 //   c.rev  net revenue a year;  c.revPH  per head;  c.payF  how much of its manpower a realm can pay for, against the
 //   world's typical realm (revenue per head relative to the median, bounded): strength() is multiplied by it.
 //   s.net  what a district gives the court net of its upkeep (negative: a burden).
@@ -24,14 +25,18 @@ export function fiscYear(w) {
     if (s._fc !== s.cult) { s.joinedAt = s._fc == null ? -999 : w.year; s._fc = s.cult; }   /* who rules it, and since when */
     const b = c.big || s, own = s.lang == null || c.langId == null || s.lang === c.langId || tongueGap(w, s.lang, c.langId) <= 1;
     const integ = Math.min(1, (w.year - (s.joinedAt ?? -999)) / (own ? 10 : 25)), eff = s === b ? 1 : effOf(c, w, s, b);
-    const urb = s.urb ?? 0.06, out = s.pop * (0.6 + 2.5 * urb) + 0.5 * (s.wealth || 0);   /* what the district makes in a year */
-    const X = c.hub ? c.hub.X : 0.12, take = out * X * eff * (0.3 + 0.7 * integ);
+    const urb = s.urb ?? 0.06, agr = s.pop * 0.6, com = s.pop * 2.5 * urb + 0.5 * (s.wealth || 0), out = agr + com;   /* what the district makes in a year: the fields, and the town and its trade */
+    /* (Nov 4) towns and trade are easier to tax than scattered fields (tolls, excise, customs at a few gates: Brewer's fiscal-military state);
+       every layer of officials between court and district keeps a share (agency): the layers grow with the log of the realm's districts, a civil service halves the loss */
+    const X = c.hub ? c.hub.X : 0.12, layers = Math.log2(Math.max(1, (c.count || 1) / 6)), agency = 1 / (1 + (c.arts.bureaucracy ? 0.06 : 0.12) * layers);
+    const take = (agr + 1.6 * com) * X * eff * agency * (0.3 + 0.7 * integ);
     const disloyal = (own ? 0.25 : 1) * (1 - 0.7 * integ) + (s.occ ? 1 : 0), hold = s.pop * 0.012 * disloyal * (s === b ? 0 : 1);
-    s.net = take - hold; c._rev += take; c._hold += hold; c._fp += s.pop; c._out += out; c._tr += 0.5 * (s.wealth || 0);
+    s.net = take - hold; c._rev += take; c._hold += hold; c._fp += s.pop; c._out += out; c._tr += com;
   }
   const v = [];
   for (const c of w.cults) { if (!c.alive || c.power) continue; c.rev = c._rev - c._hold; c.tradeShare = c._out > 0 ? c._tr / c._out : 0; c.revPH = c._fp > 0 ? Math.max(0, c.rev) / c._fp : 0; if (c._fp > 0) v.push(c.revPH); }
   v.sort((a, b) => a - b); const ref = v.length ? v[v.length >> 1] : 1; w.revRef = ref;
+  const ts = w.cults.filter((c) => c.alive && !c.power && c._fp > 0).map((c) => c.tradeShare).sort((a, b) => a - b); w.tradeRef = ts.length ? ts[ts.length >> 1] : 0.3;   /* the world's typical share of output from towns and trade */
   /* a herding people with no settled districts is not a fiscal state: its riders pay themselves (factor 1, not the floor) */
-  for (const c of w.cults) { if (!c.alive || c.power) continue; if (!(c._fp > 0)) { c.payF = 1; continue; } const credit = c.arts.banking ? 1.25 : c.arts.coinage ? 1.1 : 1; c.payF = Math.max(0.35, Math.min(2, ((c.revPH || 0) / Math.max(1e-9, ref)) * credit)); }
+  for (const c of w.cults) { if (!c.alive || c.power) continue; if (!(c._fp > 0)) { c.payF = 1; continue; } const credit = (c.arts.banking ? 1.25 : c.arts.coinage ? 1.1 : 1) * (c.hub && c.hub.form === 'council' ? 1.2 : 1);   /* (Nov 4) lenders trust a purse its payers govern (consent: the Dutch and English public debt) */ c.payF = Math.max(0.35, Math.min(2, ((c.revPH || 0) / Math.max(1e-9, ref)) * credit)); }
 }
