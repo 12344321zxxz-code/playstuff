@@ -13,6 +13,7 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-02 | [u1](runs/2026-11-02-u1) |  | 16 | Town and country iteration of Nov 2 (exact settings not recorded) | 0.66 | – | – | 1435 | 1694 | 4.12 | 27 / 17 | 0 |
 | 2026-11-02 | [u2](runs/2026-11-02-u2) |  | 16 | Urban branch: play tall + town and country stages 1-3 | 0.6 | – | – | 1537 | 1714 | 4.63 | 24 / 20 | 0 |
 | 2026-11-02 | [u3](runs/2026-11-02-u3) |  | 16 | Stale knowledge above the medieval threshold (0.5%/yr); slowed the whole world, reverted | 0.79 | – | – | 1573 | 1824 | 3.94 | 28 / 18 | 0 |
+| 2026-11-03 | [fs-base](runs/2026-11-03-fs-base) | 14e86da | 10 | Foundations sprint screen: baseline (z1 settings, all fixes off) | 0.58 | 0.24 | 15 | 1614 | 1901 | 3.12 | 31 / 9 | 0 |
 | 2026-11-03 | [h10](runs/2026-11-03-h10) |  | 8 | h9 with lam 0.2, kq5 1.6 (patch: `{"people.js":{"KN.lam":0.2,"KN.kq5":1.6}}`) | 0.64 | – | 11 | 1520 | 1907 | 3.58 | 23 / 19 | 0 |
 | 2026-11-03 | [h11](runs/2026-11-03-h11) |  | 10 | Each age from its own roots (fit: commerce / coal+towns / towns+schools) + no banked overflow (partial) | 0.61 | – | 11 | 1490 | 1813 | 3.69 | 24 / 16 | 0 |
 | 2026-11-03 | [h12](runs/2026-11-03-h12) |  | 10 | h11 + commerce fit reads trade unsaturated | 0.72 | – | 10 | 1472 | 1815 | 3.52 | 26 / 16 | 0 |

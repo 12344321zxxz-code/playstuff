@@ -1,0 +1,49 @@
+{
+ "name": "fs-base",
+ "note": "Foundations sprint screen: baseline (z1 settings, all fixes off)",
+ "commit": "14e86da854ab7510b6ca49d7e4e266a1932f685d",
+ "branch": "holistic",
+ "dirty": false,
+ "patch": null,
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-03T14:21:40.152Z",
+ "finished": "2026-11-03T15:04:30.108Z",
+ "ok": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "failed": [],
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
