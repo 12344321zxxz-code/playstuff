@@ -1,0 +1,53 @@
+{
+ "name": "fs-towns",
+ "note": "Screen: town cap 700 (was 520)",
+ "commit": "f9204ac27763ae6e3e6179c12ee8e59e6855d856",
+ "branch": "holistic",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.towns": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-03T20:15:56.561Z",
+ "finished": "2026-11-03T20:47:08.312Z",
+ "ok": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "failed": [],
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
