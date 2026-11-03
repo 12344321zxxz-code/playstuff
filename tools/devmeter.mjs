@@ -55,7 +55,8 @@ export function devYear(w, D) {
   const Z = w.cults.filter((c) => settled(c) && c.pop >= 0.005 * tot).sort((a, b) => b.pop - a.pop), era = F >= 5 ? 'late' : 'early';
   Z.forEach((c, i) => { const tq = i < Z.length / 3 ? 'big' : i < (2 * Z.length) / 3 ? 'mid' : 'small', B = ((D.kl[era] ||= {})[tq] ||= {}); let sum = 0; for (const k in c.kl || {}) sum += c.kl[k]; if (sum > 0) { for (const k in c.kl) B[k] = (B[k] || 0) + c.kl[k] / sum; B.n = (B.n || 0) + 1; }   /* each realm's own mix, weighted equally */ });
   for (const c of w.cults) c.kl = null;
-  D.cent.push({ y: w.year, F, lag: P.map((v) => pc(v, sp)), land: A.map((v) => pc(v, sa)), rland: R.map((v) => pc(v, sa)), within: wp ? pc(wl, wp) : null, rho, tall: D._tallN ? +(D._tallT / D._tallN).toFixed(2) : null, n: Q.length });
+  const sh = w.cults.filter((c) => settled(c)).map((c) => c.pop / Math.max(1, tot)).sort((a, b) => b - a);
+  D.cent.push({ y: w.year, F, top1: +(sh[0] || 0).toFixed(3), top3: +sh.slice(0, 3).reduce((a, b) => a + b, 0).toFixed(3), realms: w.cults.filter((c) => c.alive && !c.power && c.count > 0).length, lag: P.map((v) => pc(v, sp)), land: A.map((v) => pc(v, sa)), rland: R.map((v) => pc(v, sa)), within: wp ? pc(wl, wp) : null, rho, tall: D._tallN ? +(D._tallT / D._tallN).toFixed(2) : null, n: Q.length });
   D._tallN = 0; D._tallT = 0;
 }
 export function devSummary(D, w) {

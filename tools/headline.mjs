@@ -25,6 +25,11 @@ const rows = [
   ['peak pop, info-age worlds (bn)', (rs) => { const v = med(rs.filter((r) => r.peakAge >= 9).map((r) => r.peakPop)); return v == null ? null : (v * SCALE) / 1e9; }],
   ['steam-age colonial % (pooled)', (rs) => { let a = 0, c = 0; for (const r of rs) { const x = (r.toRaw || [])[4]; if (x) { a += x[0]; c += x[3]; } } return a ? (100 * c) / a : null; }],
   ['steam-age foreign / internal % (pooled)', (rs) => { let a = 0, fo = 0, i = 0; for (const r of rs) { const x = (r.toRaw || [])[4]; if (x) { a += x[0]; fo += x[1]; i += x[2]; } } return a ? `${((100 * fo) / a).toFixed(0)} / ${((100 * i) / a).toFixed(0)}` : null; }],
+  ['largest realm share of people, ages 5-8', (rs) => med(rs.flatMap((r) => (r.dev || []).filter((c) => c.F >= 5 && c.F <= 8 && c.top1 != null).map((c) => c.top1)))],
+  ['top-3 realms share, ages 5-8', (rs) => med(rs.flatMap((r) => (r.dev || []).filter((c) => c.F >= 5 && c.F <= 8 && c.top3 != null).map((c) => c.top3)))],
+  ['realms with 1%+ of people, ages 5-8', (rs) => med(rs.flatMap((r) => (r.dev || []).filter((c) => c.F >= 5 && c.F <= 8).map((c) => c.n)))],
+  ['living realms, ages 5-8', (rs) => med(rs.flatMap((r) => (r.dev || []).filter((c) => c.F >= 5 && c.F <= 8 && c.realms != null).map((c) => c.realms)))],
+  ['first into 5-8: median share of people', (rs) => med(rs.flatMap((r) => [5, 6, 7, 8].map((t) => r.firstTo && r.firstTo[t] && r.firstTo[t].share)))],
   ['NaN worlds', (rs) => rs.filter((r) => r.nan > 0).length],
   ['ms per tick', (rs) => med(rs.map((r) => r.msPerTick))],
 ];
