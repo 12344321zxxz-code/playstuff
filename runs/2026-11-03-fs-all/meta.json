@@ -1,0 +1,56 @@
+{
+ "name": "fs-all",
+ "note": "Screen: all four fixes",
+ "commit": "2230d97b117137c13632969aae359912a4103674",
+ "branch": "holistic",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.coal": 1,
+   "FX.law": 1,
+   "FX.market": 1,
+   "FX.cap": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-03T17:26:48.223Z",
+ "finished": "2026-11-03T17:57:12.237Z",
+ "ok": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "failed": [],
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}

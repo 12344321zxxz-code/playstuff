@@ -13,6 +13,7 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-02 | [u1](runs/2026-11-02-u1) |  | 16 | Town and country iteration of Nov 2 (exact settings not recorded) | 0.66 | – | – | 1435 | 1694 | 4.12 | 27 / 17 | 0 |
 | 2026-11-02 | [u2](runs/2026-11-02-u2) |  | 16 | Urban branch: play tall + town and country stages 1-3 | 0.6 | – | – | 1537 | 1714 | 4.63 | 24 / 20 | 0 |
 | 2026-11-02 | [u3](runs/2026-11-02-u3) |  | 16 | Stale knowledge above the medieval threshold (0.5%/yr); slowed the whole world, reverted | 0.79 | – | – | 1573 | 1824 | 3.94 | 28 / 18 | 0 |
+| 2026-11-03 | [fs-all](runs/2026-11-03-fs-all) | 2230d97 | 10 | Screen: all four fixes (patch: `{"flags.js":{"FX.coal":1,"FX.law":1,"FX.market":1,"FX.cap":1}}`) | 0.69 | 0.28 | 15 | 1609 | 1697 | 3.86 | 33 / 16 | 0 |
 | 2026-11-03 | [fs-base](runs/2026-11-03-fs-base) | 14e86da | 10 | Foundations sprint screen: baseline (z1 settings, all fixes off) | 0.58 | 0.24 | 15 | 1614 | 1901 | 3.12 | 31 / 9 | 0 |
 | 2026-11-03 | [fs-cap](runs/2026-11-03-fs-cap) | 2230d97 | 10 | Screen: no forced defection at the realm cap only (patch: `{"flags.js":{"FX.cap":1}}`) | 0.63 | 0.24 | 15 | 1614 | 1866 | 3.12 | 24 / 16 | 0 |
 | 2026-11-03 | [fs-coal](runs/2026-11-03-fs-coal) | 32a2d47+ | 10 | Screen: traded coal only (patch: `{"flags.js":{"FX.coal":1}}`) | 0.58 | 0.23 | 14 | 1612 | 1919 | 3.7 | 30 / 14 | 0 |
