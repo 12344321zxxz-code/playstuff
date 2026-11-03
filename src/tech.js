@@ -4,6 +4,7 @@
 // granaries, war toward walls and siege engines, plague toward medicine, a busy market toward
 // coin. `tier` is how much a people must already know in general (their era); `req` is what it
 // builds on; `can` is what the land and the times must offer.
+import { FX } from './flags.js';
 export const ART = {
   // first things
   herding: { say: 'herding', tier: 0, req: [] },
@@ -23,7 +24,7 @@ export const ART = {
   bronze: { say: 'bronze', tier: 2, req: ['copper'], can: (c, e) => e.sed >= 3 && (c.metals & 2) !== 0 && (c.metals & 4) !== 0, push: (c) => (c.war ? 1 : 0) },
   writing: { say: 'writing', tier: 2, req: ['counting'], can: (c, e, easy) => (easy ? e.towns > 0 : e.cities > 0 && c.surplus > 0.45) },
   roads: { say: 'roads', tier: 2, req: ['wheel'], can: (c, e) => e.sed >= 4 },
-  laws: { say: 'written law', tier: 2, req: ['writing'], can: (c) => c.count >= 8, push: (c) => (c.coh < 0.45 ? 2 : 0) },
+  laws: { say: 'written law', tier: 2, req: ['writing'], can: (c) => c.count >= 8 || (FX.law && (c.env.towns || 0) >= 2), push: (c) => (c.coh < 0.45 ? 2 : 0) },
   chariots: { say: 'chariots', tier: 2, req: ['wheel', 'bronze'], can: (c) => !!c.tame.horse, push: (c) => (c.war ? 2 : 0) },
   // iron and empire
   iron: { say: 'iron', tier: 3, req: ['copper'], can: (c, e) => e.sed >= 3 && (c.metals & 8) !== 0 },
@@ -38,7 +39,7 @@ export const ART = {
   // the long middle
   navigation: { say: 'navigation by the stars', tier: 4, req: ['sailing', 'counting'] },
   banking: { say: 'banking', tier: 4, req: ['coinage'], can: (c) => c.markets > 0 },
-  bureaucracy: { say: 'a civil service', tier: 4, req: ['laws', 'writing'], can: (c) => c.count >= 20, push: (c) => (c.coh < 0.5 ? 2 : 0) },
+  bureaucracy: { say: 'a civil service', tier: 4, req: ['laws', 'writing'], can: (c) => c.count >= 20 || (FX.law && (c.env.towns || 0) >= 4), push: (c) => (c.coh < 0.5 ? 2 : 0) },
   steel: { say: 'steel', tier: 4, req: ['iron'], can: (c) => (c.metals & 64) !== 0 || (c.metals & 8) !== 0 },
   mills: { say: 'watermills', tier: 4, req: ['masonry', 'wheel'], can: (c, e) => e.river > 0 },
   quarantine: { say: 'quarantine', tier: 4, req: ['medicine'], push: (c) => (c.plagued ? 3 : 0) },

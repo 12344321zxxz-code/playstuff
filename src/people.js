@@ -7,6 +7,7 @@ import { hubYear, hubPush, hubReset, HUB } from './hub.js';
 import { captureYear, subjugate, release, bySea } from './capture.js';
 import { empireYear, regionSuccessors } from './empire.js';
 import { realmMap } from './realms.js';
+import { FX } from './flags.js';
 import { frontierYear, termsBetween, nomadic, bandCap } from './frontier.js';
 import { relicsYear, newHouse, crownGoal, claimGoal } from './relics.js';
 import { powersYear as greatPowersYear } from './greatpowers.js';
@@ -208,7 +209,8 @@ arrive.settlers = (w, m) => {
   const c = w.cults[m.cult], x = wx(Math.round(m.tx)), y = Math.round(m.ty), i = y * W + x, home = m.from;
   if (w.water[i] || w.ice[i] || w.lava[i] || near(w, x, y, 5.5, null, true) || (w.nTown || 0) >= MAXS || !c.alive) { if (home && !home.dead) home.pop += m.n; return; }
   let cult = m.cult;
-  if (m.split && aliveN(w) < realmCap(w) - 6) { const nc = newCult(w, c); cult = nc.id; ev(w, `Settlers from ${home ? home.name : 'the ' + c.name} cross ${m.wetN > 1 ? 'the water' : 'the hills'} and call themselves the ${nc.name}.`, x, y, nc.color, m.ocean ? 0 : 1); }
+  if (m.split && !(aliveN(w) < realmCap(w) - (FX.cap ? 0 : 6))) tally(w, 'capSettler');
+  if (m.split && aliveN(w) < realmCap(w) - (FX.cap ? 0 : 6)) { const nc = newCult(w, c); cult = nc.id; ev(w, `Settlers from ${home ? home.name : 'the ' + c.name} cross ${m.wetN > 1 ? 'the water' : 'the hills'} and call themselves the ${nc.name}.`, x, y, nc.color, m.ocean ? 0 : 1); }
   const v = addSet(w, cult, x, y, m.n, false), ru = ruinAt(w, x, y); if (home) { v.faith = home.faith; tagFrom(w, v, home); }
   if (ru) { v.name = 'New ' + ru.name.replace(/^New /, ''); if (discover(w, 'reborn', x, y)) ev(w, `${v.name} rises on the stones of the old city.`, x, y, w.cults[cult].color); }
   near(w, x, y, 12, v, true, (o) => { if (o.cult !== cult) contact(w, w.cults[cult], o, 'Settlers'); });
@@ -637,6 +639,10 @@ function cultYear(w, c) {
     if (top >= 3 && b && rnd() < 0.04 + 0.5 * short) { const lose = Object.keys(c.arts).filter((k) => ART[k] && ART[k].tier === top); const k = lose[(rnd() * lose.length) | 0]; delete c.arts[k]; record(w, 'forget', [c.id], { note: ART[k].say, terms: { carriers: carry, needed: carriersFor(top) } }); if (top >= 5 || once(w, 'forget-' + c.id)) ev(w, `The ${c.name} are too few now to keep ${ART[k].say}. Within a generation nobody remembers how it was done.`, b.x, b.y, c.color, top >= 7 ? 0 : 1); discover(w, 'forgot', b.x, b.y); } }
   { const nt = techOf(c.know); if (KN.fresh && nt > c.tech && nt >= 5 && c.tech >= 4 && c.know > TECH[nt - 1] * 1.002) c.know = TECH[nt - 1] * 1.002; }   /* (Nov 3) the next age is earned inside this one: no banked overflow */
   c.tech = techOf(c.know);
+  if (c.count > 0) {   /* (Nov 3) how often each size gate actually blocks a realm (realm-years), for the foundations sprint */
+    if (c.tech >= 4 && !A.engines && A.steel && A.mills && !(c._ownMetals & 64)) tally(w, (c.metals & 64) ? 'gateCoalImp' : 'gateCoal');
+    if (!A.laws && A.writing && c.tech >= 2 && c.count < 8 && !(FX.law && c.env.towns >= 2)) tally(w, 'gateLaw');
+    if (!A.bureaucracy && A.laws && c.tech >= 4 && c.count < 20 && !(FX.law && c.env.towns >= 4)) tally(w, 'gateBur'); }
   { const nx = nextInvention(c, rnd); if (nx && rnd() < 0.05 * (1 + 0.25 * nx.push) * (A.schools ? 1.3 : 1) * (A.printing ? 1.3 : 1)) learn(w, c, nx.k); }
   c.plagued = (c.plagued || 0) * 0.8; c.crowded = c.hungry > c.count * 0.3 ? 1 : 0;
   originsYear(w, c, b); cropRisks(w, c, b);
@@ -751,7 +757,7 @@ function schism(w, c, quiet) {
   if (!c.big) return null; let far = null, fd = 0;
   for (const s of w.sets) { if (s.cult !== c.id || s.nomad) continue; const g = tongueGap(w, s.lang, c.langId), d = (wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2) * (1 + (g > 3 ? 1.5 : g * 0.25) + (s.cul !== c.culId ? 0.5 : 0)); if (d > fd) { fd = d; far = s; } }
   if (!far || fd < 16 * 16) return null;
-  if (aliveN(w) >= realmCap(w) - 6) { let to = null; near(w, far.x, far.y, 30, far, true, (o) => { if (o.cult !== c.id && (!to || w.cults[o.cult].pop > w.cults[to.cult].pop)) to = o; }); if (!to) return null; const oc = w.cults[to.cult]; let n = 0;
+  if (aliveN(w) >= realmCap(w) - (FX.cap ? 0 : 6)) { tally(w, 'capDefect'); if (FX.cap) return null; let to = null; near(w, far.x, far.y, 30, far, true, (o) => { if (o.cult !== c.id && (!to || w.cults[o.cult].pop > w.cults[to.cult].pop)) to = o; }); if (!to) return null; const oc = w.cults[to.cult]; let n = 0;
     for (const s of w.sets) { if (s.cult !== c.id) continue; if (wrapDx(s.x - far.x) ** 2 + (s.y - far.y) ** 2 < 0.5 * (wrapDx(s.x - c.big.x) ** 2 + (s.y - c.big.y) ** 2)) { s.cult = oc.id; n++; } }
     if (n) { if (!quiet) record(w, 'defect', [c.id, oc.id], Object.assign({ note: `${n} towns go over` }, c._why || { x: far.x, y: far.y })); c.coh = Math.min(1, c.coh + 0.15); if (!quiet) ev(w, `${n === 1 ? far.name + ' goes' : far.name + ' and ' + (n - 1) + ' other ' + (n === 2 ? 'place go' : 'places go')} over to the ${oc.name}. The ${c.name} are too weak to stop it.`, far.x, far.y, oc.color, n < 8 ? 1 : 0); } return n ? { n, to: oc } : null; }
   const nc = newCult(w, c); nc.how = 'breakaway'; let n = 0;
@@ -880,7 +886,7 @@ function pasture(w, s, c) {
     if (w.water[i] || cropYield(w, c, i) > 0.3 || w.ice[i] || w.h[i] - sea > 0.4 || w.owner[i] >= 0 || w.g[i] <= bg || near(w, x, y, 5, null, false)) continue; bg = w.g[i]; bi = i; }
   if (c.tech >= 3) return;   // past the iron age, herders become ranchers; nobody walks off to live in the saddle
   if (bi < 0 || (w.nBand || 0) >= MAXB || Math.max(c.env.nomads, c.nomadsWas || 0) >= 12) return; let cult = s.cult; s.pop -= 30;
-  if (c.env.nomads === 0 && aliveN(w) < realmCap(w) - 6 && rnd() < 0.7) { const nc = newCult(w, c); cult = nc.id; nc.way = 'herd'; ev(w, `Herders of the ${c.name} take their animals out onto the open grass and do not come back. They call themselves the ${nc.name}.`, bi % W, (bi / W) | 0, nc.color, once(w, 'pastoral') ? 0 : 1); }
+  if (c.env.nomads === 0 && aliveN(w) < realmCap(w) - (FX.cap ? 0 : 6) && rnd() < 0.7) { const nc = newCult(w, c); cult = nc.id; nc.way = 'herd'; ev(w, `Herders of the ${c.name} take their animals out onto the open grass and do not come back. They call themselves the ${nc.name}.`, bi % W, (bi / W) | 0, nc.color, once(w, 'pastoral') ? 0 : 1); }
   else { c.env.nomads++; c.nomadsWas = (c.nomadsWas || 0) + 1; }
   const b = addSet(w, cult, bi % W, (bi / W) | 0, 30, true); b.faith = s.faith; tagFrom(w, b, s); b.px = s.x; b.py = s.y; b.mt = w.tickN;
 }

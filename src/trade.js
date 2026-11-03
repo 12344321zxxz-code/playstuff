@@ -8,11 +8,12 @@
 import { plantWild } from './origins.js';
 import { W, H, N, DISC, wx, wrapDx, clamp } from './core.js';
 import { ev, discover, once } from './story.js';
-import { record } from './ledger.js';
+import { record, tally } from './ledger.js';
 import { zoneOf } from './zones.js';
 import { near } from './people.js';
 import { PLANTS, giveCrop, hasCrop } from './origins.js';
 import { SPECIES, habRaw, introduce } from './fauna.js';
+import { FX } from './flags.js';
 
 export const GOODS = [
   { key: 'grain', name: 'grain', col: '#e8c860', v: 1 },
@@ -30,6 +31,7 @@ export const GOODS = [
   { key: 'crafts', name: 'fine goods', col: '#c070e0', v: 3 },
   { key: 'relics', name: 'relics', col: '#9a8aff', v: 4 },
   { key: 'uranium', name: 'uranium', col: '#7aff5a', v: 5 },
+  { key: 'coal', name: 'coal', col: '#2a2a2e', v: 1.8 },   /* (Nov 3) traded only under FX.coal */
 ];
 export const G = Object.fromEntries(GOODS.map((g, k) => [g.key, k]));
 const LUX = [G.furs, G.spice, G.wine, G.gold, G.crafts, G.relics];
@@ -49,7 +51,7 @@ export function tradeYear(w) {
     if (src[3] > s.pop * 1.05) make[G.grain] = Math.min(3, (src[3] - s.pop) / 40);
     if (src[2] > s.pop * 0.5 && s.port) make[G.fish] = Math.min(2, src[2] / 80);
     if (s.ores & 128 && A.electricity) make[G.uranium] = 2; if ((A.atomic || A.printing && A.electricity) && !(c._ownMetals & 128)) need[G.uranium] = 3;
-    if (s.ores & 32) make[G.salt] = 2; if (s.ores & 2) make[G.copper] = 2; if (s.ores & 4) make[G.tin] = 2; if (s.ores & 8 && A.iron) make[G.iron] = 2; if (s.ores & 16) make[G.gold] = 2;
+    if (s.ores & 32) make[G.salt] = 2; if (s.ores & 2) make[G.copper] = 2; if (s.ores & 4) make[G.tin] = 2; if (s.ores & 8 && A.iron) make[G.iron] = 2; if (s.ores & 16) make[G.gold] = 2; if (FX.coal && s.ores & 64 && A.mills) make[G.coal] = 2;
     if (forest >= 6) { make[G.timber] = Math.min(2, forest / 12); c.timberOK = true; }
     if (T < 5 && forest >= 4 && (src[1] > 0 || s.nomad)) make[G.furs] = 1.5;
     if (T > 21 && m > 1.1 && !s.nomad) make[G.spice] = 1.5;
@@ -61,7 +63,7 @@ export function tradeYear(w) {
     if (s.note && s.note !== 'grow' && s.note !== 'full' && s.note !== 'plague') need[G.grain] = 2;
     if ((c.metals & 2) && !(c.metals & 4) && c.tech >= 1) need[G.tin] = 3; if ((c.metals & 4) && !(c.metals & 2) && c.tech >= 1) need[G.copper] = 3;
     if (A.bronze && !((c.metals & 6) === 6)) { need[G.tin] = Math.max(need[G.tin], 2); need[G.copper] = Math.max(need[G.copper], 2); }
-    if (c.tech >= 3 && !(c.metals & 8)) need[G.iron] = 2;
+    if (c.tech >= 3 && !(c.metals & 8)) need[G.iron] = 2; if (FX.coal && A.steel && A.mills && !(c._ownMetals & 64)) need[G.coal] = 3;
     if (s.port && forest < 3 && (A.boats || c.tech >= 2)) need[G.timber] = 2;
     if ((c.grazer || s.way === 'fish') && !(s.ores & 32)) need[G.salt] = 1;
     if (!c.tame.horse && c.tech >= 1 && !s.nomad) need[G.horses] = 0.8;
@@ -113,7 +115,7 @@ export function deliver(w, m) {
 // Imports count as owning: a people with copper at home and tin from a far shore can cast bronze,
 // for as long as the tin keeps coming.
 export function importedMetals(w, c) {
-  let bits = 0; const imp = c.imp || {}; if (w.year - (imp[G.copper] ?? -99) < 25) bits |= 2; if (w.year - (imp[G.tin] ?? -99) < 25) bits |= 4; if (w.year - (imp[G.iron] ?? -99) < 25) bits |= 8; if (w.year - (imp[G.gold] ?? -99) < 25) bits |= 16; if (w.year - (imp[G.timber] ?? -99) < 25) bits |= 256; if (G.uranium != null && w.year - (imp[G.uranium] ?? -99) < 25) bits |= 128; return bits;
+  let bits = 0; const imp = c.imp || {}; if (w.year - (imp[G.copper] ?? -99) < 25) bits |= 2; if (w.year - (imp[G.tin] ?? -99) < 25) bits |= 4; if (w.year - (imp[G.iron] ?? -99) < 25) bits |= 8; if (w.year - (imp[G.gold] ?? -99) < 25) bits |= 16; if (w.year - (imp[G.timber] ?? -99) < 25) bits |= 256; if (FX.coal && w.year - (imp[G.coal] ?? -99) < 5) bits |= 64;   /* coal is burned, not kept: only a steady supply counts */ if (G.uranium != null && w.year - (imp[G.uranium] ?? -99) < 25) bits |= 128; return bits;
 }
 
 // Entrepôts (slice 16): towns where goods change hands. Their tolls feed the realm's lords and
@@ -121,7 +123,7 @@ export function importedMetals(w, c) {
 function entrepots(w) {
   for (const c of w.cults) { c.tollIn = 0; c.merchantPosts = 0; }
   for (const s of w.sets) { if (s.dead) continue; s.relayE = (s.relayE || 0) * 0.85 + (s.relayN || 0) - (s._rN || 0); s._rN = s.relayN || 0; }
-  const top = new Set(w.sets.filter((s) => !s.dead && !s.nomad && s.relayE > 6).sort((a, b) => b.relayE - a.relayE).slice(0, 12));   /* only the great ones: a dozen in the world at most */
+  const top = new Set(w.sets.filter((s) => !s.dead && !s.nomad && s.relayE > 6).sort((a, b) => b.relayE - a.relayE).slice(0, FX.market ? Infinity : 12));   /* only the great ones: a dozen in the world at most */
   for (const s of w.sets) { if (s.dead) continue; const c = w.cults[s.cult];
     if (s.toll) { const tt = s.tollTo != null && w.year < s.tollUntil ? w.cults[s.tollTo] : null; if (tt && tt.alive && tt !== c) { tt.tollIn += s.toll * 0.25; c.tollIn += s.toll * 0.25; } else c.tollIn += s.toll * 0.5; s.toll = 0; }   /* (slice 1b) toll rights won in a war: half the lords' share goes to the winner */
     const was = s.entrepot; s.entrepot = top.has(s) || (was && s.relayE > 3); if (s.entrepot) c.merchantPosts += 1;
@@ -134,7 +136,8 @@ function entrepots(w) {
 function markets(w) {
   entrepots(w);
   const cnt = new Map(); for (const r of w.routes.values()) if (r.n > 1.5) { cnt.set(r.a, (cnt.get(r.a) || 0) + 1); cnt.set(r.b, (cnt.get(r.b) || 0) + 1); }
-  const rich = [...cnt.keys()].filter((s) => !s.dead && s.tier >= 2 && cnt.get(s) >= 4).sort((a, b) => b.wealth - a.wealth).slice(0, 6), top = new Set(rich.filter((s) => s.wealth > 30));
+  const rich = [...cnt.keys()].filter((s) => !s.dead && s.tier >= 2 && cnt.get(s) >= 4).sort((a, b) => b.wealth - a.wealth).slice(0, FX.market ? Infinity : 6), top = new Set(rich.filter((s) => s.wealth > 30));
+  { const elig = [...cnt.keys()].filter((s) => !s.dead && s.tier >= 2 && cnt.get(s) >= 4 && s.wealth > 30).length; if (elig > top.size) tally(w, 'gateMarket', elig - top.size); }   /* (Nov 3) towns that qualify locally but miss the world's top six */
   for (const s of w.sets) if (s.market && !top.has(s)) s.market = false;
   for (const [s, n] of cnt) { if (s.dead || s.tier < 2) continue; const was = s.market; s.market = top.has(s); if (s.market && !was && w.year - (s.marketAt || -99) > 80) { s.marketAt = w.year; const c = w.cults[s.cult]; ev(w, once(w, 'market') ? `${s.name} becomes the market of half the world. Every road and sea lane seems to end there.` : `${s.name} grows rich on the roads that meet there.`, s.x, s.y, c.color, w.found.market ? 1 : 0); discover(w, 'market', s.x, s.y); } }
   for (const c of w.cults) { if (!c.alive) continue; c.wealth = 0; } for (const s of w.sets) if (!s.dead) w.cults[s.cult].wealth += s.wealth || 0;

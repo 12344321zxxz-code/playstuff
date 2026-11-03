@@ -10,7 +10,8 @@ import { N, W } from '../src/core.js';
 import { ART, ART_KEYS } from '../src/tech.js';
 const settled = (c) => c && c.alive && !c.power && !(c.env && c.env.nomads > c.env.sed);
 const live = (c) => c && c.alive && !c.power;
-export function makeDev() { return { cent: [], hist: [], kl: {}, tallN: 0, tallT: 0, seen: new Set(), first: {}, al: {}, got: new Map(), sc: {} }; }
+export function makeDev() { return { cent: [], hist: [], kl: {}, tallN: 0, tallT: 0, seen: new Set(), first: {}, al: {}, got: new Map(), sc: {}, keyFirst: {} }; }
+const KEYART = new Set(['printing', 'banking', 'engines', 'railways', 'electricity', 'computers']);
 // (Nov 2, research doc) how long each art took to reach other realms after the first: tied to the first holder by trade,
 // on its landmass, or far (other landmasses, no ties); realms born holding it inherited it and don't count
 const massOf = (w, c) => (c && c.big ? w.mass[c.big.y * W + c.big.x] : -1);
@@ -25,7 +26,7 @@ function scaleLags(w, D) {
 function artLags(w, D) {
   for (const c of w.cults) { if (!settled(c) || c.count <= 0) continue; const young = w.year - c.born <= 2;
     for (const k of ART_KEYS) { if (!c.arts[k]) continue; const key = c.id + ':' + k; if (D.seen.has(key)) continue; D.seen.add(key); if (young) continue;
-      const f = D.first[k]; if (!f) { D.first[k] = { y: w.year, id: c.id, m: massOf(w, c) }; continue; }
+      const f = D.first[k]; if (!f) { D.first[k] = { y: w.year, id: c.id, m: massOf(w, c) }; if (KEYART.has(k)) { const L = w.cults.filter((q) => settled(q) && q.count > 0), tot = L.reduce((a, q) => a + q.pop, 0); D.keyFirst[k] = { y: w.year, rank: L.slice().sort((a, b) => b.pop - a.pop).indexOf(c) + 1, share: +(c.pop / Math.max(1, tot)).toFixed(3), lrank: L.slice().sort((a, b) => landOf(b) - landOf(a)).indexOf(c) + 1 }; } continue; }
       const F = w.cults[f.id], tied = F && ((c.ties || {})[F.id] >= 1 || (F.ties || {})[c.id] >= 1), g = tied ? 'tied' : massOf(w, c) === f.m ? 'land' : 'far', t = ART[k].tier;
       ((D.al[t] ||= {})[g] ||= []).push(w.year - f.y); } } }
 const landOf = (c) => (c.terr && c.terr.n) || c.count;
@@ -56,11 +57,13 @@ export function devYear(w, D) {
   Z.forEach((c, i) => { const tq = i < Z.length / 3 ? 'big' : i < (2 * Z.length) / 3 ? 'mid' : 'small', B = ((D.kl[era] ||= {})[tq] ||= {}); let sum = 0; for (const k in c.kl || {}) sum += c.kl[k]; if (sum > 0) { for (const k in c.kl) B[k] = (B[k] || 0) + c.kl[k] / sum; B.n = (B.n || 0) + 1; }   /* each realm's own mix, weighted equally */ });
   for (const c of w.cults) c.kl = null;
   const sh = w.cults.filter((c) => settled(c)).map((c) => c.pop / Math.max(1, tot)).sort((a, b) => b - a);
-  D.cent.push({ y: w.year, F, top1: +(sh[0] || 0).toFixed(3), top3: +sh.slice(0, 3).reduce((a, b) => a + b, 0).toFixed(3), realms: w.cults.filter((c) => c.alive && !c.power && c.count > 0).length, lag: P.map((v) => pc(v, sp)), land: A.map((v) => pc(v, sa)), rland: R.map((v) => pc(v, sa)), within: wp ? pc(wl, wp) : null, rho, tall: D._tallN ? +(D._tallT / D._tallN).toFixed(2) : null, n: Q.length });
+  let ub = 0, up = 0; const eng = new Map(); let engT = 0; for (const s of w.sets) { if (s.dead || s.nomad) continue; const c = w.cults[s.cult]; if (!live(c)) continue; ub += s.pop * (s.urb ?? 0.06); up += s.pop; if (s._A && s._A.engines) { const v = s.pop * (s.urb ?? 0.06); engT += v; eng.set(c.id, (eng.get(c.id) || 0) + v); } }
+  const es = [...eng.values()].map((v) => v / Math.max(1e-9, engT)).sort((a, b) => b - a);
+  D.cent.push({ y: w.year, urb: up ? +(ub / up).toFixed(3) : null, indTop1: es.length ? +es[0].toFixed(3) : null, indHHI: es.length ? +es.reduce((a, v) => a + v * v, 0).toFixed(3) : null, indRealms: es.length, F, top1: +(sh[0] || 0).toFixed(3), top3: +sh.slice(0, 3).reduce((a, b) => a + b, 0).toFixed(3), realms: w.cults.filter((c) => c.alive && !c.power && c.count > 0).length, lag: P.map((v) => pc(v, sp)), land: A.map((v) => pc(v, sa)), rland: R.map((v) => pc(v, sa)), within: wp ? pc(wl, wp) : null, rho, tall: D._tallN ? +(D._tallT / D._tallN).toFixed(2) : null, n: Q.length });
   D._tallN = 0; D._tallT = 0;
 }
 export function devSummary(D, w) {
   // censored: realms alive now still without an art the first holder got 100+ years ago
   const cens = {}; if (w) for (const k in D.first) { const f = D.first[k]; if (w.year - f.y < 100) continue; const t = ART[k].tier; for (const c of w.cults) if (settled(c) && c.count > 0 && !c.arts[k] && w.year - c.born > 100) { const g = massOf(w, c) === f.m ? 'land' : 'far'; cens[t] = cens[t] || {}; cens[t][g] = (cens[t][g] || 0) + 1; } }
   const scC = {}; for (const [k, g] of D.got) if (!g.done && w && w.year - g.y >= 100) { const t = k.split(':')[1]; (scC[t] ||= {})[g.big ? 'big' : 'small'] = ((scC[t] || {})[g.big ? 'big' : 'small'] || 0) + 1; }
-  return { scaleLag: D.sc, scaleCens: scC, dev: D.cent, devKl: D.kl, tallShare: D.tallN ? +(D.tallT / D.tallN).toFixed(3) : null, artLag: D.al, artCens: cens, artFirst: Object.fromEntries(Object.entries(D.first).map(([k, f]) => [k, f.y])) }; }
+  return { keyFirst: D.keyFirst, scaleLag: D.sc, scaleCens: scC, dev: D.cent, devKl: D.kl, tallShare: D.tallN ? +(D.tallT / D.tallN).toFixed(3) : null, artLag: D.al, artCens: cens, artFirst: Object.fromEntries(Object.entries(D.first).map(([k, f]) => [k, f.y])) }; }
