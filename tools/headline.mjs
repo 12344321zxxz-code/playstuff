@@ -2,13 +2,16 @@
 //   node tools/headline.mjs dirA dirB ...
 import { readFileSync, readdirSync } from 'node:fs';
 import { SCALE } from '../src/core.js';
-const load = (d) => { const m = new Map(); for (const f of readdirSync(d + '/out')) { const k = /^b(\d+)\.json$/.exec(f); if (!k) continue; try { const r = JSON.parse(readFileSync(d + '/out/' + f, 'utf8').trim().split('\n').pop()); m.set(+k[1], r); } catch {} } return m; };
-const dirs = process.argv.slice(2), D = dirs.map(load);
-const common = [...D[0].keys()].filter((s) => D.every((m) => m.has(s))).sort((a, b) => a - b);
+import { existsSync } from 'node:fs';
+// a folder of results: an experiment folder (with out/) or an archived run (the files themselves)
+export const load = (d) => { const m = new Map(); const o = existsSync(d + '/out') ? d + '/out' : d; for (const f of readdirSync(o)) { const k = /^b(\d+)\.json$/.exec(f); if (!k) continue; try { const r = JSON.parse(readFileSync(o + '/' + f, 'utf8').trim().split('\n').pop()); m.set(+k[1], r); } catch {} } return m; };
 const med = (a) => { a = a.filter((v) => v != null && Number.isFinite(v)).sort((x, y) => x - y); return a.length ? a[a.length >> 1] : null; };
 const f = (v, d = 2) => (v == null ? '-' : typeof v === 'number' ? (Number.isInteger(v) ? String(v) : v.toFixed(d)) : v);
-console.log(`${common.length} common seeds: ${common.join(' ')}\n`);
-const rows = [
+const main = () => { const dirs = process.argv.slice(2), D = dirs.map(load);
+  const common = [...D[0].keys()].filter((s) => D.every((m) => m.has(s))).sort((a, b) => a - b);
+  console.log(`${common.length} common seeds: ${common.join(' ')}\n`);
+  return { dirs, D, common }; };
+export const rows = [
   ['biggest first, ages 5-8 pooled', (rs) => { const F = rs.flatMap((r) => [5, 6, 7, 8].map((t) => r.firstTo && r.firstTo[t]).filter(Boolean)); return F.length ? F.filter((x) => x.rank === 1).length / F.length : null; }],
   ['outside top 3 by people and land first, 5-8', (rs) => { const F = rs.flatMap((r) => [5, 6, 7, 8].map((t) => r.firstTo && r.firstTo[t]).filter(Boolean)); return F.length ? F.filter((x) => x.rank > 3 && x.lrank > 3).length / F.length : null; }],
   ['rho(size,know) ages 5-8 (median century)', (rs) => med(rs.flatMap((r) => (r.dev || []).filter((c) => c.F >= 5 && c.F <= 8).map((c) => c.rho)))],
@@ -33,5 +36,8 @@ const rows = [
   ['NaN worlds', (rs) => rs.filter((r) => r.nan > 0).length],
   ['ms per tick', (rs) => med(rs.map((r) => r.msPerTick))],
 ];
+export const summarize = (rs) => Object.fromEntries(rows.map(([k, fn]) => { try { const v = fn(rs); return [k, typeof v === 'number' ? +v.toFixed(3) : v]; } catch { return [k, null]; } }));
+if (process.argv[1] && process.argv[1].endsWith('headline.mjs')) { const { dirs, D, common } = main();
 console.log('metric'.padEnd(46) + dirs.map((d) => d.split('/').pop().padStart(12)).join(''));
 for (const [name, fn] of rows) console.log(name.padEnd(46) + D.map((m) => f(fn(common.map((s) => m.get(s)))).padStart(12)).join(''));
+}
