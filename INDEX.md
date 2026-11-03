@@ -16,6 +16,7 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-03 | [fs-base](runs/2026-11-03-fs-base) | 14e86da | 10 | Foundations sprint screen: baseline (z1 settings, all fixes off) | 0.58 | 0.24 | 15 | 1614 | 1901 | 3.12 | 31 / 9 | 0 |
 | 2026-11-03 | [fs-coal](runs/2026-11-03-fs-coal) | 32a2d47+ | 10 | Screen: traded coal only (patch: `{"flags.js":{"FX.coal":1}}`) | 0.58 | 0.23 | 14 | 1612 | 1919 | 3.7 | 30 / 14 | 0 |
 | 2026-11-03 | [fs-law](runs/2026-11-03-fs-law) | 2230d97 | 10 | Screen: law and civil service gated by towns only (patch: `{"flags.js":{"FX.law":1}}`) | 0.5 | 0.29 | 12 | 1615 | 1842 | 3.34 | 31 / 14 | 0 |
+| 2026-11-03 | [fs-market](runs/2026-11-03-fs-market) | 2230d97 | 10 | Screen: local market and entrepot thresholds only (patch: `{"flags.js":{"FX.market":1}}`) | 0.56 | 0.28 | 13 | 1562 | 1578 | 3.39 | 23 / 17 | 0 |
 | 2026-11-03 | [h10](runs/2026-11-03-h10) |  | 8 | h9 with lam 0.2, kq5 1.6 (patch: `{"people.js":{"KN.lam":0.2,"KN.kq5":1.6}}`) | 0.64 | – | 11 | 1520 | 1907 | 3.58 | 23 / 19 | 0 |
 | 2026-11-03 | [h11](runs/2026-11-03-h11) |  | 10 | Each age from its own roots (fit: commerce / coal+towns / towns+schools) + no banked overflow (partial) | 0.61 | – | 11 | 1490 | 1813 | 3.69 | 24 / 16 | 0 |
 | 2026-11-03 | [h12](runs/2026-11-03-h12) |  | 10 | h11 + commerce fit reads trade unsaturated | 0.72 | – | 10 | 1472 | 1815 | 3.52 | 26 / 16 | 0 |
