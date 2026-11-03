@@ -1240,6 +1240,46 @@
   }
  },
  {
+  "dir": "runs/2026-11-03-st-fisc",
+  "date": "2026-11-03",
+  "name": "st-fisc",
+  "commit": "f9204ac",
+  "dirty": false,
+  "worlds": 10,
+  "years": 2000,
+  "patch": {
+   "flags.js": {
+    "FX.fisc": 1
+   }
+  },
+  "note": "Structural screen: fiscal state alone",
+  "summary": {
+   "biggest first, ages 5-8 pooled": 0.52,
+   "outside top 3 by people and land first, 5-8": 0.04,
+   "rho(size,know) ages 5-8 (median century)": 0.75,
+   "tall share of frontier (decades)": 0.617,
+   "land 2+ behind, ages 5-8 (median century %)": 17.8,
+   "people 2+ behind, ages 5-8": 6.1,
+   "within-realm 1+ behind, ages 5-8": 4.9,
+   "median year into age 5": 1251,
+   "median year into age 6": 1578,
+   "median year into age 7": 1819,
+   "median year into age 8": 1968,
+   "worlds reaching age 8 / 9": "5 / 2",
+   "peak pop, all worlds (bn)": 3.679,
+   "peak pop, info-age worlds (bn)": null,
+   "steam-age colonial % (pooled)": 15.372,
+   "steam-age foreign / internal % (pooled)": "26 / 15",
+   "largest realm share of people, ages 5-8": 0.267,
+   "top-3 realms share, ages 5-8": 0.615,
+   "realms with 1%+ of people, ages 5-8": 13,
+   "living realms, ages 5-8": 45,
+   "first into 5-8: median share of people": 0.192,
+   "NaN worlds": 0,
+   "ms per tick": 23.9
+  }
+ },
+ {
   "dir": "runs/2026-11-03-x3",
   "date": "2026-11-03",
   "name": "x3",

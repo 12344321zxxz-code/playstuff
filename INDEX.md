@@ -37,6 +37,7 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-03 | [h9](runs/2026-11-03-h9) |  | 16 | Branch as of morning Nov 3: h8 + discovery x1.3 from the age of print | 0.64 | – | 11 | 1532 | 1849 | 3.8 | 30 / 14 | 0 |
 | 2026-11-03 | [s1](runs/2026-11-03-s1) |  | 8 | h12 + realm cap 54/56/58 (was 36/44/56) | 0.61 | 0.34 | 13 | 1594 | 1754 | 3.37 | 20 / 24 | 0 |
 | 2026-11-03 | [s2](runs/2026-11-03-s2) |  | 8 | s1 + cohesion falls faster with size (count/180) | 0.61 | 0.28 | 13 | 1755 | 1904 | 2.75 | 29 / 19 | 0 |
+| 2026-11-03 | [st-fisc](runs/2026-11-03-st-fisc) | f9204ac | 10 | Structural screen: fiscal state alone (patch: `{"flags.js":{"FX.fisc":1}}`) | 0.52 | 0.27 | 13 | 1578 | 1968 | 3.68 | 26 / 15 | 0 |
 | 2026-11-03 | [x3](runs/2026-11-03-x3) |  | 8 | s1 + modern carriers to a third + kq5 1.6 | 0.67 | 0.35 | 11 | 1596 | 1881 | 3.37 | 22 / 16 | 0 |
 | 2026-11-03 | [x4](runs/2026-11-03-x4) |  | 8 | s2 + modern carriers to a third + kq5 1.6 | 0.59 | 0.23 | 16 | 1760 | 1772 | 2.72 | 33 / 18 | 0 |
 | 2026-11-03 | [x5](runs/2026-11-03-x5) |  | 16 | x4 with kq5 2.2: the 'more, smaller realms' version committed to holistic | 0.62 | 0.26 | 14 | 1621 | 1757 | 2.96 | 26 / 20 | 0 |
