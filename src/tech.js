@@ -98,7 +98,7 @@ export const TECH = [3000, 120000, 1500000, 15000000, 40000000, 70000000, 120000
 // From the industrial age on, a tier needs far more (scale-up, Oct 22): railways and oil can be
 // kept by a great realm, computers only by a few hundred million people, the last arts only by a
 // connected world of billions (in people shown: 1 counted = SCALE people).
-const MODERN_CARRY = [0, 0, 0, 0, 0, 0, 20000, 80000, 250000, 700000, 1800000];
+const MODERN_CARRY = [0, 0, 0, 0, 0, 0, 7000, 27000, 85000, 240000, 600000];
 export const carriersFor = (tier) => (tier >= 6 ? MODERN_CARRY[Math.min(10, tier)] : 60 * Math.pow(2.1, tier));
 // The modern harvest: engines, railways, oil, the grid, new seed and machines each multiply what a
 // field (or a herd) feeds: by the age of railways and oil about thirteen times what a farm fed

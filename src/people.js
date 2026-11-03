@@ -106,7 +106,7 @@ function suits(w, c, kind, k) {
 //          fits its age, per head and against the world's typical realm at that age (powder and print: markets,
 //          harbours, trade; steam: its own coal and its towns; wires and after: its towns and its schools), to this power
 //   fresh: entering an age from the age of print keeps nothing above the threshold: the next age is earned inside this one
-export const KN = { lam: 0.4, ref: 0.25, M: 10, use: 5, adopt: 0.03, kq5: 1.3, arm: 1, fitP: 1.5, fresh: 1 };   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
+export const KN = { lam: 0.4, ref: 0.25, M: 10, use: 5, adopt: 0.03, kq5: 2.2, arm: 1, fitP: 1.5, fresh: 1 };   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
 export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
 function meet(w, c, o, p, ta, tb) {
   const rnd = w.rnd; if (c === o) return;
@@ -653,7 +653,7 @@ function cultYear(w, c) {
     const reach = 30 + (A.roads ? 14 : 0) + (A.riding ? 8 : 0) + (A.writing ? 8 : 0) + (A.bureaucracy ? 18 : 0) + (A.railways ? 60 : 0) + (A.telegraph ? 100 : 0);
     c.span = n ? sum / n / reach : 0; c.reachR = reach; }
   const HB = hubYear(w, c, HOOKS); if (!c.alive) return;
-  const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / 300 - 0.35 * Math.min(2, Math.max(0, (c.span || 0) - 0.9)), claim: c.claimHeld ? 0.05 : 0, age: HUB.ageDiv ? -(w.year - c.born) / HUB.ageDiv : 0, elites: HB.elites, strife: HB.strife, living: HB.living, frontier: HB.frontier, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
+  const tr = c.ruler.trait, P = c.press = { base: 1.05, laws: A.laws ? 0.06 : 0, size: -c.count / 180 - 0.35 * Math.min(2, Math.max(0, (c.span || 0) - 0.9)), claim: c.claimHeld ? 0.05 : 0, age: HUB.ageDiv ? -(w.year - c.born) / HUB.ageDiv : 0, elites: HB.elites, strife: HB.strife, living: HB.living, frontier: HB.frontier, hunger: -(c.hungry / Math.max(4, c.count)) * 0.35, full: -(c._full / Math.max(4, c.count)) * 0.22,
     ruler: tr === 'law' ? 0.25 : tr === 'great' ? 0.2 : tr === 'mad' ? -0.35 : 0, wins: Math.min(0.2, c.wins * 0.04), faith: ((c.faith == null ? 0 : c.faithShare > 0.8 ? 0.08 : c.faithShare < 0.5 && c.count > 6 ? -0.1 : 0) + (c.docs && c.docs.world ? 0.04 : 0) + (c.docs && c.docs.peace ? 0.04 : 0)) * (1 + (Q ? Q.pious : 0)) * (c.faithHold == null ? 1 : 0.4 + 0.6 * c.faithHold), tongues: -0.3 * (c.foreignShare || 0), lost: -0.5 * (c.lostShare || 0), customs: -0.15 * (c.oddShare || 0), border: c.borderFoe ? 0.05 : 0, dread: c.over && c.over.kind === 'dragon' ? 0.12 : 0, steppe: nomadic(c) ? 0.25 * ((c.fi || 0) - 0.25) : 0, peace: !!(c.docs && c.docs.peace) ? 0.04 : 0 };
   let tsum = 0; for (const k in P) tsum += P[k]; const target = clamp(tsum, 0.05, 1); c.cohT = target;
   if (w.year % 10 === 0) { const ph = c.ph || (c.ph = []); ph.push([w.year, Object.assign({}, P)]); if (ph.length > 6) ph.shift(); }   /* snapshots for finding the trigger */
