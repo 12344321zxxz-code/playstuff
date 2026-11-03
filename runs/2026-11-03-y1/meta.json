@@ -1,0 +1,21 @@
+{
+ "name": "y1",
+ "note": "x5 + tied rivals close the knowledge gap (pull 0.04)",
+ "patch": {
+  "people.js": {
+   "KN.pull": 0.04
+  }
+ },
+ "worlds": 8,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  31,
+  32
+ ],
+ "years": 2000
+}

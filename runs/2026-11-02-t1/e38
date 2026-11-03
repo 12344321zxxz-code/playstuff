@@ -1,0 +1,15 @@
+file:///tmp/claude-0/sc/t1/src/capture.js:110
+        if (far) { d.pacts.delete(c.id); d.st = 'fly'; d.target = { kind: 'town', s: far }; d.tx = far.x; d.ty = far.y; d.repact = c.id; if (once(w, 'refuse-' + c.id + '-' + Math.floor(w.year / 60))) ev(w, `${far.name} will not pay ${ov.d}. Everyone knows what happens next.`, far.x, far.y, c.color, 1); } }
+                           ^
+
+TypeError: Cannot read properties of undefined (reading 'delete')
+    at captureYear (file:///tmp/claude-0/sc/t1/src/capture.js:110:28)
+    at peopleSteps (file:///tmp/claude-0/sc/t1/src/people.js:526:19)
+    at peopleSteps.next (<anonymous>)
+    at tick (file:///tmp/claude-0/sc/t1/src/world.js:100:80)
+    at file:///tmp/claude-0/sc/t1/tools/stats.mjs:16:706
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.22.0

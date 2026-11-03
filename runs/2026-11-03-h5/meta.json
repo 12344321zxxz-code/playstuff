@@ -1,0 +1,24 @@
+{
+ "name": "h5",
+ "note": "h4 with lam 0.4, adoption 0.03",
+ "patch": {
+  "people.js": {
+   "KN.lam": 0.4,
+   "KN.adopt": 0.03
+  }
+ },
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000
+}

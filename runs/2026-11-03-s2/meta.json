@@ -1,0 +1,16 @@
+{
+ "name": "s2",
+ "note": "s1 + cohesion falls faster with size (count/180)",
+ "worlds": 8,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  31,
+  32
+ ],
+ "years": 2000
+}

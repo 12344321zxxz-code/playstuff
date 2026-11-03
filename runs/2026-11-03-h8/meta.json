@@ -1,0 +1,16 @@
+{
+ "name": "h8",
+ "note": "h6 + trade and harbours drive town share + brake reference at the lower quartile",
+ "worlds": 8,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  31,
+  32
+ ],
+ "years": 2000
+}

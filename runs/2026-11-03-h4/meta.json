@@ -1,0 +1,24 @@
+{
+ "name": "h4",
+ "note": "Diminishing returns lam 0.6 (replaces the core cap, which never bound) + letters cap M 2.5",
+ "worlds": 16,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32,
+  33,
+  34,
+  35,
+  36,
+  37,
+  38
+ ],
+ "years": 2000
+}

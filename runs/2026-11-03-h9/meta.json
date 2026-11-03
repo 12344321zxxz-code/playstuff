@@ -1,0 +1,24 @@
+{
+ "name": "h9",
+ "note": "Branch as of morning Nov 3: h8 + discovery x1.3 from the age of print",
+ "worlds": 16,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32,
+  33,
+  34,
+  35,
+  36,
+  37,
+  38
+ ],
+ "years": 2000
+}

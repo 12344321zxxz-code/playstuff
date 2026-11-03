@@ -1,0 +1,20 @@
+{
+ "name": "h3",
+ "note": "h2 + armies by district (districts an age behind fight with the previous age's arms) (partial)",
+ "worlds": 12,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32,
+  33,
+  34
+ ],
+ "years": 2000
+}

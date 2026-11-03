@@ -1,0 +1,21 @@
+{
+ "name": "y2",
+ "note": "x5 + pull 0.1",
+ "patch": {
+  "people.js": {
+   "KN.pull": 0.1
+  }
+ },
+ "worlds": 8,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  31,
+  32
+ ],
+ "years": 2000
+}

@@ -1,0 +1,15 @@
+{
+ "name": "h2",
+ "note": "Steps 3-4 v1: court takes in core finds + far provinces up to M=2.5x core; arts work per district; uptake (partial)",
+ "worlds": 7,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17
+ ],
+ "years": 2000
+}
