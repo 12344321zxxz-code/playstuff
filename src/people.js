@@ -8,6 +8,7 @@ import { captureYear, subjugate, release, bySea } from './capture.js';
 import { empireYear, regionSuccessors } from './empire.js';
 import { realmMap } from './realms.js';
 import { FX } from './flags.js';
+import { fiscYear } from './fisc.js';
 import { frontierYear, termsBetween, nomadic, bandCap } from './frontier.js';
 import { relicsYear, newHouse, crownGoal, claimGoal } from './relics.js';
 import { powersYear as greatPowersYear } from './greatpowers.js';
@@ -307,7 +308,7 @@ const armsOf = (c) => { if (c._arm && c._arm.t === c.tech && c._arm.ms === c.mod
 const armsCalc = (c) => { const m = warMult(c); if (c.tech < KN.use || !(KN.arm > 0) || (c.modShare ?? 1) >= 1) return m;
   const lo = {}; for (const k in c.arts) { const T = ART[k]; if (!T || T.tier < c.tech) lo[k] = c.arts[k]; } const mLo = warMult({ arts: lo, bronzeCut: c.bronzeCut }), sh = 1 - KN.arm * 0.7 * (1 - c.modShare);
   return mLo + (m - mLo) * sh; };   /* the districts an age behind fight with the arms of the age before */
-export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * armsOf(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1) * (c.q ? 1 + 0.15 * c.q.war : 1); }
+export function strength(c, pop) { const A = c.arts; return (FX.fisc ? c.payF ?? 1 : 1) * pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * armsOf(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1) * (c.q ? 1 + 0.15 * c.q.war : 1); }
 // (slice 2) the besiegers go home (part of them; the rest are dead or deserted)
 function liftSiege(w, o, frac) { const sg = o.siege; o.siege = null; if (!sg) return; const home = sg.from != null ? w.sets.find((q) => q.id === sg.from && !q.dead) : null; if (home) home.pop += sg.n * frac; }
 // Every year: count who is serving, and work the sieges. A siege advances with the force ratio
@@ -347,7 +348,7 @@ function occupy(w, o, c, oc, war, home) {
 // the peace gives a town to the winner
 function annexTown(w, s, c) {
   const oc = w.cults[s.cult], wasCap = oc && oc.big === s; s.cult = c.id; s.occ = null; s.trade = 0; s.tollTo = null; tally(w, 'annexed');
-  if (oc && !oc.power && oc.know > c.know) c.know += kl(c, 'conq', (oc.know - c.know) * 0.08);   /* conquerors learn from the conquered */
+  if (!FX.know && oc && !oc.power && oc.know > c.know) c.know += kl(c, 'conq', (oc.know - c.know) * 0.08);   /* conquerors learn from the conquered (FX.know: only through the districts they now hold) */
   carry(w, c.big && !c.big.dead ? c.big : { faith: c.faith }, s, 'conquest');
   if (wasCap) { oc.coh = Math.max(0.05, oc.coh - 0.2); oc.big = null; }
 }
@@ -406,21 +407,21 @@ arrive.army = (w, m) => {
   if ((raider || (c.ruler.trait === 'mad' && rnd() < 0.5)) && w.year - o.lastSack > 25) {   /* a town just sacked has nothing left to take: it is only plundered again (below) */
     if (o.tier <= 1 || o.pop * 0.72 < hp * 0.6) { if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.5); flee(w, o, o.pop * 0.25); lost('razed'); endSet(w, o, 'sacked', c.name); back(1.2); return; }
     o.lastSack = w.year; if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.45); { const Uo = o.pop * (o.urb ?? 0.06), Ro = o.pop - Uo; flee(w, o, Uo * 0.2 + Ro * 0.05); o.pop = Uo * 0.25 + Ro * 0.75; o.urb = Math.max(0.01, (Uo * 0.25) / Math.max(1, o.pop)); }   /* (Nov 2) a sack burns the town; the villages around it lose their harvest and their young men, and change masters */ o.tier = Math.max(1, o.tier - 1); if (o.walls && rnd() < 0.5) o.walls = false;
-    if (home && !home.dead) home.wealth = (home.wealth || 0) + 3 + o.tier; if (m.nomad) c.loot = (c.loot || 0) + 3 + o.tier;   /* the loot goes home */
+    { const loot = FX.econ ? Math.min(Math.max(0, o.wealth || 0) * 0.6 + 1, 3 + o.tier) : 3 + o.tier; if (FX.econ) o.wealth = Math.max(0, (o.wealth || 0) - loot); if (home && !home.dead) home.wealth = (home.wealth || 0) + loot; if (m.nomad) c.loot = (c.loot || 0) + loot; }   /* the loot goes home (FX.econ: out of the sacked town's purse) */
     remember(w, o.x, o.y, DEATH, 0.25, 3, 'sacked', `the ${c.name} sacked ${o.name}`);
     ev(w, `${m.nomad ? 'Riders' : 'Warriors'} of the ${c.name} sack ${o.name}. Little is left standing.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1);
     lost('sack'); back(1.15); return;
   }
   if (!raider && (war || c.power || oc.power) && (o.pop * 0.72 < hp * 0.5 || rnd() < 0.55) && ((war && !c.power && !oc.power) || w.year - o.lastSack > (c.power ? 8 : 25))) {   /* (slice 1a) towns change hands only in a war; a raid in peacetime takes loot, not the town */
     if (war && !c.power && !oc.power) { occupy(w, o, c, oc, war, home); bleed(w, c, m.n * 0.4); bleed(w, oc, o.pop * 0.05 + rein * 0.5); flee(w, o, o.pop * 0.03); o.pop *= 0.95; lost('conquest'); back(0.6); return; }
-    o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); const fromDead = oc.power; if (!c.power && !oc.power && oc.know > c.know) c.know += kl(c, 'conq', (oc.know - c.know) * (m.nomad ? 0.2 : 0.08));   /* conquerors learn from the conquered */ o.cult = m.cult; o.trade = 0; if (c.power || fromDead) deadConquest(w, o, c, oc); if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
+    o.lastSack = w.year; const wasCap = oc.big === o && oc.count > 2; if (war && c.tech >= 2 && (c.ruler.trait === 'mad' || c.zeal || rnd() < 0.25)) scorch(w, o, c); const fromDead = oc.power; if (!FX.know && !c.power && !oc.power && oc.know > c.know) c.know += kl(c, 'conq', (oc.know - c.know) * (m.nomad ? 0.2 : 0.08));   /* conquerors learn from the conquered */ o.cult = m.cult; o.trade = 0; if (c.power || fromDead) deadConquest(w, o, c, oc); if (war) war.taken++; carry(w, home && !home.dead ? home : { faith: c.faith }, o, 'conquest');
     ev(w, wasCap ? `${o.name}, seat of the ${oc.name}, falls to the ${c.name}.` : `${o.name} falls to the ${c.name}.`, o.x, o.y, c.color, wasCap && oc.count > 24 ? 2 : wasCap || o.tier === 3 ? 0 : 1);
     if (wasCap) { oc.coh = Math.max(0.05, oc.coh - (oc.power ? 0.1 : 0.25)); oc.big = null; if (war) { war.capital = true; war.until = Math.min(war.until, w.year + 2); const K = conflictOf(w, c); if (K) K.until = Math.min(K.until, w.year + 2); } }
     if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.05); flee(w, o, o.pop * 0.03); o.pop *= 0.95; lost(war ? 'conquest' : 'peaceConquest'); back(0.6); return;
   }
   // beaten but not taken: the defenders lose men and the countryside is plundered, the town stands; in peacetime it is remembered
   if (!war && !c.power && !oc.power) { oc.nb[c.id] = (oc.nb[c.id] || 0) + 1; oc.grudge = oc.grudge || {}; oc.grudge[c.id] = w.year; }
-  if (war) bleed(w, oc, o.pop * 0.08 + rein * 0.4); if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.08); o.pop *= 0.92; if (home && !home.dead) home.wealth = (home.wealth || 0) + 1; if (m.nomad) c.loot = (c.loot || 0) + 1;
+  if (war) bleed(w, oc, o.pop * 0.08 + rein * 0.4); if (!oc.power) corpses(w, o.x, o.y, o.pop * 0.08); o.pop *= 0.92; { const loot = FX.econ ? Math.min(Math.max(0, o.wealth || 0) * 0.3 + 0.3, 1) : 1; if (FX.econ) o.wealth = Math.max(0, (o.wealth || 0) - loot); if (home && !home.dead) home.wealth = (home.wealth || 0) + loot; if (m.nomad) c.loot = (c.loot || 0) + loot; }
   if (o.tier >= 2 && w.year - o.lastSack > 30) { o.lastSack = w.year; ev(w, `Warriors from ${home && home.name ? home.name : 'the ' + c.name} beat the defenders of ${o.name} and plunder the country around it.`, o.x, o.y, c.color, oc.big === o && oc.count > 6 ? 0 : 1); }
   lost('beaten'); back(1.1);
 };
@@ -532,7 +533,7 @@ export function* peopleSteps(w) {
       if (s === b0) { s.k = c.know; s._tie = 1; }
       else { const dx = b0 ? Math.hypot(wrapDx(s.x - b0.x), s.y - b0.y) : 0, tg = s.lang != null && c.langId != null && s.lang !== c.langId ? gapCached(w, s.lang, c.langId) : 0;
         const tie = Math.min(1, (1 / (1 + dx / Math.max(20, c.reachR || 30))) * (tg === Infinity ? 0.5 : tg > 2 ? 0.75 : 1) * (s.links ? 1.25 : 1)); s._tie = tie;
-        if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * KN.adopt * tie * (gap >= 2 ? 0.3 : 1) * (c.tech >= KN.use ? uptake(c, s) : 1); } else s.k += (c.know - s.k) * 0.01; }
+        if (s.k < c.know) { const gap = c.tech - techOf(s.k); s.k += (c.know - s.k) * KN.adopt * tie * (gap >= 2 ? 0.3 : 1) * (c.tech >= KN.use ? uptake(c, s) : 1); } else if (FX.know) { if (Number.isFinite(s.k)) c.know += kl(c, 'prov', (s.k - c.know) * 0.02 * tie * Math.min(1, (5 * s.pop) / Math.max(1, c.pop || s.pop))); } else s.k += (c.know - s.k) * 0.01; }   /* (FX.know) a district that knows more than its court keeps it, and the court learns from it slowly: a conquered seat of learning teaches its conquerors over a generation, not at once */
       s.lvl = techOf(s.k); wt = 0.15 + 0.85 * s._tie * Math.min(1, s.k / Math.max(1, c.know)); }   /* (Nov 2, play tall) far, loosely held provinces add little to what the court knows: a giant learns from its well-tied core (roads, bureaucracy, rail and the telegraph widen it) */
     { const dk = (1 - (c.tech >= 5 ? 0.8 : 0.5) * (c.orth || 0)) * wt * 0.78 * (c.kq || 1) * learnDrag(w, c, i0) * ((c.tech >= 5 ? s.pop * Math.min(3, 0.15 + 3.4 * Math.pow(s.urb ?? 0.06, 0.81)) : s.pop)   /* (Nov 2, holistic) no plateau: a district half in town keeps out-thinking one a third in town (it was capped at 26% urban); same output as before at the usual 8% and 35% */ / (c.boomL || 1)) * c.wit * (0.35 + 1.3 * c.surplus) * (1 + 0.07 * Math.min(4, c.rivals)) * (1 + 0.2 * Math.min(4, s.trade)) * (s.tower ? 1.6 : 1) * (A.writing ? 1.25 : 1) * (s.market ? 1.3 : 1) * (A.counting ? 1.08 : 1) * (A.schools ? 1.2 : 1) * (A.printing ? 1.35 : 1) * (A.computers ? 1.3 : 1) * (A.networks ? 1.3 : 1); if (Number.isFinite(dk)) { if (c.tech >= 5) c._dkr = (c._dkr || 0) + dk * KN.kq5; else { c.know += kl(c, 'own', dk); c._dk = (c._dk || 0) + dk; } } }   /* (Nov 2, play tall) a court that has had no equal for generations stops asking questions (orth); from the age of print, new ideas come from the towns and the trade, not the peasantry (a district counts by its townspeople); what a realm finds itself (_dk) is what its peers can share */ c._n++; c._p += s.pop; if (s.nomad || s.lvl == null || s.lvl >= c.tech) c._pm += s.pop; if (!s.nomad) { c._sp += s.pop; c._ur += s.pop * (s.urb ?? 0.06); c._cm += s.pop * (0.5 * (s.market ? 1 : 0) + 0.3 * (s.port ? 1 : 0) + Math.min(10, s.trade || 0) / 6);   /* (trade runs 0-6 a district, median ~4: not saturated, so commerce differs between realms) */ } total += s.pop; if (!c._b || s.pop > c._b.pop) c._b = s; if (A.engines) smoke += s.pop;
     if (s.nomad) nomadStep(w, s, c, seaN, fishGap); else townStep(w, s, c);
@@ -548,7 +549,7 @@ export function* peopleSteps(w) {
     alive++; if (c.power) { POWER[c.power](w, c); continue; } cultYear(w, c);
   }
   yield;
-  armiesYear(w); warsYear(w, WAR_HOOKS); tidyWars(w); empireYear(w); ruinsYear(w); plaguesYear(w); faithYear(w);
+  armiesYear(w); warsYear(w, WAR_HOOKS); tidyWars(w); empireYear(w); fiscYear(w); ruinsYear(w); plaguesYear(w); faithYear(w);
   yield;
   tonguesYear(w); captureYear(w); frontierYear(w); greatPowersYear(w); relicsYear(w);
   w.greenhouse = (w.greenhouse || 0) * 0.998;   // the air clears, slowly, when the chimneys stop

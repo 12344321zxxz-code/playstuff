@@ -99,7 +99,7 @@ export function pickGoods(w, a, b) {
 export function deliver(w, m) {
   const a = m.from, b = m.to, ca = w.cults[a.cult], cb = w.cults[b.cult], g = m.goods == null ? -1 : m.goods;
   const d = Math.sqrt(wrapDx(a.x - b.x) ** 2 + (a.y - b.y) ** 2), val = (g >= 0 ? GOODS[g].v : 0.5) * (1 + Math.min(3, d / 25)) * (m.toll ? 0.65 : 1);
-  const coin = (c) => (c.arts.banking ? 1.8 : c.arts.coinage ? 1.4 : 1); a.wealth = (a.wealth || 0) + val * coin(ca); b.wealth = (b.wealth || 0) + val * 0.6 * coin(cb);
+  const coin = (c) => (c.arts.banking ? 1.8 : c.arts.coinage ? 1.4 : 1); a.wealth = (a.wealth || 0) + val * coin(ca); b.wealth = (b.wealth || 0) + val * (FX.econ ? 0.2 : 0.6) * coin(cb);   /* (FX.econ) the seller earns the load's value; the buyer gains what it is worth to him over its price, a fifth */
   const key = Math.min(a.id, b.id) + '-' + Math.max(a.id, b.id); let r = w.routes.get(key);
   if (!r) { r = { a, b, n: 0, g: new Float32Array(GOODS.length), wet: !!m.wet0, year: w.year, name: null }; w.routes.set(key, r); }
   r.n += 1; r.last = w.year; if (g >= 0) r.g[g] += 1;

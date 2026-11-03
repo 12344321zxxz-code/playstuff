@@ -16,4 +16,9 @@
 //   bastion: a town walled by a realm with gunpowder and masonry keeps much of its walls' worth against cannon (the trace
 //           italienne); before, cannon made walls worthless for good
 //   towns:  the world-wide cap on towns rises from 520 to 700 (settlers were turned away once it was reached)
-export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0, mills: 0, council: 0, allies: 0, bastion: 0, towns: 0 };
+//   fisc:   the fiscal state (fisc.js): strength is paid for, so it follows net revenue (taxes that reach the court, minus
+//           the cost of holding far, foreign and newly taken districts), not headcount
+//   econ:   loot and robbery come out of the victim, and a buyer gains only a fifth of a load's value (trade moves value
+//           rather than creating it at both ends)
+//   know:   conquest hands over no knowledge directly; a court learns from districts that know more than it does, slowly
+export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0, mills: 0, council: 0, allies: 0, bastion: 0, towns: 0, fisc: 0, econ: 0, know: 0 };
