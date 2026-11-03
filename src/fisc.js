@@ -17,8 +17,8 @@ function effOf(c, w, s, b) {
   const A = c.hub ? c.hub.A : 0.6; return Math.max(0.12, Math.min(1, 1.1 - (0.9 * cost) / Math.max(20, c.reachR || 30))) * (0.7 + 0.3 * A);
 }
 export function fiscYear(w) {
-  if (!FX.fisc) return;
-  for (const c of w.cults) { c._rev = 0; c._hold = 0; c._fp = 0; }
+  if (!FX.fisc && !FX.inst) return;
+  for (const c of w.cults) { c._rev = 0; c._hold = 0; c._fp = 0; c._out = 0; c._tr = 0; }
   for (const s of w.sets) {
     if (s.dead || s.nomad) continue; const c = w.cults[s.cult]; if (!c || !c.alive || c.power) continue;
     if (s._fc !== s.cult) { s.joinedAt = s._fc == null ? -999 : w.year; s._fc = s.cult; }   /* who rules it, and since when */
@@ -27,10 +27,10 @@ export function fiscYear(w) {
     const urb = s.urb ?? 0.06, out = s.pop * (0.6 + 2.5 * urb) + 0.5 * (s.wealth || 0);   /* what the district makes in a year */
     const X = c.hub ? c.hub.X : 0.12, take = out * X * eff * (0.3 + 0.7 * integ);
     const disloyal = (own ? 0.25 : 1) * (1 - 0.7 * integ) + (s.occ ? 1 : 0), hold = s.pop * 0.012 * disloyal * (s === b ? 0 : 1);
-    s.net = take - hold; c._rev += take; c._hold += hold; c._fp += s.pop;
+    s.net = take - hold; c._rev += take; c._hold += hold; c._fp += s.pop; c._out += out; c._tr += 0.5 * (s.wealth || 0);
   }
   const v = [];
-  for (const c of w.cults) { if (!c.alive || c.power) continue; c.rev = c._rev - c._hold; c.revPH = c._fp > 0 ? Math.max(0, c.rev) / c._fp : 0; if (c._fp > 0) v.push(c.revPH); }
+  for (const c of w.cults) { if (!c.alive || c.power) continue; c.rev = c._rev - c._hold; c.tradeShare = c._out > 0 ? c._tr / c._out : 0; c.revPH = c._fp > 0 ? Math.max(0, c.rev) / c._fp : 0; if (c._fp > 0) v.push(c.revPH); }
   v.sort((a, b) => a - b); const ref = v.length ? v[v.length >> 1] : 1; w.revRef = ref;
   for (const c of w.cults) { if (!c.alive || c.power) continue; const credit = c.arts.banking ? 1.25 : c.arts.coinage ? 1.1 : 1; c.payF = Math.max(0.35, Math.min(2, ((c.revPH || 0) / Math.max(1e-9, ref)) * credit)); }
 }

@@ -21,4 +21,10 @@
 //   econ:   loot and robbery come out of the victim, and a buyer gains only a fifth of a load's value (trade moves value
 //           rather than creating it at both ends)
 //   know:   conquest hands over no knowledge directly; a court learns from districts that know more than it does, slowly
-export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0, mills: 0, council: 0, allies: 0, bastion: 0, towns: 0, fisc: 0, econ: 0, know: 0 };
+//   inst:   institutions and the end of the world-age switches: government forms from who holds the wealth (a modern state
+//           needs print, schools and rails or wires, not engines alone; a council of houses where trade is a large share of
+//           what a realm makes), colonial risings and independence driven by the colony's own mass literacy and
+//           communications (print, then rails or wires) instead of the world's age, new colonies stop when a power's own
+//           colonies are rising rather than when the world reaches the bomb, and migration across borders from the iron
+//           age (to open societies one knows) instead of only from the steam age
+export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0, mills: 0, council: 0, allies: 0, bastion: 0, towns: 0, fisc: 0, econ: 0, know: 0, inst: 0 };

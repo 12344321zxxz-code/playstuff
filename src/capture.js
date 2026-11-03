@@ -12,6 +12,11 @@
 //   only trading forts; a dense native realm is taken at the top and keeps its tongue; thin or
 //   emptied land gets settler colonies. Colonies drift and break away when the take runs high.
 import { atWar, realmCap } from './war.js';
+import { FX } from './flags.js';
+// (FX.inst) a people's mass literacy and communications: print, then rails or wires; what makes a colony rise on its own
+const natOf = (c) => (c.arts.printing ? (c.arts.railways || c.arts.telegraph ? 1 : 0.3) : 0);
+// (FX.inst) a power whose own clients over the sea are rising stops taking new ones
+const risingAbroad = (w, o) => { let n = 0, r = 0; for (const c of w.cults) if (c.alive && c.over && c.over.kind === 'realm' && c.over.id === o.id) { n++; if (natOf(c) >= 1) r++; } return n >= 2 && r / n >= 0.5; };
 import { strength, newCult, addSet, endSet, near, whereAbouts, routeToCell, declareWar } from './people.js';
 import { send, arrive } from './movers.js';
 import { record, tally } from './ledger.js';
@@ -124,10 +129,10 @@ export function captureYear(w) {
       c.tribute = ov.take; o.tributeIn = (o.tributeIn || 0) + ov.take * c.pop / 100;
       if (rnd() < 0.15) { let from = null; for (const s of w.sets) if (s.cult === c.id && !s.nomad && s.tier >= 2) { from = s; break; } if (from && o.big) { const lane = seaLane(w, from.x, from.y, o.big.x, o.big.y), cells = lane ? null : legCells(w, from, o.big); if (lane || (cells && cells.length > 1)) send(w, { kind: 'trade', cult: o.id, x: from.x, y: from.y, tx: o.big.x, ty: o.big.y, n: 10, goods: -1, land: 0.8, path: lane || cells, wet0: !!lane, step: lane ? 4 : 2 }); }   /* the colony's tribute sails a lane home, or goes by the ways */; }
       const gap = tongueGap(w, c.langId, o.langId), weak = (o.hub && (o.hub.st === 'civil' || o.hub.st === 'factions') ? 0.03 : 0) + (o.lostDragonAt != null && w.year - o.lostDragonAt < 25 ? 0.04 : 0);   /* (slice 5) a host that has lost its dragon holds its own clients more loosely */
-      const LA = w.leadAge || 0, decol = LA >= 8 ? 0.07 : LA === 7 ? 0.01 : 0;   /* (Oct 29) decolonisation */
-      const p = (0.003 + 0.03 * Math.max(0, 0.8 - L) + weak + (gap === Infinity ? 0.004 : 0) + Math.min(0.02, ov.hw / 4000)) * (LA >= 8 ? 1 : o.tech >= 6 ? 0.25 : 0.5) + decol;   /* an industrial overlord holds its clients firmly until the bomb */   /* (Oct 29) clients rise less often before the age of the bomb (less churn) */
+      const LA = w.leadAge || 0, nat = natOf(c), decol = FX.inst ? 0.07 * nat : LA >= 8 ? 0.07 : LA === 7 ? 0.01 : 0;   /* (Oct 29) decolonisation (FX.inst: by the client's own mass literacy and communications) */
+      const p = (0.003 + 0.03 * Math.max(0, 0.8 - L) + weak + (gap === Infinity ? 0.004 : 0) + Math.min(0.02, ov.hw / 4000)) * ((FX.inst ? nat >= 1 : LA >= 8) ? 1 : o.tech >= 6 ? 0.25 : 0.5) + decol;   /* an industrial overlord holds its clients firmly until the bomb */   /* (Oct 29) clients rise less often before the age of the bomb (less churn) */
       if (rnd() < p) {
-        const rebels = strength(c, c.pop) * (1 + Math.min(1, ov.hw / 300)), held = strength(o, o.pop) * 0.35 * (LA >= 8 ? 0.4 : 1) * (o.hub && o.hub.st === 'civil' ? 0.4 : 1) * (o.shaken != null && w.year - o.shaken < 15 ? 0.5 : 1), roll = rnd(), pw = rebels / (rebels + held);
+        const rebels = strength(c, c.pop) * (1 + Math.min(1, ov.hw / 300)), held = strength(o, o.pop) * 0.35 * (FX.inst ? 1 - 0.6 * nat : LA >= 8 ? 0.4 : 1) * (o.hub && o.hub.st === 'civil' ? 0.4 : 1) * (o.shaken != null && w.year - o.shaken < 15 ? 0.5 : 1), roll = rnd(), pw = rebels / (rebels + held);
         const id = record(w, 'rising', [c.id, o.id], { p: pw, roll, note: `${ov.house} against the ${o.name}`, x: b.x, y: b.y, terms: { rebels, overlord: held } });
         if (roll < pw) { free(w, c, `${ov.house} throws off the ${o.name}`, id); ev(w, `${ov.house} stops sending the ${o.name} their due and calls the ${c.name} free. ${overseas(w, o, b) ? 'The ships that come to collect go home empty.' : 'The collectors are sent home with nothing.'}`, b.x, b.y, c.color, 2); discover(w, 'independence', b.x, b.y); }
         else { ov.hw *= 0.5; ov.take = Math.min(0.35, ov.take + 0.03); ov.risings++; c.coh = Math.max(0.05, c.coh - 0.1); ev(w, `The ${c.name} rise against the ${o.name}. The ${o.name} send soldiers${overseas(w, o, b) ? ' by sea' : ''}, and the rising ends in hangings.`, b.x, b.y, c.color, 1); }
@@ -138,11 +143,11 @@ export function captureYear(w) {
   for (const c of w.cults) if (c.alive && c.over && c.over.kind === 'realm') { const o = w.cults[c.over.id]; if (o) o.colonyPosts = (o.colonyPosts || 0) + 0.5 * c.count; }   // offices abroad for the overlord's lords
   // empires over the sea
   for (const o of w.cults) {
-    if (!o.alive || o.power || (o.over && !o.arts.railways) || !o.big || !o.arts.sailing || !(o.arts.gunpowder || o.arts.navigation) || (o.war && !o.arts.railways) || (w.leadAge || 0) >= 8) continue;   /* an industrial empire expands overseas even while at war elsewhere */   /* (Oct 29) no new colonies in the age of the bomb */
+    if (!o.alive || o.power || (o.over && !o.arts.railways) || !o.big || !o.arts.sailing || !(o.arts.gunpowder || o.arts.navigation) || (o.war && !o.arts.railways) || (FX.inst ? risingAbroad(w, o) : (w.leadAge || 0) >= 8)) continue;   /* an industrial empire expands overseas even while at war elsewhere */   /* (Oct 29) no new colonies in the age of the bomb */
     const pushed = o.hub && (o.hub.st === 'press' || o.hub.st === 'factions'); if (rnd() > (pushed ? 0.04 : o.arts.navigation ? 0.03 : 0.008) * (o.arts.railways ? 30 : o.arts.steamships ? 8 : 1) * (o.arts.steamships ? Math.min(4, 1 + 0.5 * rivalGrabs(w, o)) : 1)) continue;   /* (Oct 29) the industrial scramble: once there are railways at home, expeditions go out year after year */
     colonise(w, o);
   }
-  if ((w.leadAge || 0) < 8) { spheres(w); footholds(w); }
+  if (FX.inst || (w.leadAge || 0) < 8) { spheres(w); footholds(w); }
   for (const o of w.cults) if (o.alive && !o.power && o.big && (o.arts.sailing || o.arts.navigation)) independence(w, o);   /* colonies break away on their own clock, likelier when the crown is at war or divided */
 }
 
@@ -259,8 +264,8 @@ function settle(w, o, x, y, natives) {
 // settler colonies far from the crown break away when the take runs high or the tongue has drifted
 function independence(w, o) {
   { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; if (n >= realmCap(w)) return; }   /* no more realms than the splits may make */
-  const L = w.leadAge || 0, decol = L >= 8 ? 0.1 : L === 7 ? 0.015 : 0, minG = L >= 8 ? 2 : 4;   /* (Oct 29) decolonisation: in the age of the bomb colonies go */
-  const away = w.sets.filter((s) => !s.dead && s.cult === o.id && !s.nomad && overseas(w, o, s)); if (away.length < minG) return;
+  const away = w.sets.filter((s) => !s.dead && s.cult === o.id && !s.nomad && overseas(w, o, s)); const L = w.leadAge || 0, devS = away.length ? away.filter((s) => (s.lvl ?? 0) >= 6).length / away.length : 0, decol = FX.inst ? 0.1 * devS : L >= 8 ? 0.1 : L === 7 ? 0.015 : 0, minG = (FX.inst ? devS >= 0.5 : L >= 8) ? 2 : 4;   /* (Oct 29) decolonisation: in the age of the bomb colonies go (FX.inst: as the colonies' own towns reach the age of rails and wires) */
+  if (away.length < minG) return;
   const drift = away.filter((s) => tongueGap(w, s.lang, o.langId) > 0).length / away.length, X = o.hub ? o.hub.X : 0.15;
   // (Oct 29) a colony breaks away when it can: by how far its own towns have come (a colony two ages behind rarely
   // wins alone), and when the crown is in no state to hold it (beaten in a war, divided, at war)

@@ -12,6 +12,7 @@
 //     knowledge, and named streams.
 import { W, H, DISC, wx, wrapDx, clamp, peopleText } from './core.js';
 import { kl } from './tech.js';
+import { FX } from './flags.js';
 import { near, addSet, flee, routeToCell, departPort, absorb } from './people.js';
 import { reachFrom, rangeOf, seaLane } from './travel.js';
 import { tongueGap, cultureOf } from './tongues.js';
@@ -61,7 +62,7 @@ export function migrateYear(w) {
     let n = Math.round(s.pop * 0.02 * (s.pushE - 0.1) / 0.9); if (n < 3 && !(s.pushE > 0.3 && s.pop >= 90)) continue;
     let why = 'crowding', tv = 0; for (const k in P.t) if (P.t[k] > tv) { tv = P.t[k]; why = k; }
     // where they could go: by the ways within their reach, or by sea from their own port
-    const modern = c.tech >= 6, cands = [];
+    const modern = c.tech >= 6 || (FX.inst && c.tech >= 3), cands = [];   /* (FX.inst) across borders from the iron age, to open societies they know */
     // nearest first: once even the strongest pull at this distance can't beat the third best, stop looking
     let s1 = 0, s2 = 0, s3 = 0; const top = _pmax * 1.3;
     reachFrom(w, s, rangeOf(c, false), (id, cost) => { if (s3 > 0 && top / (1 + (cost - 1e-3) / 40) < s3) return true;

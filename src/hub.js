@@ -26,8 +26,9 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 function formFor(c) {
   const A = c.arts;
-  if (A.railways || A.engines || A.industry) return 'nation';
-  if (A.printing && (c.markets || 0) >= (FX.council ? Math.max(1, Math.ceil(c.count / 8)) : 3)) return 'council';
+  if (FX.inst) { if (A.printing && A.schools && (A.railways || A.telegraph)) return 'nation'; if (A.printing && (c.markets || 0) >= 1 && (c.tradeShare || 0) > 0.12) return 'council'; }   /* (FX.inst) a mass public makes a nation; a trading purse makes a council */
+  else if (A.railways || A.engines || A.industry) return 'nation';
+  if (!FX.inst && A.printing && (c.markets || 0) >= (FX.council ? Math.max(1, Math.ceil(c.count / 8)) : 3)) return 'council';
   if (A.bureaucracy && c.count >= 20) return 'empire';
   if (A.writing || A.laws) return 'crown';
   return 'chiefs';
