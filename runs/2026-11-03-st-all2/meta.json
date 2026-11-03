@@ -1,0 +1,68 @@
+{
+ "name": "st-all2",
+ "note": "Structural screen: everything (quick fixes + fiscal + econ + knowledge + institutions)",
+ "commit": "d052129c835e3fc4970082bee1fa75f7159263d5",
+ "branch": "holistic",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.fisc": 1,
+   "FX.econ": 1,
+   "FX.know": 1,
+   "FX.inst": 1,
+   "FX.coal": 1,
+   "FX.supply": 1,
+   "FX.law": 1,
+   "FX.market": 1,
+   "FX.cap": 1,
+   "FX.mills": 1,
+   "FX.council": 1,
+   "FX.allies": 1,
+   "FX.bastion": 1
+  },
+  "people.js": {
+   "KN.use": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-03T22:46:35.612Z",
+ "finished": "2026-11-03T23:15:25.098Z",
+ "ok": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "failed": [],
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
