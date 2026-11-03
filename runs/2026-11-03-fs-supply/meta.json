@@ -1,0 +1,53 @@
+{
+ "name": "fs-supply",
+ "note": "Screen: steady supply (imports count only while they keep coming, for every resource; imported salt toward gunpowder; re-export from the last 5 years; traded coal)",
+ "commit": "2230d97b117137c13632969aae359912a4103674",
+ "branch": "holistic",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.supply": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-03T19:09:54.901Z",
+ "finished": "2026-11-03T19:41:42.314Z",
+ "ok": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "failed": [],
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
