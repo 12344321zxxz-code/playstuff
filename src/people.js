@@ -93,8 +93,8 @@ function suits(w, c, kind, k) {
 // great deal, one two ages ahead very little (they see the guns, not the foundry). After Cohen & Levinthal.
 // (Nov 3, holistic) knowing and using, and how much one court can take in. Exported so experiments can patch them.
 //   lam:   from the age of print, one realm's scholars and workshops step on each other's toes (Jones): a realm's own
-//          finds grow as its raw effort to the power lam once it is above what a leading realm of the world puts in
-//          (ref), so ten times the people find about two and a half times as much; separate courts work separate lines and
+//          finds grow as its raw effort to the power lam once it is above what a typical sizeable realm puts in
+//          (ref: that quantile of realms with 1% of the world's people), so ten times the people find about two and a half times as much; separate courts work separate lines and
 //          share by letters, so a cluster of rivals escapes it (the Europe-vs-China pattern, emerging from the map)
 //   M:     a realm takes in foreign letters only up to M times what it finds itself (at 2.5 it starved small states in
 //          clusters of their peers' letters, the opposite of what it was for; now only a loose guard)
@@ -102,7 +102,7 @@ function suits(w, c, kind, k) {
 //          (a railway is known at court long before the provinces have one)
 //   adopt: how fast a district takes up what its court knows (times its tie; institutions and towns scale it)
 //   kq5:   the pace of discovery from the age of print (rescales what the cap takes away)
-export const KN = { lam: 0.4, ref: 0.75, M: 10, use: 5, adopt: 0.03, kq5: 1, arm: 1 };   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
+export const KN = { lam: 0.4, ref: 0.25, M: 10, use: 5, adopt: 0.03, kq5: 1.3, arm: 1 };   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
 export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
 function meet(w, c, o, p, ta, tb) {
   const rnd = w.rnd; if (c === o) return;
@@ -439,7 +439,7 @@ export function* peopleSteps(w) {
   buildGrid(w); territory(w);
   const sets = w.sets, n0 = sets.length, rnd = w.rnd, { water, river, farm, soil, g, t, fresh, owner, fireT, ore, mi, crop, h } = w, sea = w.params.sea;
   for (const c of w.cults) { c.boom = boomOf(c.arts); c.boomL = c.boomL ? c.boomL + (c.boom - c.boomL) * 0.05 : c.boom;   /* the numbers take a generation or two to catch up with a new harvest */ c._poolLast = c._pool || 0; c._poolWLast = c._poolW || 0; c.dkLast = Number.isFinite(c._dk) ? c._dk : 0; c._dk = 0; c._dkrL = c._dkr || 0; c._dkr = 0; if (!Number.isFinite(c.orth)) c.orth = 0; c._pool = 0; c._poolW = 0; c._n = 0; c._p = 0; c._pm = 0; c._sur = 0; c._b = null; c._L = livestock(c); c._metals = 0; c._ways = { forage: 0, farm: 0, fish: 0, herd: 0, hunt: 0 }; c.hungry = 0; c._dry = 0; c._full = 0; const e = c.env; e.crop = e.coast = e.dryRiver = e.hill = e.sed = e.nomads = e.towns = e.cities = e.river = e.lowcoast = 0; c.markets = 0; }
-  { let tp = 0; for (const c of w.cults) if (c.alive && !c.power) tp += c.pop || 0; const v = []; for (const c of w.cults) if (c.alive && !c.power && c.tech >= 4 && (c.pop || 0) >= 0.01 * tp) { const r = c.tech >= 5 ? c._dkrL : c.dkLast; if (r > 0) v.push(r); } v.sort((a, b) => a - b); w.dkRef = v.length >= 3 ? v[Math.min(v.length - 1, Math.floor(KN.ref * v.length))] : v.length ? v[v.length - 1] : 0; }   /* (Nov 3) what a leading realm of the world puts into discovery (the 75th percentile of realms with 1% of people, from the iron age up) */
+  { let tp = 0; for (const c of w.cults) if (c.alive && !c.power) tp += c.pop || 0; const v = []; for (const c of w.cults) if (c.alive && !c.power && c.tech >= 4 && (c.pop || 0) >= 0.01 * tp) { const r = c.tech >= 5 ? c._dkrL : c.dkLast; if (r > 0) v.push(r); } v.sort((a, b) => a - b); w.dkRef = v.length >= 3 ? v[Math.min(v.length - 1, Math.floor(KN.ref * v.length))] : v.length ? v[v.length - 1] : 0; }   /* (Nov 3) what a leading realm of the world puts into discovery (a low quantile, KN.ref, of realms with 1% of people, from the iron age up) */
   let total = 0, smoke = 0; const sun = 1 - Math.min(0.6, w.aerosol * 0.8);
   const chunk = Math.max(6, Math.ceil(n0 / 22));   /* the towns in 22 even steps, then the peoples, faiths and tongues in three: the year fits in its eight ticks */
   for (let k = 0; k < n0; k++) {
@@ -807,7 +807,7 @@ function nomadStep(w, s, c, seaN, fishGap) {
 // A district's rank is set by its town, not by its countryside: villages everywhere, towns where there is trade,
 // cities only where a large town can be fed.
 export function urbanTarget(c, s) {
-  const A = s._A || c.arts; let u = 0.015 + 0.035 * Math.min(1, Math.max(0, c.surplus || 0)) + (s.market ? 0.03 : 0) + 0.008 * Math.min(4, s.trade || 0) + (c.big === s ? 0.04 : 0) + (s.port ? 0.02 : 0);
+  const A = s._A || c.arts; let u = 0.015 + 0.035 * Math.min(1, Math.max(0, c.surplus || 0)) + (s.market ? 0.03 : 0) + 0.02 * Math.min(5, s.trade || 0) + (c.big === s ? 0.04 : 0) + (s.port ? 0.04 : 0);   /* (Nov 3) trade and harbours make towns: per head, realms differed too little for a small commercial state to out-think a giant */
   if (A.writing) u += 0.01; if (A.coinage) u += 0.01; if (A.printing) u += 0.02;
   if (A.engines) u += 0.03; if (A.railways) u += 0.08; if (A.electricity) u += 0.06; if (A.oil) u += 0.04; if (A.computers) u += 0.1; if (A.networks) u += 0.08; if (A.automation) u += 0.05;
   return Math.max(0.02, Math.min(0.9, u));
