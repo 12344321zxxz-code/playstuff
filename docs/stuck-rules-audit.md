@@ -1,0 +1,79 @@
+# Formicarium: audit of stuck rules, size gates and quotas (Nov 3, 2026)
+
+A system-by-system search for rules that block or favour realms categorically:
+- size gates;
+- world-wide quotas;
+- imports that act as ownership;
+- resources that can't move;
+- switches keyed to the world's age;
+- value created from nothing.
+
+"Binding" counts come from one world (seed 12, 2,000 years, branch defaults) and are realm-years or town-years blocked. Each fix sits behind a switch in `src/flags.js` (all off by default) and is scored on the screen runs (`runs` branch, `fs-*`).
+
+## Trade and resources (trade.js, tech.js)
+
+| # | Rule | Effect | Binding | Fix (switch) |
+|---|---|---|---|---|
+| 1 | Coal is not a traded good; imported coal never counts | A realm without its own coal can never build engines, so it is capped below age 6 | 6,138 realm-years | `FX.coal` |
+| 2 | Imported salt (saltpetre) does not count toward gunpowder | No salt or coal in your ground means no gunpowder, ever | (not counted) | `FX.supply` |
+| 3 | One caravan counts as owning a metal for 25 years | Supply is never really cut; imports act as ownership | – | `FX.supply` (counts only while loads keep coming) |
+| 4 | Towns re-export anything received in the last 25 years | Goods flow along relay chains long after the source dried up | – | `FX.supply` (5 years) |
+| 5 | A realm with neither copper nor tin never asks for copper | Copper reaches it only by chance | – | `FX.supply` |
+| 6 | Markets capped at the world's top 6 rich towns, entrepôts at the top 12 | Banking needs a market, so it is reserved for the largest | 38,808 town-years kept out | `FX.market` |
+| 7 | Watermills need a river district; engines need mills | A realm without a river can never industrialise | 772 realm-years | `FX.mills` (windmills) |
+| 8 | Trade creates wealth at both ends of every caravan; relays and tolls create more | Wealth is minted per trip, not moved; it tracks the number of nodes, i.e. size | – | structural (economy redesign) |
+
+## Institutions and government (tech.js, hub.js)
+
+| # | Rule | Effect | Binding | Fix |
+|---|---|---|---|---|
+| 9 | Written law needs 8 districts | Small states stay lawless however literate | 1,704 | `FX.law` (2 towns) |
+| 10 | A civil service needs 20 districts | Small states never get one (and the war and canal effects that hang on it) | 593 | `FX.law` (4 towns) |
+| 11 | A council of houses (merchant republic) needs printing and 3 markets, of the world's 6 | A merchant republic is nearly impossible | – | `FX.council` (a market per 8 districts) |
+| 12 | The "empire" government form needs a civil service and 20 districts; "modern state" switches on automatically with engines | Government forms follow size and arts, not bargains | – | structural (institutions) |
+| 13 | Bronze, iron, counting, the wheel and roads need 3–4 settled districts | Mild size gate on early arts | – | left (minor) |
+
+## War and diplomacy (people.js, tech.js, war.js)
+
+| # | Rule | Effect | Fix |
+|---|---|---|---|
+| 14 | Cannon make walls worthless for good | No star-fort revolution, so conquest is permanently favoured | `FX.bastion` |
+| 15 | Only realms with 3+ districts can join a war as allies | Small states can't join balancing coalitions | `FX.allies` |
+| 16 | A conqueror gains 8% of the conquered realm's lead in knowledge | Conquest hands over know-how at once | structural (knowledge on districts) |
+| 17 | Strength is population × multipliers; wealth adds at most +25% | Headcount is power | structural (fiscal state) |
+| 18 | Sacks and robbery create loot for the winner from nothing | Value created from nothing | structural (economy) |
+
+## World-wide caps (people.js, war.js, movers.js, faith.js)
+
+| # | Rule | Effect | Binding | Fix |
+|---|---|---|---|---|
+| 19 | At the realm cap minus 6, breakaways defect to the most populous neighbour, and settler and herder splits are blocked | Ratchets giants upward | 3 in this world; more in others | `FX.cap` |
+| 20 | Realm cap of 54–58, keyed to the world's age | The world can't fragment past it | – | `FX.cap`; long term, colours by neighbourhood |
+| 21 | Towns capped at 520 world-wide | Once full, settlers are turned away and land changes hands only by conquest | 4,755 settler parties turned away | `FX.towns` (700; costs about 30% more time per tick) |
+| 22 | Travellers capped at 300 (trade and returning armies dropped first) | Negligible at 520 towns; binds at 700 (3,241 caravans dropped) | 25 at 520 towns | scale with towns if `FX.towns` is kept |
+| 23 | Faiths capped at 12 | Narrative cap | – | left |
+
+## Rules keyed to the world's age (scripted world switches)
+
+| # | Rule | Fix |
+|---|---|---|
+| 24 | Colonisation stops for everyone once the world's leaders reach the bomb age; client-swallowing stops too | structural (endogenous colonies) |
+| 25 | Decolonisation odds keyed to the world's age (0, 0.01–0.015, 0.07–0.1) | structural |
+| 26 | Conquest norm: from the bomb age on, towns of a falling realm never go over to neighbours | structural |
+| 27 | Breakup odds by the realm's own age (×0.6, 0.9, 4, 0.5, 0.15, 0.6, 4, 2.5); industrial states 75% protected from collapse | structural (cohesion from revenue, reach, identity) |
+| 28 | Cross-border migration only from the steam age on | structural |
+
+## Knowledge (people.js)
+
+| # | Rule | Effect | Fix |
+|---|---|---|---|
+| 29 | Arts below the age of print jump to a merged or conquered district at once (invariance test: a realm two ages behind gets about 5 arts within a year and 20 within five) | Sovereignty teleports know-how | `KN.use = 1` (screen arm `fs-use1`) |
+| 30 | Carriers count the realm's population plus trade partners' whole populations | Size gate on holding arts | structural (skilled carriers) |
+| 31 | The engines cap holds knowledge below age 6 until a realm has engines | Age 6 is mostly a coal contest | measure first-use per art (done); revisit with knowledge domains |
+
+## Status
+- **Being screened (10 worlds each):**
+  - `fs-base`, `fs-coal`, `fs-law`, `fs-market`, `fs-cap`, `fs-all`;
+  - `fs-use1`, `fs-supply`, `fs-misc` (mills, council, allies, bastion), `fs-towns`.
+- **Then:** confirmation of the winners on 32 worlds, and the decision on targeted vs structural changes.
+- **Structural items:** 8, 12, 16–18, 24–28 and 30 go to the redesign (economy, fiscal state, institutions, knowledge on districts).
