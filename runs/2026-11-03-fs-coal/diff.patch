@@ -1,0 +1,68 @@
+diff --git a/src/flags.js b/src/flags.js
+index 698e437..e88a63f 100644
+--- a/src/flags.js
++++ b/src/flags.js
+@@ -5,4 +5,8 @@
+ //   market: markets and entrepôts open on local conditions, not as the world's top 6 and top 12
+ //   cap:    near the realm cap, a province that would break away stays where it is instead of going over to the most
+ //           populous neighbour, and settler and herder splits are blocked only at the cap itself (not 6 below it)
+-export const FX = { coal: 0, law: 0, market: 0, cap: 0 };
++//   supply: imports count only while they keep coming (a decaying volume of loads, about a load in the last two years),
++//           for every traded resource, not one caravan as 25 years of ownership; imported salt (saltpetre) counts toward
++//           gunpowder as owned salt does; towns re-export only what reached them in the last 5 years; a realm with no
++//           copper asks for it. Implies traded coal.
++export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0 };
+diff --git a/src/trade.js b/src/trade.js
+index 0fbccaf..9dceb7c 100644
+--- a/src/trade.js
++++ b/src/trade.js
+@@ -51,7 +51,7 @@ export function tradeYear(w) {
+     if (src[3] > s.pop * 1.05) make[G.grain] = Math.min(3, (src[3] - s.pop) / 40);
+     if (src[2] > s.pop * 0.5 && s.port) make[G.fish] = Math.min(2, src[2] / 80);
+     if (s.ores & 128 && A.electricity) make[G.uranium] = 2; if ((A.atomic || A.printing && A.electricity) && !(c._ownMetals & 128)) need[G.uranium] = 3;
+-    if (s.ores & 32) make[G.salt] = 2; if (s.ores & 2) make[G.copper] = 2; if (s.ores & 4) make[G.tin] = 2; if (s.ores & 8 && A.iron) make[G.iron] = 2; if (s.ores & 16) make[G.gold] = 2; if (FX.coal && s.ores & 64 && A.mills) make[G.coal] = 2;
++    if (s.ores & 32) make[G.salt] = 2; if (s.ores & 2) make[G.copper] = 2; if (s.ores & 4) make[G.tin] = 2; if (s.ores & 8 && A.iron) make[G.iron] = 2; if (s.ores & 16) make[G.gold] = 2; if ((FX.coal || FX.supply) && s.ores & 64 && A.mills) make[G.coal] = 2;
+     if (forest >= 6) { make[G.timber] = Math.min(2, forest / 12); c.timberOK = true; }
+     if (T < 5 && forest >= 4 && (src[1] > 0 || s.nomad)) make[G.furs] = 1.5;
+     if (T > 21 && m > 1.1 && !s.nomad) make[G.spice] = 1.5;
+@@ -63,14 +63,14 @@ export function tradeYear(w) {
+     if (s.note && s.note !== 'grow' && s.note !== 'full' && s.note !== 'plague') need[G.grain] = 2;
+     if ((c.metals & 2) && !(c.metals & 4) && c.tech >= 1) need[G.tin] = 3; if ((c.metals & 4) && !(c.metals & 2) && c.tech >= 1) need[G.copper] = 3;
+     if (A.bronze && !((c.metals & 6) === 6)) { need[G.tin] = Math.max(need[G.tin], 2); need[G.copper] = Math.max(need[G.copper], 2); }
+-    if (c.tech >= 3 && !(c.metals & 8)) need[G.iron] = 2; if (FX.coal && A.steel && A.mills && !(c._ownMetals & 64)) need[G.coal] = 3;
++    if (c.tech >= 3 && !(c.metals & 8)) need[G.iron] = 2; if ((FX.coal || FX.supply) && A.steel && A.mills && !(c._ownMetals & 64)) need[G.coal] = 3; if (FX.supply && c.tech >= 1 && !(c.metals & 2)) need[G.copper] = Math.max(need[G.copper], 1);
+     if (s.port && forest < 3 && (A.boats || c.tech >= 2)) need[G.timber] = 2;
+     if ((c.grazer || s.way === 'fish') && !(s.ores & 32)) need[G.salt] = 1;
+     if (!c.tame.horse && c.tech >= 1 && !s.nomad) need[G.horses] = 0.8;
+     if (s.tier >= 2) for (const g of LUX) if (!make[g]) need[g] = Math.max(need[g], s.tier >= 3 ? 1.5 : 0.8);
+     if (c.stance === 'use') need[G.relics] = 1.5;
+     // re-export: what came in during the last 25 years can be passed on, at half (access, never production)
+-    if (s.imp) for (const k in s.imp) { const g = +k; if (!make[g] && w.year - s.imp[k] < 25 && (s.relayE || 0) > 0.5) make[g] = 0.5; }
++    if (s.imp) for (const k in s.imp) { const g = +k; if (!make[g] && w.year - s.imp[k] < (FX.supply ? 5 : 25) && (s.relayE || 0) > 0.5) make[g] = 0.5; }
+     s.wealth = (s.wealth || 0) * 0.93;
+   }
+   // routes fade unless they are used; the busiest get names
+@@ -83,6 +83,7 @@ export function tradeYear(w) {
+       record(w, 'route-born', [r.a.cult, r.b.cult], { x: r.a.x, y: r.a.y, note: `${r.name}, ${r.a.name} to ${r.b.name}` });
+       { ev(w, r.wet ? `So many ships carry ${GOODS[bg].name} between ${r.a.name} and ${r.b.name} that sailors start calling that water ${r.name}.` : `So many caravans carry ${GOODS[bg].name} between ${r.a.name} and ${r.b.name} that people start calling the way ${r.name}.`, r.a.x, r.a.y, w.cults[r.a.cult].color, same.length ? 1 : 0); discover(w, r.wet ? 'searoute' : 'road-name', r.a.x, r.a.y); } }
+   }
++  if (FX.supply) for (const c of w.cults) if (c.impV) for (const k in c.impV) { c.impV[k] *= 0.7; if (c.impV[k] < 0.01) delete c.impV[k]; }   /* loads fade within a few years */
+   markets(w); tolls(w); pirates(w); leagues(w); dependence(w);
+   let tot = 0; for (const r of w.routes.values()) tot += r.n; w.stats.trade = Math.round(tot);
+ }
+@@ -105,7 +106,7 @@ export function deliver(w, m) {
+   carryLife(w, a, b, ca, cb, m, g);
+   if (g < 0) return;
+   (b.imp || (b.imp = {}))[g] = w.year; (a.exp || (a.exp = {}))[g] = w.year;
+-  (cb.imp || (cb.imp = {}))[g] = w.year;
++  (cb.imp || (cb.imp = {}))[g] = w.year; if (FX.supply) { const V = cb.impV || (cb.impV = {}); V[g] = (V[g] || 0) + 1; }   /* (Nov 3) how much keeps coming, not just when it last came */
+   const key2 = GOODS[g].key;
+   if (key2 === 'grain') b.fed = w.year;
+   else if (key2 === 'tin' || key2 === 'copper') { if (!cb.arts.bronze && once(w, 'tinfirst')) ev(w, `${key2 === 'tin' ? 'Tin' : 'Copper'} from ${a.name} reaches ${b.name}, where they have only ${key2 === 'tin' ? 'copper' : 'tin'}. The smiths know what to do with it.`, b.x, b.y, cb.color, 0); }
+@@ -115,6 +116,7 @@ export function deliver(w, m) {
+ // Imports count as owning: a people with copper at home and tin from a far shore can cast bronze,
+ // for as long as the tin keeps coming.
+ export function importedMetals(w, c) {
++  if (FX.supply) { const V = c.impV || {}, has = (g) => (V[g] || 0) >= 0.5; let b = 0; if (has(G.copper)) b |= 2; if (has(G.tin)) b |= 4; if (has(G.iron)) b |= 8; if (has(G.gold)) b |= 16; if (has(G.salt)) b |= 32; if (has(G.coal)) b |= 64; if (has(G.uranium)) b |= 128; if (has(G.timber)) b |= 256; return b; }   /* (Nov 3) a steady supply, for every traded resource */
+   let bits = 0; const imp = c.imp || {}; if (w.year - (imp[G.copper] ?? -99) < 25) bits |= 2; if (w.year - (imp[G.tin] ?? -99) < 25) bits |= 4; if (w.year - (imp[G.iron] ?? -99) < 25) bits |= 8; if (w.year - (imp[G.gold] ?? -99) < 25) bits |= 16; if (w.year - (imp[G.timber] ?? -99) < 25) bits |= 256; if (FX.coal && w.year - (imp[G.coal] ?? -99) < 5) bits |= 64;   /* coal is burned, not kept: only a steady supply counts */ if (G.uranium != null && w.year - (imp[G.uranium] ?? -99) < 25) bits |= 128; return bits;
+ }

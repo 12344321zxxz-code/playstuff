@@ -1,0 +1,53 @@
+{
+ "name": "fs-coal",
+ "note": "Screen: traded coal only",
+ "commit": "32a2d47f3433f9634a2c920dc07ef654055270e1",
+ "branch": "holistic",
+ "dirty": true,
+ "patch": {
+  "flags.js": {
+   "FX.coal": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-03T15:04:34.139Z",
+ "finished": "2026-11-03T15:53:57.469Z",
+ "ok": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "failed": [],
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
