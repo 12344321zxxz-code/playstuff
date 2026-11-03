@@ -297,7 +297,8 @@ arrive.trade = (w, m) => {
 };
 // (Nov 3, holistic) from the age of print the age's arms (rifles, railways, steam) come from the districts that have adopted them: a giant
 // whose provinces still live an age behind arms them with the weapons of the age before (its core, and at least 30%, with the new ones)
-const armsOf = (c) => { const m = warMult(c); if (c.tech < KN.use || !(KN.arm > 0) || (c.modShare ?? 1) >= 1) return m;
+const armsOf = (c) => { if (c._arm && c._arm.t === c.tech && c._arm.ms === c.modShare) return c._arm.v; const v = armsCalc(c); c._arm = { t: c.tech, ms: c.modShare, v }; return v; };   /* cached until the yearly census changes its share or its age (an art learned mid-year counts from the next census): strength is asked for often */
+const armsCalc = (c) => { const m = warMult(c); if (c.tech < KN.use || !(KN.arm > 0) || (c.modShare ?? 1) >= 1) return m;
   const lo = {}; for (const k in c.arts) { const T = ART[k]; if (!T || T.tier < c.tech) lo[k] = c.arts[k]; } const mLo = warMult({ arts: lo, bronzeCut: c.bronzeCut }), sh = 1 - KN.arm * 0.7 * (1 - c.modShare);
   return mLo + (m - mLo) * sh; };   /* the districts an age behind fight with the arms of the age before */
 export function strength(c, pop) { const A = c.arts; return pop * (c.zeal ? 1.12 : 1) * (1 + 0.15 * c.tech) * (1 + Math.min(0.25, (c.wealth || 0) / 400)) * armsOf(c) * (0.55 + 0.9 * c.coh) * (c.ruler.trait === 'great' ? 1.4 : c.ruler.trait === 'mad' ? 0.8 : 1) * (c.q ? 1 + 0.15 * c.q.war : 1); }
