@@ -41,7 +41,7 @@ export const ART = {
   banking: { say: 'banking', tier: 4, req: ['coinage'], can: (c) => c.markets > 0 },
   bureaucracy: { say: 'a civil service', tier: 4, req: ['laws', 'writing'], can: (c) => c.count >= 20 || (FX.law && (c.env.towns || 0) >= 4), push: (c) => (c.coh < 0.5 ? 2 : 0) },
   steel: { say: 'steel', tier: 4, req: ['iron'], can: (c) => (c.metals & 64) !== 0 || (c.metals & 8) !== 0 },
-  mills: { say: 'watermills', tier: 4, req: ['masonry', 'wheel'], can: (c, e) => e.river > 0 },
+  mills: { say: 'watermills', tier: 4, req: ['masonry', 'wheel'], can: (c, e) => e.river > 0 || (FX.mills && e.sed >= 2) },
   quarantine: { say: 'quarantine', tier: 4, req: ['medicine'], push: (c) => (c.plagued ? 3 : 0) },
   schools: { say: 'schools', tier: 4, req: ['alphabet'], can: (c, e) => e.cities > 0 },
   canals: { say: 'canals', tier: 4, req: ['irrigation', 'bureaucracy'] },
@@ -145,6 +145,6 @@ export function warMult(c) {
   return m;
 }
 // How much walls still matter against them.
-export const wallsAgainst = (att) => (att.arts.cannon || att.arts.flight ? 1.0 : att.arts.siege ? 1.2 : 1.6);
+export const wallsAgainst = (att, def) => (FX.bastion && def && def.arts.gunpowder && def.arts.masonry && att.arts.cannon && !att.arts.flight ? 1.4 : att.arts.cannon || att.arts.flight ? 1.0 : att.arts.siege ? 1.2 : 1.6);   /* (Nov 3, FX.bastion) the star fort answers the cannon */
 // How much harder they are on the memory of the world, for magic.
 export function drainOf(A) { let d = 0; for (const k in A) { const T = ART[k]; if (!T || k === 'craft' || T.req.includes('craft') || T.tier > 50) continue; d += T.tier >= 7 ? 0.03 : T.tier >= 5 ? 0.012 : T.tier >= 4 ? 0.005 : T.tier >= 3 ? 0.003 : 0.001; } return d + (A.engines ? 0.03 : 0); }

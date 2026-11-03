@@ -10,6 +10,7 @@
 //   st: 'grow' | 'press' (too many lords, pushing outward) | 'factions' | 'civil'
 // It never touches towns itself: it returns named pressures for cohesion, odds for war and
 // colonising, and calls back into people.js (schism / collapse) through the hooks passed in.
+import { FX } from './flags.js';
 import { record, triggerOf } from './ledger.js';
 
 // tunables, exported so tools/exp.mjs patches can A/B them. on:false = the old age clock instead.
@@ -26,7 +27,7 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 function formFor(c) {
   const A = c.arts;
   if (A.railways || A.engines || A.industry) return 'nation';
-  if (A.printing && (c.markets || 0) >= 3) return 'council';
+  if (A.printing && (c.markets || 0) >= (FX.council ? Math.max(1, Math.ceil(c.count / 8)) : 3)) return 'council';
   if (A.bureaucracy && c.count >= 20) return 'empire';
   if (A.writing || A.laws) return 'crown';
   return 'chiefs';

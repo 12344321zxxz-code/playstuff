@@ -9,4 +9,11 @@
 //           for every traded resource, not one caravan as 25 years of ownership; imported salt (saltpetre) counts toward
 //           gunpowder as owned salt does; towns re-export only what reached them in the last 5 years; a realm with no
 //           copper asks for it. Implies traded coal.
-export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0 };
+//   mills:  mills without a river (windmills), so a realm with no river is not barred from engines forever
+//   council: a council of houses (the merchant-republic government) needs print and a market per eight districts, not three
+//           of the world's markets
+//   allies: realms of any size can join a war as allies (they needed 3+ districts)
+//   bastion: a town walled by a realm with gunpowder and masonry keeps much of its walls' worth against cannon (the trace
+//           italienne); before, cannon made walls worthless for good
+//   towns:  the world-wide cap on towns rises from 520 to 700 (settlers were turned away once it was reached)
+export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0, mills: 0, council: 0, allies: 0, bastion: 0, towns: 0 };

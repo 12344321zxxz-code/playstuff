@@ -39,7 +39,7 @@ export { COLORS } from './colors.js';
 import { COLORS, NCOL, bestSlot } from './colors.js';
 export const ORES = ['', 'copper', 'tin', 'iron', 'gold', 'salt', 'coal', 'uranium'];
 export const WAR_RATE = 8;   /* (Oct 29) how often realms go to war, tuned to the turnover of land in history */
-const MAXS = 520, MAXB = 420, MAXC = 30, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
+const MAXS0 = 520, MAXS1 = 700, MAXB = 420, MAXC = 30, TAME_GRAZE = { horse: 1, cattle: 1, goat: 1, reindeer: 1, camel: 1, llama: 1, buffalo: 1 };
 const placeName = (w, c) => word(w, c.lang, w.rnd() < 0.6 ? 2 : 3);
 function cultName(w, L) { let s = word(w, L, w.rnd() < 0.5 ? 1 : 2); const suf = ['i', 'an', 'ari', 'u', 'esh', 'or', 'im', 'a'][(w.rnd() * 8) | 0]; if (/[aeiou]$/.test(s)) s = s.slice(0, -1); return s + suf; }
 const EPITHET = { great: ['the Great', 'the Conqueror', 'the Lion'], builder: ['the Builder', 'the Mason'], law: ['the Just', 'the Lawgiver', 'the Wise'], mad: ['the Mad', 'the Cruel', 'the Unready'] };
@@ -207,7 +207,7 @@ arrive.refugees = (w, m) => {
 };
 arrive.settlers = (w, m) => {
   const c = w.cults[m.cult], x = wx(Math.round(m.tx)), y = Math.round(m.ty), i = y * W + x, home = m.from;
-  if (w.water[i] || w.ice[i] || w.lava[i] || near(w, x, y, 5.5, null, true) || (w.nTown || 0) >= MAXS || !c.alive) { if (home && !home.dead) home.pop += m.n; return; }
+  if (w.water[i] || w.ice[i] || w.lava[i] || near(w, x, y, 5.5, null, true) || (w.nTown || 0) >= (FX.towns ? MAXS1 : MAXS0) || !c.alive) { if (home && !home.dead) home.pop += m.n; return; }
   let cult = m.cult;
   if (m.split && !(aliveN(w) < realmCap(w) - (FX.cap ? 0 : 6))) tally(w, 'capSettler');
   if (m.split && aliveN(w) < realmCap(w) - (FX.cap ? 0 : 6)) { const nc = newCult(w, c); cult = nc.id; ev(w, `Settlers from ${home ? home.name : 'the ' + c.name} cross ${m.wetN > 1 ? 'the water' : 'the hills'} and call themselves the ${nc.name}.`, x, y, nc.color, m.ocean ? 0 : 1); }
@@ -323,7 +323,7 @@ function armiesYear(w) {
     const home = sg.from != null ? w.sets.find((q) => q.id === sg.from && !q.dead) : null, dist = home ? Math.hypot(wrapDx(home.x - o.x), home.y - o.y) : 40, A = sc.arts;
     const fields = w.farm[o.y * W + o.x] || o.tier >= 2 ? 0.5 : 1, waste = 0.03 + 0.1 * Math.min(1.5, (dist / 60) * (A.railways ? 0.25 : A.engines ? 0.5 : A.roads ? 0.75 : 1)) * fields;
     bleed(w, sc, sg.n * waste); sg.n *= 1 - waste; o.pop *= oc.arts.granaries ? 0.985 : 0.97; o.trade = 0;
-    const r = strength(sc, sg.n * 6) / Math.max(1, strength(oc, o.pop) * (o.walls ? wallsAgainst(sc) : 1.2)), arts = (A.cannon ? 2 : 1) * (A.flight ? 1.5 : 1), hunger = (oc.arts.granaries ? 0.06 : 0.12) * (1 + 0.15 * (w.year - sg.since));
+    const r = strength(sc, sg.n * 6) / Math.max(1, strength(oc, o.pop) * (o.walls ? wallsAgainst(sc, oc) : 1.2)), arts = (A.cannon ? 2 : 1) * (A.flight ? 1.5 : 1), hunger = (oc.arts.granaries ? 0.06 : 0.12) * (1 + 0.15 * (w.year - sg.since));
     sg.prog += 0.2 * Math.min(2, r) * arts + hunger;
     if (sg.n < 10 || (r < 0.25 && w.year - sg.since >= 2)) { tally(w, 'siegeFailed'); if (o.tier >= 3 || oc.big === o) ev(w, `The ${sc.name} give up the siege of ${o.name}.`, o.x, o.y, oc.color, 1); liftSiege(w, o, 0.7); continue; }
     if (sg.prog >= 1) { o.siege = null; tally(w, 'siegeWon'); bleed(w, oc, o.pop * 0.05); occupy(w, o, sc, oc, sc.war, home); o.pop *= 0.95; if (home) home.pop += sg.n * 0.5; continue; }
@@ -359,7 +359,7 @@ arrive.army = (w, m) => {
   if (o.occ) { const hc = w.cults[o.occ.by];
     if (hc && hc.alive && hc !== c && atWar(w, c, hc)) {
       contact(w, c, o, 'Warriors'); w.fx.push({ k: 'clash', x: o.x, y: o.y, T: 1.1 });
-      const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()), B = strength(hc, o.pop * 0.5) * (o.walls ? wallsAgainst(c) : 1.2) * (0.6 + 0.8 * rnd());
+      const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()), B = strength(hc, o.pop * 0.5) * (o.walls ? wallsAgainst(c, hc) : 1.2) * (0.6 + 0.8 * rnd());
       if (A <= B) { bleed(w, c, m.n * 0.55); corpses(w, o.x, o.y, m.n * 0.55); back(0.45); return; }
       bleed(w, hc, o.pop * 0.03); bleed(w, c, m.n * 0.3); c.wins++;
       const ours = o.cult === c.id || !atWar(w, c, w.cults[o.cult]);
@@ -385,14 +385,14 @@ arrive.army = (w, m) => {
     corpses(w, o.x, o.y, Math.min(o.pop, m.n) * 0.3);
     if (A <= B) { o.pop *= 0.85; back(0.4); return; }
     tally(w, 'deadTookBand'); const n0 = o.pop;
-    if ((w.nTown || 0) < MAXS && !w.water[o.y * W + o.x]) { o.nomad = false; o.cult = c.id; o.undead = true; o.wasDead = true; o.capital = false; o.tier = 1; o.maxTier = Math.max(1, o.maxTier || 0); o.age = 0; o.px = o.x; o.py = o.y; o.pop = n0 * 0.6 + m.n * 0.4; o.name = 'the Barrow of the ' + oc.name; w.nTown = (w.nTown || 0) + 1; }
+    if ((w.nTown || 0) < (FX.towns ? MAXS1 : MAXS0) && !w.water[o.y * W + o.x]) { o.nomad = false; o.cult = c.id; o.undead = true; o.wasDead = true; o.capital = false; o.tier = 1; o.maxTier = Math.max(1, o.maxTier || 0); o.age = 0; o.px = o.x; o.py = o.y; o.pop = n0 * 0.6 + m.n * 0.4; o.name = 'the Barrow of the ' + oc.name; w.nTown = (w.nTown || 0) + 1; }
     else { endSet(w, o, 'absorbed'); back(1 + (0.5 * n0) / Math.max(1, m.n)); }
     if (once(w, 'deadband') || w.year - (c.bandSay || -99) > 40) { c.bandSay = w.year; ev(w, `The dead of the ${c.name} fall on a camp of the ${oc.name} out on the open land. By morning the camp rises with them.`, o.x, o.y, c.color, 1); }
     return; }
   if (o.nomad) { if (rnd() < 0.7) { const a = rnd() * 6.283, x = wx(Math.round(o.x + Math.cos(a) * 7)), y = clamp(Math.round(o.y + Math.sin(a) * 7), 3, H - 4); if (!w.water[y * W + x]) { o.px = o.x; o.py = o.y; o.mt = w.tickN; o.x = x; o.y = y; } o.pop *= 0.92; back(0.95); } else if (o.pop < m.n * 2.5) { endSet(w, o, 'absorbed'); back(1.1); } else { o.pop *= 0.8; back(0.7); } return; }
   // (slice 2) the defenders call in men from the towns around, as far as their muster allows
   let rein = 0; if (war && !oc.power && !c.power) { const left = mobBudget(w, oc); if (left > 0) { near(w, o.x, o.y, 10, o, true, (u) => { if (u.cult === oc.id && !u.occ && !u.siege) rein += u.pop * 0.08; }); rein = Math.min(rein, left); oc.serving = (oc.serving || 0) + rein; } }
-  const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()) * (c.power ? 1.5 + 2 * c.coh : 1), B = strength(oc, o.pop + rein * 6) * (o.walls ? wallsAgainst(c) : 1.2) * (0.6 + 0.8 * rnd()) * (oc.power ? 1.2 + 1.5 * oc.coh : 1);   // the dead do not break and run
+  const A = strength(c, m.n * 6) * (0.6 + 0.8 * rnd()) * (c.power ? 1.5 + 2 * c.coh : 1), B = strength(oc, o.pop + rein * 6) * (o.walls ? wallsAgainst(c, oc) : 1.2) * (0.6 + 0.8 * rnd()) * (oc.power ? 1.2 + 1.5 * oc.coh : 1);   // the dead do not break and run
   // a walled town or a city is not stormed unless the attackers vastly outnumber it: it is besieged
   if (war && (o.walls || o.tier >= 3) && !c.power && !oc.power && !(m.nomad && !war.horde) && A < 3 * B) {
     o.siege = { by: c.id, n: m.n, since: w.year, prog: 0, from: home && !home.dead ? home.id : null }; tally(w, 'siege'); bleed(w, c, 0);
@@ -642,7 +642,8 @@ function cultYear(w, c) {
   if (c.count > 0) {   /* (Nov 3) how often each size gate actually blocks a realm (realm-years), for the foundations sprint */
     if (c.tech >= 4 && !A.engines && A.steel && A.mills && !(c._ownMetals & 64)) tally(w, (c.metals & 64) ? 'gateCoalImp' : 'gateCoal');
     if (!A.laws && A.writing && c.tech >= 2 && c.count < 8 && !(FX.law && c.env.towns >= 2)) tally(w, 'gateLaw');
-    if (!A.bureaucracy && A.laws && c.tech >= 4 && c.count < 20 && !(FX.law && c.env.towns >= 4)) tally(w, 'gateBur'); }
+    if (!A.bureaucracy && A.laws && c.tech >= 4 && c.count < 20 && !(FX.law && c.env.towns >= 4)) tally(w, 'gateBur');
+    if (!A.mills && c.tech >= 4 && !c.env.river) tally(w, 'noMills'); }   /* no river, no mills, so no engines, ever */
   { const nx = nextInvention(c, rnd); if (nx && rnd() < 0.05 * (1 + 0.25 * nx.push) * (A.schools ? 1.3 : 1) * (A.printing ? 1.3 : 1)) learn(w, c, nx.k); }
   c.plagued = (c.plagued || 0) * 0.8; c.crowded = c.hungry > c.count * 0.3 ? 1 : 0;
   originsYear(w, c, b); cropRisks(w, c, b);
@@ -694,7 +695,7 @@ function cultYear(w, c) {
 export function declareWar(w, c, f) { if (c.war || f.war || !c.big) return false; startWar(w, c, f, false, false); return true; }   /* (slice 4) for wars begun elsewhere: colonial conquest */
 function startWar(w, c, f, horde, holy) {
   // friends of the attacked come in: leagues, fellow believers, close neighbours; then the war is everyone's
-  const allies = []; for (const o of w.cults) { if (!o.alive || o === c || o === f || o.war || c.war || o.count < 3) continue; const close = (o.nb[f.id] || 0) > 1 && (o.nb[c.id] || 0) < (o.nb[f.id] || 0); const fear = (o.nb[c.id] || 0) > 0.3 ? strength(c, c.pop) / Math.max(1, strength(o, o.pop)) : 0;   /* (Nov 2) the balance of power: a neighbour of a rising giant joins whoever it attacks */
+  const allies = []; for (const o of w.cults) { if (!o.alive || o === c || o === f || o.war || c.war || o.count < (FX.allies ? 1 : 3)) continue; const close = (o.nb[f.id] || 0) > 1 && (o.nb[c.id] || 0) < (o.nb[f.id] || 0); const fear = (o.nb[c.id] || 0) > 0.3 ? strength(c, c.pop) / Math.max(1, strength(o, o.pop)) : 0;   /* (Nov 2) the balance of power: a neighbour of a rising giant joins whoever it attacks */
     if (((leagued(w, o.id, f.id) || (sameFaith(o, f) && !sameFaith(o, c)) || (tongueGap(w, o.langId, f.langId) <= 2 && tongueGap(w, o.langId, c.langId) > 2) || close) && w.rnd() < 0.35 * Math.min(2, Math.max(1, fear / 2))) || (fear > 2.5 && w.rnd() < Math.min(0.5, 0.1 * fear))) allies.push(o); }
   const joinAllies = () => { const K = conflictOf(w, c); for (const o of allies) { if (o.war || !c.alive || !K || truceLeft(w, o.id, c.id)) continue; w.rnd(); if (joinConflict(w, o, K, 1)) tally(w, 'allied'); if (o.big) ev(w, `The ${o.name} come into the war on the side of the ${f.name}.`, o.big.x, o.big.y, o.color, 1); }
     const n = 2 + allies.length; if (n >= 4 && c.tech >= 4) { const b = c.big; if (b && discover(w, 'worldwar', b.x, b.y)) ev(w, `${n} peoples are at war at once, and there is hardly a town in the known world that has not sent its sons. They will call it the Great War.`, b.x, b.y, null, 2); } };
@@ -793,12 +794,12 @@ function nomadStep(w, s, c, seaN, fishGap) {
   const rnd = w.rnd, herder = !!c.grazer, A = c.arts, src = s.src;
   // a settled people past the iron age has no wandering bands: they settle where they stand or go to town
   const sedL = c.sedLast || 0;   /* last census's count: this one is still being taken */
-  if (((c.tech >= 4 && sedL >= 3) || (c.tech >= 5 && sedL >= 1)) && rnd() < 0.6) { const t = near(w, s.x, s.y, 60, s, true, null); if (t && t.cult === s.cult) { t.pop += s.pop; s.dead = true; w.anyDead = true; return; } if ((w.nTown || 0) < MAXS && !near(w, s.x, s.y, 5, s, true) && w.magic[s.y * W + s.x] < 0.7) { w.nTown++; s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3); return; } if (t) t.pop += s.pop * 0.7; s.dead = true; w.anyDead = true; return; }
+  if (((c.tech >= 4 && sedL >= 3) || (c.tech >= 5 && sedL >= 1)) && rnd() < 0.6) { const t = near(w, s.x, s.y, 60, s, true, null); if (t && t.cult === s.cult) { t.pop += s.pop; s.dead = true; w.anyDead = true; return; } if ((w.nTown || 0) < (FX.towns ? MAXS1 : MAXS0) && !near(w, s.x, s.y, 5, s, true) && w.magic[s.y * W + s.x] < 0.7) { w.nTown++; s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3); return; } if (t) t.pop += s.pop * 0.7; s.dead = true; w.anyDead = true; return; }
   const herding = herder && src[4] >= src[2] && src[4] > src[0] * 0.8;
   if (s.age > 3 && (A.farming || (!herding && c.know > 1200 && src[2] > src[0] + src[1]))) {
     let sk = 0, cnt = 0; for (const o of DISC[2]) { const y = s.y + o[1]; if (y < 1 || y >= H - 1) continue; const i = y * W + wx(s.x + o[0]); if (w.water[i]) continue; sk += (A.farming ? cropYield(w, c, i) : 0) + (w.fresh[i] <= 1 ? 0.3 : 0); cnt++; }
     if (cnt >= 6 && ((A.farming && sk / cnt > (herder ? 0.8 : 0.4)) || (!herder && seaN >= 4 && fishGap > 0.8)) && !near(w, s.x, s.y, 6, s, true) && w.magic[s.y * W + s.x] < 0.7) {
-      if ((w.nTown || 0) >= MAXS) return; s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; w.nTown++;
+      if ((w.nTown || 0) >= (FX.towns ? MAXS1 : MAXS0)) return; s.nomad = false; s.tier = 1; s.maxTier = 1; s.age = 0; s.px = s.x; s.py = s.y; w.nTown++;
       const ru = ruinAt(w, s.x, s.y);
       if (ru) { s.name = 'New ' + ru.name.replace(/^New /, ''); discover(w, 'reborn', s.x, s.y); } else s.name = word(w, soundOf(w, s, c), w.rnd() < 0.6 ? 2 : 3);
       if (!c.flags.village) { c.flags.village = 1; const fishy = !(A.farming && sk / cnt > 0.4); ev(w, `The ${c.name} put down roots at ${s.name}${fishy ? ', a fishing camp that stayed' : ', their first village'}.`, s.x, s.y, c.color, once(w, 'village') ? 0 : 1); discover(w, 'village', s.x, s.y); }
@@ -843,7 +844,7 @@ function townStep(w, s, c) {
   if (A.masonry && s.tier >= 2) s.walls = true;
   if (!s.tower && c.tech >= 2 && s.tier >= 2 && c.stance !== 'forget' && c.stance !== 'fear' && w.magic[s.y * W + s.x] > (c.stance === 'use' ? 0.35 : 0.55) && rnd() < (c.stance === 'use' ? 0.05 : 0.02)) { s.tower = true; if (!A.craft) c.arts.craft = w.year; ev(w, `A tower goes up at ${s.name}, where the air hums. Nobody admits to building it.`, s.x, s.y, c.color); discover(w, 'tower', s.x, s.y); }
   if (s.tower && s.wa < 0.7 && rnd() < 0.2) { for (const o of DISC[7]) { const y = s.y + o[1]; if (y < 0 || y >= H) continue; const i = y * W + wx(s.x + o[0]); w.wetBias[i] = Math.min(2.5, w.wetBias[i] + 0.25 * (1 - o[2] / 8)); } w.need.climate = true; if (discover(w, 'rainmaker', s.x, s.y)) ev(w, `In the third dry year, the tower at ${s.name} calls the rain. It comes.`, s.x, s.y, c.color); }
-  if (s.pop > 95 && s.age > 14 && (w.nTown || 0) < MAXS && rnd() < 0.036 * hubPush(c)) colonize(w, s, c);
+  if (s.pop > 95 && s.age > 14 && rnd() < 0.036 * hubPush(c)) { if ((w.nTown || 0) < (FX.towns ? MAXS1 : MAXS0)) colonize(w, s, c); else tally(w, 'capTowns'); }   /* (Nov 3) counted: settlers held back by the world-wide town cap */
   else if (c.grazer && s.pop > 130 && rnd() < 0.008) pasture(w, s, c);
   const war = c.war;
   if (s.pop > 60 && w.year >= s.busy && rnd() < 0.03 * (c.ruler.trait === 'great' ? 2 : 1) * (war ? (A.bureaucracy ? 5 : 3.2) : 1)) raid(w, s, c);
