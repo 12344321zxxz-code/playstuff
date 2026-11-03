@@ -31,5 +31,6 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-03 | [x5](runs/2026-11-03-x5) |  | 16 | x4 with kq5 2.2: the 'more, smaller realms' version committed to holistic | 0.62 | 0.26 | 14 | 1621 | 1757 | 2.96 | 26 / 20 | 0 |
 | 2026-11-03 | [y1](runs/2026-11-03-y1) |  | 8 | x5 + tied rivals close the knowledge gap (pull 0.04) (patch: `{"people.js":{"KN.pull":0.04}}`) | 0.71 | 0.24 | 15 | 1643 | 1876 | 3.94 | 27 / 17 | 0 |
 | 2026-11-03 | [y2](runs/2026-11-03-y2) |  | 8 | x5 + pull 0.1 (patch: `{"people.js":{"KN.pull":0.1}}`) | 0.82 | 0.28 | 13 | 1612 | 1800 | 3.3 | 23 / 19 | 0 |
+| 2026-11-03 | [z1](runs/2026-11-03-z1) |  | 16 | x5 + lam 0.1, pull 0.04, kq5 3 (the best leadership-switching variant), 16 worlds (patch: `{"people.js":{"KN.lam":0.1,"KN.pull":0.04,"KN.kq5":3}}`) | 0.58 | 0.26 | 14 | 1585 | 1773 | 3.82 | 26 / 13 | 0 |
 | 2026-11-03 | [z2](runs/2026-11-03-z2) |  | 8 | x5 + lam 0.1, kq5 3, no pull (patch: `{"people.js":{"KN.lam":0.1,"KN.pull":0,"KN.kq5":3}}`) | 0.53 | 0.34 | 15 | 1789 | 1939 | 2.66 | 26 / 15 | 0 |
 | 2026-11-03 | [z3](runs/2026-11-03-z3) |  | 16 | z1 + fitP 3 (fit counted twice as strongly): worse (patch: `{"people.js":{"KN.lam":0.1,"KN.pull":0.04,"KN.kq5":3,"KN.fitP":3}}`) | 0.72 | 0.29 | 13 | 1557 | 1748 | 3.57 | 22 / 17 | 1 |
