@@ -1,0 +1,41 @@
+{
+ "name": "ko-pull0-lam1",
+ "note": "knock-out: both",
+ "commit": "feaac247b5effe73165d2173528f6a278348601f",
+ "branch": "main",
+ "dirty": false,
+ "patch": {
+  "people.js": {
+   "KN.pull": 0,
+   "KN.lam": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T16:33:37.523Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
