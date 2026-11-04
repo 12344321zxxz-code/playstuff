@@ -109,7 +109,7 @@ function suits(w, c, kind, k) {
 //          fits its age, per head and against the world's typical realm at that age (powder and print: markets,
 //          harbours, trade; steam: its own coal and its towns; wires and after: its towns and its schools), to this power
 //   fresh: entering an age from the age of print keeps nothing above the threshold: the next age is earned inside this one
-export const KN = { lam: 0.1, ref: 0.25, M: 10, use: 5, adopt: 0.03, kq5: 3, arm: 1, fitP: 1.5, fresh: 1, pull: 0.04, meet: 1, prov: 1, Mb: 3, ak: 0, aL: 0.5, aI: 0, ak4: 0, aO: 0, aS: 0, cI: 0.1, cC: 0.3, cd: 0.04, c6: 1, cg: 2.2 };   // (FX.capital) cI: share of a district's town-and-trade output put into works each year; cC: share of the court's net revenue invested, spread by tie; cd: wear a year; c6: works per head the age of steam needs, each later age cg times more   // aS: (FX.anchor) later ages are bigger (TECH): finds scale with the size of the age being crossed, to this power, so the industrial ages are not slower than print   // aO: (FX.anchor) a court with no equal for generations finds less (orth), outside the size term so the anchor does not soften it   // ak4: (FX.anchor 2) the same from the long middle (age 4), where finds are not yet counted by townspeople   // Mb: (FX.recv 2) outside receipts a year, per unit of what a realm's own towns could find before crowding; ak, aL, aI: (FX.anchor) own discovery = ak * raw^aL * (town share / the median realm's)^aI, against no one else   // meet, prov: measurement switches for the knock-out tests (1 = as played)   // pull: how fast a realm closes the gap to a tied rival at most one age ahead (a year, at a full tie)   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
+export const KN = { lam: 0.1, ref: 0.25, M: 10, use: 5, adopt: 0.03, kq5: 3, arm: 1, fitP: 1.5, fresh: 1, pull: 0.04, meet: 1, prov: 1, Mb: 3, ak: 0, aL: 0.5, aI: 0, ak4: 0, aO: 0, aS: 0, cI: 0.1, cC: 0.3, cd: 0.04, c6: 1, cg: 2.2, cR: 0 };   // (FX.capital) cI: share of a district's town-and-trade output put into works each year; cC: share of the court's net revenue invested, spread by tie; cd: wear a year; c6: works per head the age of steam needs, each later age cg times more; cR: works pay: each industrial age a district already lives in adds cR to what its towns can put by (increasing returns, kept inside the works)   // aS: (FX.anchor) later ages are bigger (TECH): finds scale with the size of the age being crossed, to this power, so the industrial ages are not slower than print   // aO: (FX.anchor) a court with no equal for generations finds less (orth), outside the size term so the anchor does not soften it   // ak4: (FX.anchor 2) the same from the long middle (age 4), where finds are not yet counted by townspeople   // Mb: (FX.recv 2) outside receipts a year, per unit of what a realm's own towns could find before crowding; ak, aL, aI: (FX.anchor) own discovery = ak * raw^aL * (town share / the median realm's)^aI, against no one else   // meet, prov: measurement switches for the knock-out tests (1 = as played)   // pull: how fast a realm closes the gap to a tied rival at most one age ahead (a year, at a full tie)   // arm: how much of the age's war arts depend on the districts that have them (0 = the whole realm fights with the court's arms)
 export const absorb = (gap) => (gap <= 0 ? 1 : gap === 1 ? 0.6 : gap === 2 ? 0.12 : 0.03);
 function meet(w, c, o, p, ta, tb) {
   const rnd = w.rnd; if (c === o) return;
@@ -605,18 +605,19 @@ function artsHere(w, c, s, lv = s.lvl) {
 // (Nov 4, tech disparity v2, FX.capital) know fast, build slow. From the age of steam a district lives in an industrial age only once
 // it has built the works for it (s.K, a stock; per head against c6, each later age cg times dearer). Works come from its own towns and
 // trade (cI of their output) and from the court (cC of its net revenue, spread over its districts by how well tied each is: a giant's far
-// provinces get little); credit (banking) helps, war and an overlord's take hold it back, a sack burns half. Works wear out (cd a year).
+// provinces get little); works already built raise what the towns can put by (cR); credit (banking) helps, war and an overlord's take hold it back, a sack burns half. Works wear out (cd a year).
 // Readers of the use age: food, towns, soldiers (artsHere, modShare). What a district knows (s.klvl) still drives discovery and a colony's
 // will to break away, so building never decides who leads.
 export function capitalStep(w, s, c) {
   const kl = (s.klvl = s.lvl); if (s.K == null) s.K = 0;
   if (s.lastSack === w.year) s.K *= 0.5;
-  if (c.arts.engines) { const urb = s.urb ?? 0.06, own = KN.cI * (2.5 * urb * s.pop + 0.5 * (s.wealth || 0)) * (c.over || (c.big && w.mass[s.y * W + s.x] !== w.mass[c.big.y * W + c.big.x]) ? 0.6 : 1),
+  if (c.arts.engines) { const urb = s.urb ?? 0.06, own = KN.cI * (2.5 * urb * s.pop + 0.5 * (s.wealth || 0)) * (1 + KN.cR * Math.max(0, (s.ul ?? 5) - 5)) * (c.over || (c.big && w.mass[s.y * W + s.x] !== w.mass[c.big.y * W + c.big.x]) ? 0.6 : 1),
       court = c._capWL > 0 ? (KN.cC * Math.max(0, c.rev || 0) * (s._tie ?? 1) * s.pop) / c._capWL : 0;
     c._capW = (c._capW || 0) + (s._tie ?? 1) * s.pop;
     const inv = (own + court) * (c.arts.banking ? 1.3 : 1) * (c.war ? 0.75 : 1); if (Number.isFinite(inv)) s.K += inv; }
   s.K *= 1 - KN.cd; if (!Number.isFinite(s.K)) s.K = 0;
   if (kl >= 6) { const k = s.K / Math.max(1, s.pop); let a = 5; while (a < kl && k >= KN.c6 * Math.pow(KN.cg, a + 1 - 6)) a++; s.lvl = a; }
+  s.ul = s.lvl;
 }
 // (Nov 3) how well a realm fits its age, per head: what that age's discoveries grow from
 function fitOf(c) { const P = c._sp || 0; if (P <= 0) return 0; const urb = c._ur / P, com = c._cm / P, A = c.arts;
