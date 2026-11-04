@@ -114,16 +114,17 @@ make the few dozen behave like Earth's structure. Concretely:
   regionally (P1's founders seed the agents; the field also gets regional families of its own).
 - **Growth:** each cell grows toward the carrying capacity of its way of life (forage low, herd middle,
   farm high).
-- **Food production spreads** from realms, from farming field cells and from cradles, at about a cell or
-  two a century (the real farmer front: 50–200 km a century). Whether the family comes along depends on
+- **Food production spreads** from realms, from farming field cells and from cradles, fast enough to cross a
+  large landmass in about half the farming-to-bronze age. Earth's front took about 3,000 of its 6,200
+  years; the sim's age lasts about 200 (blind-spots doc A). Whether the family comes along depends on
   the gap in density:
   - dense farmers into thin foragers carry their family in (demic spread, like Bantu or the Neolithic);
   - into a dense population, mostly the way of life spreads and the old family stays (like Arabic and
     Turkic after conquest).
 - **Being claimed:** a realm's districts claim and tax the field around them. Claimed farm cells become
   "subjects": they count toward the realm's people and pay little, and their family is kept. Language
-  shift toward the court then runs slowly through `tongues.js`, about 50–200 km a century, not with the
-  conquest.
+  shift toward the court then runs slowly through `tongues.js`, over centuries (a tempo process), not with
+  the conquest.
 - **Rising:** a dense, farming, unclaimed patch with enough people becomes a new agent people (a chiefdom
   turning into a realm) with **its own family**. So new peoples rise from the substrate throughout history,
   not only by splitting old ones.

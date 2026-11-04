@@ -172,8 +172,8 @@ should be judged on, given these differences.
    - How do we get foragers over most habitable land before farming, and mobile peoples at historical
      shares?
    - How do we get a non-state layer (chiefdoms, free villages)?
-   - How do we get farmer expansion through occupied land (absorbing, not replacing, at 50–200 km a
-     century), the U-shape (one family expands and fragments into many polities, then a few empires
+   - How do we get farmer expansion through occupied land (absorbing, not replacing; Earth's front ran at
+     50–200 km a century, but convert for the sim's squeezed early ages), the U-shape (one family expands and fragments into many polities, then a few empires
      form), and rule over other tongues as the norm?
    - Say what it costs in tick time and code (the band cap is 420, the town cap 700, the realm cap 54–58).
    - Say how it would show on the map and in the chronicle.

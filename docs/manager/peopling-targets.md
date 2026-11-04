@@ -166,5 +166,7 @@ spoken natively by under half the subjects:
   4. A layer of non-state farmers (chiefdoms, free villages): about 40–60% of people around the age of
      bronze, 20–40% at the iron age and 10–20% in the long middle.
   5. The political map filling fast: 60–75% of habitable land claimed by the iron age.
-  6. Farmer fronts of about 50–200 km a century, absorbing rather than replacing.
+  6. Farmer fronts that cross a large landmass in about half the farming-to-bronze age (Earth's took about
+     3,000 of 6,200 years at 50–200 km a century; convert, see the blind-spots doc A), absorbing rather
+     than replacing.
   7. Rule over other tongues common: a third to a half of state subjects by the long middle.
