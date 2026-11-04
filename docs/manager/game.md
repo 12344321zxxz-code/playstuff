@@ -114,10 +114,12 @@ For each system: **In** is what the game does now (on `main`). **Not** is what's
   - tech is one knowledge number against fixed age thresholds; there are no domains (naval, financial, military);
   - early arts spread too slowly between neighbours (100–250 years vs about 15–80 historically);
   - a backward realm merged into a bigger one gains about 9 arts within 5 years (item 29 in the stuck-rules audit);
-  - about a quarter of worlds never reach age 6 by 2000.
+  - about a quarter of worlds never reach age 6 by 2000;
+  - from the steam age the world converges: a century into each modern age about 98% of people are at the frontier age (history: 41–69% two or more ages behind in 1950–2000), because the frontier never accelerates and catch-up is nearly unconditional (Nov 4 check, `formicarium-tech-disparity-targets`);
+  - town art and realm pages show the court's age, not the district's (only the Knowledge lens and Look show provinces lagging).
 - **Wanted:**
   - small states, or clusters of them, can reproduce Europe's rise; the biggest realm is not best at everything (much improved Nov 4);
-  - tech unevenness across the world matching real data (benchmark pending);
+  - tech unevenness across the world matching real data (benchmark in; the sim matches through the age of print and misses from steam on);
   - Guns, Germs and Steel in every system (in).
 
 ## 6. States, institutions and diplomacy
