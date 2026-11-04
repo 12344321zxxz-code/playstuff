@@ -2057,6 +2057,46 @@
   }
  },
  {
+  "dir": "runs/2026-11-04-ko-adopt-half",
+  "date": "2026-11-04",
+  "name": "ko-adopt-half",
+  "commit": "feaac24",
+  "dirty": false,
+  "worlds": 10,
+  "years": 2000,
+  "patch": {
+   "people.js": {
+    "KN.adopt": 0.015
+   }
+  },
+  "note": "knock-out: provinces adopt half as fast",
+  "summary": {
+   "biggest first, ages 5-8 pooled": 0.48,
+   "outside top 3 by people and land first, 5-8": 0.28,
+   "rho(size,know) ages 5-8 (median century)": 0.62,
+   "tall share of frontier (decades)": 0.708,
+   "land 2+ behind, ages 5-8 (median century %)": 14.2,
+   "people 2+ behind, ages 5-8": 5.6,
+   "within-realm 1+ behind, ages 5-8": 45,
+   "median year into age 5": 1249,
+   "median year into age 6": 1553,
+   "median year into age 7": 1729,
+   "median year into age 8": 1795,
+   "worlds reaching age 8 / 9": "5 / 2",
+   "peak pop, all worlds (bn)": 4.033,
+   "peak pop, info-age worlds (bn)": null,
+   "steam-age colonial % (pooled)": 9.264,
+   "steam-age foreign / internal % (pooled)": "27 / 25",
+   "largest realm share of people, ages 5-8": 0.214,
+   "top-3 realms share, ages 5-8": 0.489,
+   "realms with 1%+ of people, ages 5-8": 15,
+   "living realms, ages 5-8": 48,
+   "first into 5-8: median share of people": 0.149,
+   "NaN worlds": 0,
+   "ms per tick": 11.1
+  }
+ },
+ {
   "dir": "runs/2026-11-04-ko-base",
   "date": "2026-11-04",
   "name": "ko-base",
