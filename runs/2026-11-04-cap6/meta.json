@@ -1,0 +1,46 @@
+{
+ "name": "cap6",
+ "note": "v2 capital, cap5 with returns 2",
+ "commit": "9cf3f64025285191e54759432a338227c964a029",
+ "branch": "capital",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.capital": 1
+  },
+  "people.js": {
+   "KN.c6": 3,
+   "KN.cg": 2.5,
+   "KN.cd": 0.03,
+   "KN.cR": 2
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T21:23:21.449Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
