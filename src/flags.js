@@ -1,4 +1,5 @@
-// (Nov 3, foundations sprint) Switches for fixes under test, all off by default (the z1 baseline). Patchable by experiments:
+// (Nov 3, foundations sprint) Switches for the foundations fixes. On by default since Nov 4 (confirmed on 32 worlds,
+//   cf-struct vs cf-base): all except cap (rejected on the screen) and realms (under test). 0 restores the old rule. Patchable by experiments:
 //   { "flags.js": { "FX.coal": 1 } }
 //   coal:   coal is a traded good; a realm that has imported coal in the last 5 years can build engines (if rich enough)
 //   law:    written law and a civil service need towns (2 and 4), not a count of districts (8 and 20)
@@ -29,4 +30,4 @@
 //           age (to open societies one knows) instead of only from the steam age
 //   realms: the realm cap is 90 at every age (was 54-58 by the world's age, bounded by 64 map colours): a colour may be worn
 //           by two realms far apart; and the world-wide cap on travellers grows with the town cap
-export const FX = { coal: 0, law: 0, market: 0, cap: 0, supply: 0, mills: 0, council: 0, allies: 0, bastion: 0, towns: 0, fisc: 0, econ: 0, know: 0, inst: 0, realms: 0 };
+export const FX = { coal: 1, law: 1, market: 1, cap: 0, supply: 1, mills: 1, council: 1, allies: 1, bastion: 1, towns: 1, fisc: 1, econ: 1, know: 1, inst: 1, realms: 0 };
