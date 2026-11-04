@@ -1,0 +1,44 @@
+{
+ "name": "td2a6",
+ "note": "Step 2: anchored own finds, 19 raw^0.6",
+ "commit": "1dbb6b775f8e595c667d801547ce1604d9c676cd",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.anchor": 1
+  },
+  "people.js": {
+   "KN.ak": 19,
+   "KN.aL": 0.6
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T18:36:46.812Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
