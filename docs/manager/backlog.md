@@ -21,8 +21,7 @@ The manager keeps this in order. Each item: what, why, status, where to read. A 
      1. catch-up that needs capacity (schools, towns, an open court, own engines);
      2. let intensity compound instead of size (replace the `lam` cap with friction from extent);
      3. provinces modernise only with investment (fiscal state).
-   - Before testing: add measurements for the lag of isolated landmasses, the number of realms at the frontier age, and decade sampling.
-   - The display shows the court's age in town art and realm pages (a small, optional fix).
+   - Measurements (isolated landmasses, decade sampling, receipts, cohorts) and the display fix (`FX.lagShow`) are done (Nov 4).
 2. **Extra defections.**
    - Breakaway regions defect to a neighbour about 92 times per world (32 under the old rules), because more realms press against the realm cap.
    - Raising the cap to 90 (`FX.realms`) cut this by a third but slightly helped the biggest realm, so it stays off.
