@@ -1,0 +1,48 @@
+{
+ "name": "td5d",
+ "note": "Step 3c: td4d with a weak pull (0.01) so leadership can pass",
+ "commit": "450c638f65504ce95d9e007e585d485481ca694a",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.anchor": 1,
+   "FX.recv": 2
+  },
+  "people.js": {
+   "KN.aL": 0.5,
+   "KN.aI": 1,
+   "KN.ak": 245,
+   "KN.pull": 0.01,
+   "KN.Mb": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T19:11:10.456Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
