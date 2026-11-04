@@ -203,9 +203,11 @@ disparity; if so, say why.
   (https://github.com/12344321zxxz-code/playstuff/archive/refs/heads/tech-disparity.zip). Unzip it and read it
   in your sandbox. Node 20+ runs it (6.1).
 - **To keep your view independent, please don't open these before you've written your answer:**
-  `docs/manager/tech-disparity-fixes.md`, `docs/manager/report-2026-11-04-tech-disparity.md`,
+  `docs/manager/tech-disparity-fixes.md`, `docs/manager/tech-disparity-evidence.md`,
+  `docs/research/tech-disparity/knockout.py`, `docs/manager/report-2026-11-04-tech-disparity.md`,
   the last section of `docs/manager/peopling-targets.md`,
-  `docs/manager/backlog.md` (item 1), and the tech-disparity lines in `docs/manager/game.md` section 5.
+  `docs/manager/backlog.md` (item 1), the tech-disparity lines in `docs/manager/game.md` section 5, and the
+  `ko-*` runs on the `runs` branch.
   They hold Claude's diagnosis.
 - **Otherwise:** read files on GitHub, e.g.
   https://github.com/12344321zxxz-code/playstuff/blob/tech-disparity/src/people.js, or raw at
