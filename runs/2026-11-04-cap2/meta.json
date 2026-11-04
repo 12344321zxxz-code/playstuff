@@ -1,0 +1,43 @@
+{
+ "name": "cap2",
+ "note": "v2 capital, steam costs 2",
+ "commit": "166453dbc1e0019f9fe9d94e7231f7de9d09d7d1",
+ "branch": "capital",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.capital": 1
+  },
+  "people.js": {
+   "KN.c6": 2
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T20:58:27.060Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
