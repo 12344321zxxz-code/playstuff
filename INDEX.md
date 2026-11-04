@@ -64,5 +64,6 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-04 | [ko-pull0-lam1](runs/2026-11-04-ko-pull0-lam1) | feaac24 | 10 | knock-out: both (patch: `{"people.js":{"KN.pull":0,"KN.lam":1}}`) | 0.88 | 0.33 | 14 | 1449 | 1541 | 2.76 | 38 / 25 | 0 |
 | 2026-11-04 | [td0-base](runs/2026-11-04-td0-base) | 1dbb6b7 | 32 | Step 0 base with receipt ledger, gates, cohorts (32 worlds) | 0.51 | 0.22 | 14 | 1480 | 1765 | 4.29 | 32 / 24 | 0 |
 | 2026-11-04 | [td0-lam1](runs/2026-11-04-td0-lam1) | 1dbb6b7 | 32 | Step 0 knock-out: no crowding of own finds (patch: `{"people.js":{"KN.lam":1}}`) | 0.8 | 0.28 | 14 | 1287 | 1371 | 2.38 | 35 / 20 | 0 |
+| 2026-11-04 | [td0-meet0](runs/2026-11-04-td0-meet0) | 1dbb6b7 | 32 | Step 0 knock-out: contact learning off (patch: `{"people.js":{"KN.meet":0}}`) | 0.44 | 0.25 | 13 | 1482 | 1801 | 4.2 | 32 / 21 | 0 |
 | 2026-11-04 | [td0-pull0lam1](runs/2026-11-04-td0-pull0lam1) | 1dbb6b7 | 32 | Step 0 knock-out: pull off and no crowding (patch: `{"people.js":{"KN.pull":0,"KN.lam":1}}`) | 0.77 | 0.3 | 13 | 1301 | 1462 | 2.91 | 40 / 21 | 0 |
 | 2026-11-04 | [td3](runs/2026-11-04-td3) | eb6c639 | 10 | Step 3 joint: 1b (Mb 3) + anchor 0.5 (patch: `{"flags.js":{"FX.recv":2,"FX.anchor":1},"people.js":{"KN.ak":74,"KN.aL":0.5}}`) | 0.52 | 0.25 | 15 | 1526 | 1731 | 4.1 | 40 / 20 | 0 |
