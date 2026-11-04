@@ -16,13 +16,13 @@ import json, glob, sys, os, statistics as st
 def load(d): return {int(os.path.basename(f)[1:-5]): json.load(open(f)) for f in glob.glob(os.path.join(d, 'b*.json'))}
 def m(v, f='{:.1f}'): return f.format(st.mean(v)) if v else '-'
 def arm(W):
-    e2, c2, tc2, coh, a35a, a35b = [], [], [], [], [], []
+    e2, c2, tc2, coh, a35a, a35b, at1, one1 = [], [], [], [], [], [], [], []
     for w in W:
         prev = None; since = 0
         for c in w.get('dev', []):
             since = since + 100 if c['F'] == prev else 0; prev = c['F']
             if 6 <= c['F'] <= 8 and since == 0: e2.append(c['lag'][2] + c['lag'][3])
-            if 6 <= c['F'] <= 8 and since == 100: c2.append(c['lag'][2] + c['lag'][3])
+            if 6 <= c['F'] <= 8 and since == 100: c2.append(c['lag'][2] + c['lag'][3]); at1.append(c['lag'][0]); one1.append(c['lag'][1])
             if 3 <= c['F'] <= 5: a35a.append(c['lag'][0]); a35b.append(c['lag'][2] + c['lag'][3])
         prev = None; since = 0
         for c in w.get('cent2', []):
@@ -57,7 +57,7 @@ def arm(W):
             if 6 <= c['F'] <= 8:
                 side.setdefault('top', []).append(c['top'])
                 if since == 100: side.setdefault('k2', []).append(c['klag'][2] + c['klag'][3]); side.setdefault('below', []).append(100 * c['below'])
-    S = {k: (st.mean(v) if v else None) for k, v in side.items()}
+    S = {k: (st.mean(v) if v else None) for k, v in side.items()}; S['at'] = st.mean(at1) if at1 else None; S['one'] = st.mean(one1) if one1 else None
     return dict(side=S, n=len(W), e2=m(e2), c2=m(c2), tc2=m(tc2), coh=m(coh), gaps='/'.join(str(int(st.median(gaps[k]))) if k in gaps else '-' for k in (6, 7, 8)),
                 big1='{:.2f}'.format(sum(big) / max(1, len(big))), lead=m(lead, '{:.2f}'), a35=m(a35a, '{:.0f}') + '/' + m(a35b), reach6='{:.2f}'.format(reach6),
                 pop6=('{:.0f}m'.format(st.median(pop6) / 1e3) if pop6 else '-'), to=m(to), ms=m(ms, '{:.2f}'), rail=m(use.get('railways', []), '{:.0f}'), elec=m(use.get('electricity', []), '{:.0f}'))
@@ -67,7 +67,7 @@ for d in sys.argv[1:]:
     A = load(d); W = [A[s] for s in sorted(A) if s in B or d == sys.argv[1]]
     r = arm(W)
     S = r['side']; f = lambda k, p='{:.2f}': (p.format(S[k]) if S.get(k) is not None else '-')
-    side.append(f"{os.path.basename(d.rstrip('/'))[11:]:14} tall {f('tallShare')} top6-8 {f('top')} conq {f('conquests','{:.0f}')} colWars {f('colonialWars','{:.1f}')} colIndep {f('colIndep','{:.1f}')} to6Col {f('to6Col','{:.1f}')} to7Col {f('to7Col','{:.1f}')} peak {f('peakPop','{:.0f}')} know2+c {f('k2','{:.1f}')} belowUse {f('below','{:.1f}')}")
+    side.append(f"{os.path.basename(d.rstrip('/'))[11:]:14} tall {f('tallShare')} top6-8 {f('top')} conq {f('conquests','{:.0f}')} colWars {f('colonialWars','{:.1f}')} colIndep {f('colIndep','{:.1f}')} to6Col {f('to6Col','{:.1f}')} to7Col {f('to7Col','{:.1f}')} peak {f('peakPop','{:.0f}')} know2+c {f('k2','{:.1f}')} belowUse {f('below','{:.1f}')} at/1behind-c {f('at','{:.0f}')}/{f('one','{:.0f}')}")
     print(f"{os.path.basename(d.rstrip('/'))[11:]:14} {r['n']:2} {r['e2']:>4} {r['c2']:>4} {r['tc2']:>5} {r['coh']:>6} {r['gaps']:13} {r['big1']:>5} {r['lead']:>4} {r['a35']:>11} {r['reach6']:>6} {r['pop6']:>6} {r['to']:>5} {r['ms']:>5} {r['rail']:>5} {r['elec']:>5}")
 print('side effects (tall: frontier realm-years outside the top 3; top6-8: largest realm share of people; know2+c: 2+ behind in knowledge a century in; belowUse: % people living below what they know):')
 print('\n'.join(side))
