@@ -147,3 +147,13 @@ Judged on 32 worlds, by stage (not calendar), with both frontier cutoffs, and sp
 - **Steps 1–3:** one or two sessions; 10-world screens, then a 32-world confirmation of the winner.
 - **Display:** one session, in parallel.
 - Each step is reported in a post-action report and changes `formicarium-game` and the backlog as usual.
+
+## Results (Nov 4 build)
+Full numbers are in `formicarium-report-2026-11-04-tech-disparity-build`.
+- Step 0 found that catch-up (`pull`) is the leveller, the letters budget never binds, and there is no use gap at all.
+- Steps 1–3 were built behind `FX.recv` and `FX.anchor` (off). The best arm, td7b, was confirmed on 32 worlds.
+- What passes: 23% of people 2+ ages behind a century in, the biggest realm first 43% of the time, turnover, reach to steam, tick cost.
+- What fails: distinct leaders (2.0 vs 2.4), the 6→7 step (longer than 5→6), slightly worse ages 3–5, and the use gap.
+- The cause: a tech lead turns into conquest and a giant.
+- Next: Step 4 (a use gap through installed capital), then retest td7b.
+

@@ -67,6 +67,17 @@ about ±0.1 on shares).
   - Modern arts still cross within a few years once ties exist.
 - **Median year the frontier enters ages 1–9:** 159, 364, 649, 998, 1231, 1480, 1662, 1764, 1857.
 
+## 4. Step 0: where knowledge comes from (Nov 4, `td0-base`, 32 worlds)
+Share of all knowledge gained in a year, by standing (at the frontier / 1 age behind / 2+ behind), pooled over the modern ages:
+- **at the frontier:** pull 42–68%, letters 9–20%, own finds 8–15%, provinces 4–27%;
+- **one age behind:** pull 48–76%, provinces 10–35%, own finds 3–5%;
+- **two or more behind:** contact (meet) 50–81% up to steam, then provinces 69–74%.
+- **Letters budget:** letters offered are only 1.0–1.9 times letters taken, so the budget barely binds.
+- **Key arts:** carriers never block engines, railways, electricity or computers.
+- **No use gap:** once the frontier is a full age past railways or electricity, all realms that could use them do.
+- **Leaders:** the first realm into an age is rarely the most urban (most urban in 11% of cases) and was usually the biggest 100 years earlier.
+- **More knock-outs:** contact off gives 2.2% 2+ behind; provinces off gives 1.4%. No single channel explains the convergence.
+
 ## For the council
 1. **The diagnosis is confirmed causally:** the `lam` cap and the `pull` channel together produce the
    modern convergence.

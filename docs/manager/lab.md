@@ -27,6 +27,16 @@
     ```
   - follow it with `gh api repos/12344321zxxz-code/playstuff/actions/workflows/sim.yml/runs --jq '.workflow_runs[0]'`;
   - when it finishes it archives to `runs/<date>-<name>/` on the `runs` branch by itself, and retries the push.
+- **Scoring tech-disparity arms:** `python3 docs/research/tech-disparity/gates.py <base dir> <arm dir> ...`
+  - each dir holds the `b<seed>.json` files of a run, extracted from `runs`;
+  - it prints every gate of `formicarium-tech-disparity-plan`;
+  - compare on the same seeds: the 10-world screen seeds are 11–18 and 31–32.
+- **Tech-disparity switches** (all off on main):
+  - `flags.js:FX.recv` (1/2) with `people.js:KN.M` / `KN.Mb`;
+  - `FX.anchor` (1/2) with `KN.ak, aL, aI, aO, aS, ak4`;
+  - knock-outs `KN.meet` and `KN.prov` (0 = off);
+  - `FX.lagShow` (display).
+  - The best candidate is td7b: `FX.recv=2, FX.anchor=1, KN.ak=4000, aL=0.3, aI=1, Mb=1, aO=2`.
 - **Batches locally** (short runs only): `node tools/run.mjs <name> --seeds ... --set ... --note ...`.
   - It freezes a copy of the code at launch, resumes interrupted runs and archives to `runs`. It needs the `runs` worktree at `../playstuff-runs`.
   - A chat machine has 2 cores and **shuts down when the chat sits idle**; long local runs die with it.
@@ -112,3 +122,7 @@ Real-world targets live in `formicarium-foundations-audit` section 5, `formicari
 - **Archive cancellations:** the archive job runs in one concurrency group. If several runs finish together, a waiting archive can be cancelled. The worlds are safe as artifacts for 7 days, but this machine can't download artifacts (the storage host is blocked). Re-run the archive with `gh api -X POST repos/12344321zxxz-code/playstuff/actions/runs/<id>/rerun-failed-jobs`. Better: space out dispatches, or check every run's archive job.
 - **Read targets with `formicarium-earth-vs-sim-blind-spots`** before comparing the sim with Earth.
 - **ChatGPT reports:** a docx from ChatGPT may hold only a link into ChatGPT's own sandbox. Ask Ariel for the real file or the pasted text. Share links (`chatgpt.com/share/...`) can't be read by fetch.
+- **Many runs at once (Nov 4):**
+  - GitHub runs about 20 worlds at a time, so ten 10-world screens finish in about 25 minutes;
+  - the archives of runs that finish together get cancelled. Re-run each cancelled one with `gh api -X POST repos/12344321zxxz-code/playstuff/actions/runs/<id>/rerun-failed-jobs`, one at a time, after the queue is empty.
+

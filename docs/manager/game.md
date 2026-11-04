@@ -116,7 +116,11 @@ For each system: **In** is what the game does now (on `main`). **Not** is what's
   - a backward realm merged into a bigger one gains about 9 arts within 5 years (item 29 in the stuck-rules audit);
   - about a quarter of worlds never reach age 6 by 2000;
   - from the steam age the world converges: a century into each modern age about 98% of people are at the frontier age (history: 41–69% two or more ages behind in 1950–2000), because the frontier never accelerates and catch-up is nearly unconditional (Nov 4 check, `formicarium-tech-disparity-targets`);
-  - town art and realm pages show the court's age, not the district's (only the Knowledge lens and Look show provinces lagging).
+  - town art and realm pages show the court's age, not the district's (only the Knowledge lens and Look show provinces lagging). `FX.lagShow` (off; Nov 4) draws towns in their own age and adds a realm-page line on how much of the realm lives in its age;
+  - built Nov 4 and switched off:
+    - `FX.recv`, one yearly allowance for everything a realm takes in from outside;
+    - `FX.anchor`, a realm's own finds depending only on itself (its townspeople and town share, and the orthodoxy brake);
+    - with them the modern gaps reach history's size, but leaders become giants and keep the lead (`formicarium-report-2026-11-04-tech-disparity-build`).
 - **Wanted:**
   - small states, or clusters of them, can reproduce Europe's rise; the biggest realm is not best at everything (much improved Nov 4);
   - tech unevenness across the world matching real data (benchmark in; the sim matches through the age of print and misses from steam on);

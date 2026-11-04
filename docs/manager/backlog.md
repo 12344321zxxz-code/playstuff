@@ -4,7 +4,12 @@ The manager keeps this in order. Each item: what, why, status, where to read. A 
 
 ## Now: finish the play-tall and foundations work
 1. **Modern ages converge (tech disparity).**
-   - **Plan:** `formicarium-tech-disparity-plan` (Nov 4: council plus ChatGPT's critical review). Next: Step 0, instrumentation.
+   - **Plan:** `formicarium-tech-disparity-plan` (Nov 4: council plus ChatGPT's critical review).
+   - **Status (Nov 4, `formicarium-report-2026-11-04-tech-disparity-build`):**
+     - Steps 0–3 are built and on main, all switched off (`FX.recv`, `FX.anchor`, `FX.lagShow`).
+     - The best arm, td7b, gives history-sized gaps (23%) but fails three gates: distinct leaders, the 6→7 pace and the use gap.
+     - Next: Step 4 (a use gap through installed capital), then retest td7b.
+     - Waiting on Ariel: look at the display, and decide whether td7b goes on as it is.
    - Causes confirmed by knock-outs (`formicarium-tech-disparity-evidence`): `lam` stops the frontier accelerating, `pull` closes the gaps; removing both brings back history-sized gaps but also big-realm dominance.
    - Checked Nov 4 against a numeric benchmark (`formicarium-tech-disparity-targets`; report `formicarium-report-2026-11-04-tech-disparity`).
    - Through the age of print the sim is about right. From steam on, about 98% of people reach the frontier age within a century; history had 41–69% two or more ages behind in 1950–2000.
