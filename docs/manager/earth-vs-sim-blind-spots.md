@@ -127,8 +127,7 @@ literature values from memory, not rechecked.
 - **What to do:**
   - add a measure that splits each district by its town share (towns at the district's age, the countryside
     an age behind once the age needs infrastructure);
-  - or compare with history's urban-only figures;
-  - P7 (provinces modernise with investment) partly addresses it.
+  - or compare with history's urban-only figures.
 
 ### E. Caps bound the counts
 - **Caps:** realms 54–58 (90 tested), towns 700 (520 before Nov 4), bands 420, travellers 300–420,
