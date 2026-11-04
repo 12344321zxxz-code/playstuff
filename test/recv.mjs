@@ -16,7 +16,7 @@ FX.recv = 2; { const a = realm(6, 100, 1000), b = realm(6, 100, 50000); ok(recvC
   const e = realm(3, 0, 0); ok(recvCap(e, Infinity) === undefined, 'no limit before the long middle');
   const c = realm(6, 100, 1000); c._ra = 50; const g1 = rk(c, 'meet', 30), g2 = rk(c, 'pull', 30), g3 = rk(c, 'letters', 30); ok(g1 === 30 && g2 === 20 && g3 === 0 && c.kl.meet === 30 && c.kl.pull === 20, '1b: channels share one yearly allowance'); }
 // Step 2: anchored finds do not move when the rest of the world gets richer or poorer (no dkRef, no fit against others)
-FX.anchor = 1; { const ak = KN.ak; KN.ak = 2; ok(ownFind(1e6, 1e3, 1) === ownFind(1e6, 1e9, 4), 'anchor: own finds ignore the world reference'); ok(ownFind(4e6, 1e3, 1) / ownFind(1e6, 1e3, 1) === 2, 'anchor: four times the towns, twice the finds'); KN.ak = ak; }
+FX.anchor = 1; { const ak = KN.ak; KN.ak = 2; ok(ownFind(1e6, 1e3, 1) === ownFind(1e6, 1e9, 4), 'anchor: own finds ignore the world reference'); ok(ownFind(4e6, 1e3, 1) / ownFind(1e6, 1e3, 1) === 2, 'anchor: four times the towns, twice the finds'); KN.aI = 1; ok(ownFind(1e6, 1e3, 1, 2) === 2 * ownFind(1e6, 1e3, 1, 1), 'anchor: twice the town share, twice the finds'); KN.aI = 0; KN.ak = ak; }
 FX.anchor = 0; ok(ownFind(1e6, 1e3, 1) !== ownFind(1e6, 1e9, 1), 'off: own finds are measured against the world (as played)');
 FX.recv = was.recv; FX.anchor = was.anchor;
 if (bad) { console.log(bad, 'failed'); process.exit(1); } else console.log('all passed');
