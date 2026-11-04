@@ -84,7 +84,7 @@ A system-by-system search for rules that block or favour realms categorically:
   - steam-age turnover: foreign +5.9*, internal +5.3*;
   - costs: about 48% more time per tick (the larger town cap); breakaways defecting to a neighbour +60 per world (more realms press on the realm cap).
   - `cf-quick` (quick set alone, 27 of 32 worlds): biggest first in ages 6–8 −0.16*, but land behind, population and internal turnover did not move.
-- **Decision:** the structural set is on by default from commit 69d30c7, merged to main Nov 4. `cap` stays off; `realms` (cap 90) is being tested on the new defaults (`cf-realms`) against the extra defections.
+- **Decision:** the structural set is on by default from commit 69d30c7, merged to main Nov 4. `cap` stays off; `realms` (cap 90) was tested on the new defaults (`cf-realms`, 32 worlds on GitHub Actions): defections −35* per world, but the biggest realm first holder of key arts +0.05*, biggest first in ages 6–8 +0.10 (not significant) and age 6 17 years later*, so it stays off.
 - **Still open:** item 29 (a realm two ages behind that merges into a bigger one gains about 9 arts within 5 years; seed 12, year 1300); pace (about a quarter of worlds never reach age 6 by 2000).
 
 ## Status (updated Nov 3, evening)

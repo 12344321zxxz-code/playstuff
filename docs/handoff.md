@@ -49,7 +49,7 @@ Read this first in any new chat on the game. Then read project memory (`areas/go
   - more worlds reach age 8;
   - peak population +0.65bn;
   - more steam-age turnover.
-- **Running at handoff:** `cf-realms` (on GitHub Actions), the realm cap at 90 on the new defaults, to remove +60 defections per world. Score it with `board-compact.mjs` against `cf-struct` (archived on `runs`). If it holds, set `FX.realms: 1`, run the tests, merge.
+- **Realm cap (`FX.realms`):** tested (`cf-realms`); it removed about a third of the extra defections but slightly helped the biggest realm, so it stays off. The extra defections (about 92 per world vs 32 under the old rules) are still open.
 - **Open:**
   1. Item #29: a realm two ages behind that merges into a bigger one gains about 9 arts in 5 years (`invariance.mjs 12 1300 --merge --behind`).
   2. Pace: about a quarter of worlds never reach age 6 by 2000.
