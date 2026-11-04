@@ -1,6 +1,6 @@
 # Formicarium report: tech disparity, from diagnosis to build (Nov 4, 2026)
 
-**Main:** merged at the commit that adds this report (fast-forward from `tech-disparity`). It holds the new measurements and the new mechanisms, **all switched off**. The game plays exactly as before: all 32 scoreboard worlds come out identical to main 4a17f95. The one change in the output is that the knowledge ledger now lists catch-up (`pull`) apart from `letters`. Backup of the old main: branch `backup/main-2026-11-04-pre-tech-disparity`.
+**Main:** merged at be6a9fb (fast-forward from `tech-disparity`). It holds the new measurements and the new mechanisms, **all switched off**. The game plays exactly as before: all 32 scoreboard worlds come out identical to main 4a17f95. The one change in the output is that the knowledge ledger now lists catch-up (`pull`) apart from `letters`. Backup of the old main: branch `backup/main-2026-11-04-pre-tech-disparity`.
 
 **Bottom line:**
 - The cause is found and measured.
