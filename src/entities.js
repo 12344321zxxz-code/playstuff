@@ -8,6 +8,7 @@ import { conflictOf, enemiesOf, alliesOf, trucesOf, sideOf, aimText } from './wa
 import { histById } from './ledger.js';
 import { travelOf, laneFor } from './travel.js';
 import { ERA, blockedReasons } from './tech.js';
+import { FX } from './flags.js';
 import { SPIRIT_KINDS } from './spirits.js';
 import { PLANTS, luckOf } from './origins.js';
 import { W, H, N, TAU, TPY, CS, CW, CH, clamp, wrapDx, hash2, wx, peopleText } from './core.js';
@@ -85,7 +86,7 @@ function drawPeople(ctx, w, cam, z, lens, frac) {
       if (st.capital && z >= 1.4) names.push(st, x, y + 2 * cam.dpr);
       continue;
     }
-    const era = c.tech, look = st.tier >= 3 ? (era >= 10 ? 'cityS' : era >= 8 ? 'cityM' : era >= 6 ? 'cityI' : era >= 4 ? 'cityC' : 'city') : st.tier === 2 ? (era >= 8 ? 'townM' : era >= 6 ? 'townI' : era >= 4 ? 'townC' : 'town') : st.pop > 60 ? 'village' : 'hut';
+    /* (Nov 4, tech-disparity) a town is drawn in its own age, so a lagging province looks behind its court */ const era = FX.lagShow && !st.nomad && st.lvl != null ? Math.min(c.tech, st.lvl) : c.tech, look = st.tier >= 3 ? (era >= 10 ? 'cityS' : era >= 8 ? 'cityM' : era >= 6 ? 'cityI' : era >= 4 ? 'cityC' : 'city') : st.tier === 2 ? (era >= 8 ? 'townM' : era >= 6 ? 'townI' : era >= 4 ? 'townC' : 'town') : st.pop > 60 ? 'village' : 'hut';
     const hgt = blit(ctx, st.machine ? 'cityM' : look, x, y, k, st.machine ? '#4affd0' : st.lost === 'fey' ? '#7fbf6a' : col);
     if (st.lost === 'fey' && z >= 3) { ctx.fillStyle = 'rgba(140,230,120,0.22)'; const q = 7 * k; ctx.fillRect(Math.round(x - q), Math.round(y - q * 1.6), q * 2, q * 1.8); }   /* a changeling village: green and quiet */
     // smoke from the stacks, lights in the windows at night-time zoom

@@ -3,6 +3,7 @@
 // how strong it is, and what has happened between it and its neighbours lately.
 import { W, H } from './core.js';
 import { ERA } from './tech.js';
+import { FX } from './flags.js';
 import { strength } from './people.js';
 import { conflictOf, sideOf, alliesOf, enemiesOf, truceLeft } from './war.js';
 import { tongueGap } from './tongues.js';
@@ -25,6 +26,8 @@ export function diplomacy(w, c) {
   const sub = `${c.kind} · ${ERA[Math.min(10, c.tech)]} · ${c.count} ${c.count === 1 ? 'place' : 'places'}${c.big && c.big.name ? ' · rules from ' + c.big.name : ''}`;
   // standing
   L.push(`The ${ord(rank)} strongest of ${live.length} states${c.house ? `. ${c.house.name.replace(/^t/, 'T')} rules` : ''}.`);
+  if (FX.lagShow && c.tech >= 3) { let at = 0, one = 0, far = 0; for (const s of w.sets) if (!s.dead && !s.nomad && s.cult === c.id && s.lvl != null) { const g = Math.min(10, c.tech) - s.lvl; if (g <= 0) at += s.pop; else if (g === 1) one += s.pop; else far += s.pop; } const t = at + one + far;   /* (Nov 4, tech-disparity) how much of the realm lives in its court's age */
+    if (t > 0 && at < 0.9 * t) L.push(`${Math.round((100 * at) / t)}% of their people live in the age of ${ERA[Math.min(10, c.tech)]}${one > 0.05 * t ? `, ${Math.round((100 * one) / t)}% are an age behind` : ''}${far > 0.02 * t ? `, ${Math.round((100 * far) / t)}% further behind still` : ''}.`); }
   if (over) L.push(`A protectorate of the ${over.name}: the ${over.name} take ${Math.round((c.over.take || 0) * 100)}% of the harvest and speak for them abroad.`);
   else if (c.over && c.over.kind === 'dragon') L.push('They answer to a dragon.');
   if (subs.length) L.push(`Protectorates: ${list(subs.map((q) => 'the ' + q.name))}.`);
