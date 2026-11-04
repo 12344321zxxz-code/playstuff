@@ -114,7 +114,8 @@ make the few dozen behave like Earth's structure. Concretely:
   trade routes), much slower than inside a realm.
 
 **What it fixes:**
-- **Land:** no empty habitable land, and the claimed share filling early through the field.
+- **Land:** foragers on most habitable land from the start (history: about three quarters), and the
+  claimed share filling early through the field.
 - **Way of life:** mobile people at the right share; "farmers outside states" exists.
 - **Peoples:** substrate families in refuges; new peoples rising from the substrate.
 - **Tech disparity:** a real population of laggards in the ancient ages, and in the modern ages wherever

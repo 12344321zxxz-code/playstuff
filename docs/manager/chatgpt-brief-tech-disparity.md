@@ -138,7 +138,8 @@ age; history from the second benchmark):
    **approximation**:
    - What should one sim "people" stand for?
    - How do we get several unrelated families on every landmass?
-   - How do we get no empty habitable land before farming, and mobile peoples at historical shares?
+   - How do we get foragers over most habitable land before farming, and mobile peoples at historical
+     shares?
    - How do we get a non-state layer (chiefdoms, free villages)?
    - How do we get farmer expansion through occupied land (absorbing, not replacing, at 50–200 km a
      century), the U-shape (one family expands and fragments into many polities, then a few empires

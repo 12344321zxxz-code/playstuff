@@ -136,7 +136,8 @@ spoken natively by under half the subjects:
 - The structural targets that matter, and can be approximated:
   1. Several unrelated families on every landmass. About 15–25 families with 1%+ of humanity early,
      falling to about 11; the largest family 10–15% early, 35–45% late.
-  2. No empty habitable land before farming: a forager population everywhere.
+  2. Foragers on most habitable land before farming (about three quarters; the rest is truly empty
+     desert, ice edge and high mountain).
   3. Mobile peoples falling to about 12% of humanity by the iron age, and to 5–7% by the long middle.
   4. A layer of non-state farmers (chiefdoms, free villages): about 40–60% of people around the age of
      bronze, 20–40% at the iron age and 10–20% in the long middle.
