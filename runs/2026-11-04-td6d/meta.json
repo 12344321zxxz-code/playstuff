@@ -1,0 +1,48 @@
+{
+ "name": "td6d",
+ "note": "Step 3d: as td6a, anchored from age 4",
+ "commit": "cd8dbd1355eb7ca71b133c3d606904639ccb9cfc",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.anchor": 2,
+   "FX.recv": 1
+  },
+  "people.js": {
+   "KN.aL": 0.3,
+   "KN.aI": 1,
+   "KN.ak": 4000,
+   "KN.ak4": 4000,
+   "KN.M": 2
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T19:27:21.332Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}

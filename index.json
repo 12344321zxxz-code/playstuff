@@ -3340,5 +3340,53 @@
    "NaN worlds": 0,
    "ms per tick": 12.1
   }
+ },
+ {
+  "dir": "runs/2026-11-04-td6d",
+  "date": "2026-11-04",
+  "name": "td6d",
+  "commit": "cd8dbd1",
+  "dirty": false,
+  "worlds": 10,
+  "years": 2000,
+  "patch": {
+   "flags.js": {
+    "FX.anchor": 2,
+    "FX.recv": 1
+   },
+   "people.js": {
+    "KN.aL": 0.3,
+    "KN.aI": 1,
+    "KN.ak": 4000,
+    "KN.ak4": 4000,
+    "KN.M": 2
+   }
+  },
+  "note": "Step 3d: as td6a, anchored from age 4",
+  "summary": {
+   "biggest first, ages 5-8 pooled": 0.697,
+   "outside top 3 by people and land first, 5-8": 0,
+   "rho(size,know) ages 5-8 (median century)": 0.79,
+   "tall share of frontier (decades)": 0.368,
+   "land 2+ behind, ages 5-8 (median century %)": 44.5,
+   "people 2+ behind, ages 5-8": 22.1,
+   "within-realm 1+ behind, ages 5-8": 17.4,
+   "median year into age 5": 1176,
+   "median year into age 6": 1269,
+   "median year into age 7": 1410,
+   "median year into age 8": 1454,
+   "worlds reaching age 8 / 9": "6 / 6",
+   "peak pop, all worlds (bn)": 3.14,
+   "peak pop, info-age worlds (bn)": 3.318,
+   "steam-age colonial % (pooled)": 23.501,
+   "steam-age foreign / internal % (pooled)": "37 / 18",
+   "largest realm share of people, ages 5-8": 0.297,
+   "top-3 realms share, ages 5-8": 0.629,
+   "realms with 1%+ of people, ages 5-8": 12,
+   "living realms, ages 5-8": 48,
+   "first into 5-8: median share of people": 0.218,
+   "NaN worlds": 0,
+   "ms per tick": 11.8
+  }
  }
 ]
