@@ -13,6 +13,7 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-02 | [u1](runs/2026-11-02-u1) |  | 16 | Town and country iteration of Nov 2 (exact settings not recorded) | 0.66 | – | – | 1435 | 1694 | 4.12 | 27 / 17 | 0 |
 | 2026-11-02 | [u2](runs/2026-11-02-u2) |  | 16 | Urban branch: play tall + town and country stages 1-3 | 0.6 | – | – | 1537 | 1714 | 4.63 | 24 / 20 | 0 |
 | 2026-11-02 | [u3](runs/2026-11-02-u3) |  | 16 | Stale knowledge above the medieval threshold (0.5%/yr); slowed the whole world, reverted | 0.79 | – | – | 1573 | 1824 | 3.94 | 28 / 18 | 0 |
+| 2026-11-03 | [cf-base](runs/2026-11-03-cf-base) | 06c9718 | 22 | Confirmation baseline, the 22 seeds fs-base2 lacks (switches off) | 0.67 | 0.28 | 13 | 1447 | 1786 | 3.75 | 26 / 21 | 0 |
 | 2026-11-03 | [fs-all](runs/2026-11-03-fs-all) | 2230d97 | 10 | Screen: all four fixes (patch: `{"flags.js":{"FX.coal":1,"FX.law":1,"FX.market":1,"FX.cap":1}}`) | 0.69 | 0.28 | 15 | 1609 | 1697 | 3.86 | 33 / 16 | 0 |
 | 2026-11-03 | [fs-base](runs/2026-11-03-fs-base) | 14e86da | 10 | Foundations sprint screen: baseline (z1 settings, all fixes off) | 0.58 | 0.24 | 15 | 1614 | 1901 | 3.12 | 31 / 9 | 0 |
 | 2026-11-03 | [fs-base2](runs/2026-11-03-fs-base2) | 2230d97 | 10 | Screen baseline re-run at the head of holistic (switches off): fs-base ran on an earlier commit (14e86da), so every arm shared an offset against it | 0.58 | 0.24 | 14 | 1614 | 1901 | 2.77 | 23 / 17 | 0 |
