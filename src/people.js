@@ -619,6 +619,7 @@ export function capitalStep(w, s, c) {
     const inv = (own + court) * (c.arts.banking ? 1.3 : 1) * (c.war ? 0.75 : 1); if (Number.isFinite(inv)) s.K += inv; }
   s.K *= 1 - KN.cd; if (!Number.isFinite(s.K)) s.K = 0;
   if (kl >= 6) { const k = s.K / Math.max(1, s.pop); let a = 5; while (a < kl && k >= KN.c6 * Math.pow(KN.cg, a + 1 - 6)) a++; s.lvl = a; }
+  if (s.lvl >= 6 && (s.ul ?? 5) < 6 && s.tier >= 2 && once(w, 'works-' + c.id)) ev(w, `The first works of the ${c.name} open at ${s.name}: engines that never tire, and smoke over the roofs.`, s.x, s.y, c.color, 1);   /* (FX.capital) a realm's first industrial town */
   s.ul = s.lvl;
 }
 // (Nov 3) how well a realm fits its age, per head: what that age's discoveries grow from
