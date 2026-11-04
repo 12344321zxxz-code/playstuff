@@ -68,4 +68,5 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-04 | [td0-prov0](runs/2026-11-04-td0-prov0) | 1dbb6b7 | 32 | Step 0 knock-out: learning from conquered provinces off (patch: `{"people.js":{"KN.prov":0}}`) | 0.48 | 0.26 | 13 | 1454 | 1755 | 4.34 | 31 / 25 | 0 |
 | 2026-11-04 | [td0-pull0](runs/2026-11-04-td0-pull0) | 1dbb6b7 | 32 | Step 0 knock-out: pull off (patch: `{"people.js":{"KN.pull":0}}`) | 0.56 | 0.23 | 15 | 1556 | 1888 | 4.25 | 38 / 29 | 0 |
 | 2026-11-04 | [td0-pull0lam1](runs/2026-11-04-td0-pull0lam1) | 1dbb6b7 | 32 | Step 0 knock-out: pull off and no crowding (patch: `{"people.js":{"KN.pull":0,"KN.lam":1}}`) | 0.77 | 0.3 | 13 | 1301 | 1462 | 2.91 | 40 / 21 | 0 |
+| 2026-11-04 | [td1a](runs/2026-11-04-td1a) | 1dbb6b7 | 10 | Step 1a: one receipt allowance, 10 x own finds (patch: `{"flags.js":{"FX.recv":1}}`) | 0.61 | 0.22 | 15 | 1580 | 1774 | 4.04 | 41 / 21 | 0 |
 | 2026-11-04 | [td3](runs/2026-11-04-td3) | eb6c639 | 10 | Step 3 joint: 1b (Mb 3) + anchor 0.5 (patch: `{"flags.js":{"FX.recv":2,"FX.anchor":1},"people.js":{"KN.ak":74,"KN.aL":0.5}}`) | 0.52 | 0.25 | 15 | 1526 | 1731 | 4.1 | 40 / 20 | 0 |

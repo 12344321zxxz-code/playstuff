@@ -1,0 +1,40 @@
+{
+ "name": "td1a",
+ "note": "Step 1a: one receipt allowance, 10 x own finds",
+ "commit": "1dbb6b775f8e595c667d801547ce1604d9c676cd",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.recv": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T18:34:16.031Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
