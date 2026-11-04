@@ -1,7 +1,8 @@
-# Formicarium: independent review brief for ChatGPT (Nov 4, 2026)
+# Formicarium: independent review brief for ChatGPT: tech disparity and peopling (Nov 4, 2026)
 
-You are asked for an **independent** diagnosis and fix proposal for one problem in a world-history
-simulation game. Another model (Claude) has done its own diagnosis and proposals. You will not see them,
+You are asked for an **independent** diagnosis and fix proposal for two linked problems in a world-history
+simulation game: too little technological disparity between parts of the world, and a world peopled
+unlike Earth. Another model (Claude) has done its own diagnosis and proposals. You will not see them,
 so your conclusions stay independent. Both will go to a review council afterwards. Read the code yourself
 and come to your own conclusions. Where this brief states a measured fact, check it if you can.
 
@@ -39,14 +40,21 @@ and come to your own conclusions. Where this brief states a measured fact, check
 **The designer's observation:** watching worlds, he sees little technological disparity between parts of
 the world.
 
-**A benchmark** was commissioned (attached: "Global technology inequality, 3000 BC–2000 AD: a numerical
-calibration", ChatGPT deep research, Nov 4). It is also in the repo at
-`docs/research/tech-disparity/chatgpt-report-2026-11-04.md`, with its region matrix as
-`report-matrix.csv`. It gives history's share of people and land 0/1/2/3+ technology ages behind the
-frontier at 15 dates, the frontier state's size, leadership and more. **It uses the game's own 11 ages**
-(see 5.3).
+**Two benchmarks** were commissioned (ChatGPT deep research, Nov 4). Both are attached; please use both.
+1. **"Global technology inequality, 3000 BC–2000 AD: a numerical calibration."**
+   - In the repo: `docs/research/tech-disparity/chatgpt-report-2026-11-04.md`, with its region matrix
+     `report-matrix.csv`.
+   - It gives history's share of people and land 0/1/2/3+ technology ages behind the frontier at 15
+     dates, the frontier state's size, leadership and more.
+   - **It uses the game's own 11 ages** (see 5.3).
+2. **"Peoples, languages, land use and polities, 10,000 BC–2000 AD."**
+   - In the repo: `docs/research/peopling/chatgpt-report-2026-11-04.md`, with `report-matrix.csv`.
+   - It covers land use, way of life (state subjects, farmers outside states, pastoralists, foragers),
+     language families, polity counts, farmer-front speeds and rule over other tongues.
+   - A checked summary is in `docs/manager/peopling-targets.md`; it's fine to read, but its last section
+     is Claude's view.
 
-**Known weaknesses of the benchmark:**
+**Known weaknesses of the first benchmark:**
 - most cells are judgement;
 - its land tables don't match its own matrix (recompute land from the matrix);
 - 1700 and 1800 have identical age mixes;
@@ -74,41 +82,70 @@ frontier at 15 dates, the frontier state's size, leadership and more. **It uses 
 **In short:** through the age of print the sim is near history. From steam on the world converges; history
 diverged. The ancient misses are smaller and the benchmark is weak there.
 
-**The designer's own hypothesis about peopling** (please weigh it):
+**Weaknesses of the second benchmark:**
+- nearly every cell is judgement;
+- in its regional matrix the same-family polity share mirrors the largest family's share, and each
+  region's family count is the same at every date;
+- some regional "empty land" cells are odd;
+- its language counts rest on one source (a "2026 Holocene language-diversity model") that we could not
+  verify.
+
+The world-level tables are internally consistent and are the usable part.
+
+### The peopling problem
+**The designer's observation and hypothesis** (please weigh it):
 - Worlds start from about 11 bands placed on an empty map (`initPeople` in `src/people.js`).
 - Each people splits into many small states but keeps one tongue family for a long time.
-- So a continent can be 40 tribal states of one nation, with much empty land and many nomads. Real
-  continents were full of foragers before farming, and held several unrelated language families side by side.
+- So a continent can be 40 tribal states of one nation, with much empty land and many nomads.
+- He knows the sim can't hold thousands of peoples. He wants an **approximation or simplification** that
+  makes it behave more like Earth.
 
-A census of two worlds (`tools/peopling.mjs`) gives:
+**What a census of 4 worlds shows** (`tools/peopling.mjs`, seeds 11–14, pooled by the world's highest
+age; history from the second benchmark):
 
-| Seed, year (age) | People in wandering bands | Land inside any town's catchment | Unrelated families alive (with 1%+ of people) | Largest family's share of people | Main landmass: families with 5%+ / top family's share | Other landmasses: top family's share |
-|---|---|---|---|---|---|---|
-| 11, 500 (2) | 94% | 1% | 10 (10) | 19% | 5 / 38% | 100%, 100% |
-| 11, 1000 (3) | 70% | 9% | 10 (10) | 24% | 5 / 47% (yr 1100) | 100%, 52% |
-| 11, 1700 (4) | 24% | 36% | 10 (10) | 49% | 3 / 71% | 100%, 100% |
-| 11, 2000 (5) | 10% | 58% | 10 (8) | 51% | 3 / 66% | 96%, 100% |
-| 31, 500 (2) | 63% | 6% | 11 (11) | 15% | 5 / 37% | 100%, 100% |
-| 31, 1000 (3) | 46% | 25% | 11 (9) | 29% | 4 / 41% (yr 900) | 100%, 100% |
-| 31, 1500 (5) | 13% | 55% | 11 (9) | 33% | 4 / 37% | 93%, 100% |
-| 31, 2000 (8) | 2% | 71% | 10 (8) | 49% | 3 / 59% | 95%, 100% |
+| Stage (sim age ↔ date) | Mobile people: history / sim | Land claimed (history) / inside town catchments (sim) | Families with 1%+ of humanity: history / sim | Largest family's share: history / sim | Smaller landmasses: top family's share (sim) |
+|---|---|---|---|---|---|
+| bronze (2 ↔ 3000 BC) | 28% / 74% | 18% / 4% | 24 / 10.5 | 10% / 28% | 86% |
+| iron (3 ↔ 1000–500 BC) | 12% / 48% | 60% / 16% | 22 / 9.8 | 15% / 42% | 91% |
+| long middle (4 ↔ 1 AD–1300) | 5–7% / 26% | 74–86% / 30% | 18–20 / 8.8 | 22–24% / 47% | 91% |
+| print (5 ↔ 1300–1800) | 3–4% / 13% | 90–94% / 47% | 15–17 / 8.1 | 26–34% / 44% | 83% |
+| steam to bomb (6–8 ↔ 1850–1950) | 1–2% / 0–2% | 97% / 69–90% | 13 / 5–6 | 40% / 35–45% | 76–92% |
 
-What it shows:
-- **Land:** worlds begin as 11 bands on empty land. Until the iron age only 1–25% of land lies inside any town's catchment; the rest is empty or roamed by bands (bands hold no land in this count).
-- **Bands:** 46–70% of people still live in wandering bands at the iron age, and 13–24% at the age of print.
-- **Families:** the number of unrelated families is fixed at the start (10–11 roots) and no new one ever forms.
-- **Main continent:** it holds 3–5 families with 5%+ of its people, which is plausible.
-- **Every smaller landmass is a single family (93–100%) for the whole 2,000 years:** one founding band per landmass, and no other people ever arrives or forms. That is the designer's "continent of one nation".
-- Real-world numbers for comparison (land use, foragers and pastoralists, language families per region) are being researched separately.
+- **History has no one-family region:** every real macro-region has 3–11 families with 1%+ of its people.
+- **The sim's main landmass is plausible:** 3–5 families with 5%+ of its people.
+- **The sim has no layer between a band and a realm.** History has "farmers outside states": 62% of people
+  in 3000 BC, 38% in 1000 BC, 21% in 1 AD. It also has hundreds of chiefdoms per region.
+- **No new family ever forms in the sim.**
+- **Language distance doesn't slow knowledge in the sim.** `tongueGap` and `customsGap` affect diplomacy,
+  the fiscal state, migration and cohesion, but not knowledge exchange.
+
+**Who is behind in the sim** (share of each group 2+ ages behind the frontier):
+
+| Group | Ages 3–5 | Ages 6–9 |
+|---|---|---|
+| frontier realm's own family | 0–14% | 0–1% |
+| other families | 25–49% | 1–3% |
+| tied to the frontier realm | 1–5% | 0–2% |
+| untied | 45–54% | 2–42% (42% only at age 6) |
+| on the frontier's landmass | 8–18% | 0–2% |
+| on other landmasses | 39–49% | 3–15% |
 
 ## 4. What we'd like from you
 1. **Diagnose** why the sim's disparity collapses from the steam age on, and why the modern frontier
    doesn't accelerate. Point to the mechanisms in the code (file and function, with line numbers on
    branch `tech-disparity`), and say how sure you are.
-2. **Peopling:**
-   - Does the way the world is peopled (few founding peoples, empty land, nomads, one family per
-     continent) feed the disparity problem?
-   - What should the sim do instead, within the creed and the performance budget?
+2. **Peopling.** The sim can afford a few dozen peoples, not thousands. Propose the best
+   **approximation**:
+   - What should one sim "people" stand for?
+   - How do we get several unrelated families on every landmass?
+   - How do we get no empty habitable land before farming, and mobile peoples at historical shares?
+   - How do we get a non-state layer (chiefdoms, free villages)?
+   - How do we get farmer expansion through occupied land (absorbing, not replacing, at 50–200 km a
+     century), the U-shape (one family expands and fragments into many polities, then a few empires
+     form), and rule over other tongues as the norm?
+   - Say what it costs in tick time and code (the band cap is 420, the town cap 700, the realm cap 54–58).
+   - Say how it would show on the map and in the chronicle.
+   - Does the peopling feed the tech-disparity problem, and how should the two be fixed together?
 3. **Propose fixes,** ranked by expected effect. For each:
    - the mechanism, in plain words;
    - where it goes in the code;
@@ -130,6 +167,7 @@ What it shows:
   in your sandbox. Node 20+ runs it (6.1).
 - **To keep your view independent, please don't open these before you've written your answer:**
   `docs/manager/tech-disparity-fixes.md`, `docs/manager/report-2026-11-04-tech-disparity.md`,
+  the last section of `docs/manager/peopling-targets.md`,
   `docs/manager/backlog.md` (item 1), and the tech-disparity lines in `docs/manager/game.md` section 5.
   They hold Claude's diagnosis.
 - **Otherwise:** read files on GitHub, e.g.
@@ -200,7 +238,11 @@ What it shows:
 ### 6.1 Running a world
 - `node tools/stats.mjs <seed> <years>` runs one world headless and prints one JSON line of everything
   measured. 2,000 years take about 5–15 minutes on one core.
-- `node tools/peopling.mjs <seed> <years> [every]` runs the peopling census above.
+- `node tools/peopling.mjs <seed> <years> [every]` runs the peopling census above. It reports land in
+  town catchments, people in bands, families world-wide and per landmass, who is behind (by family,
+  landmass and tie), and the share of realms ruled by a minority family.
+  - Archived outputs: `docs/research/peopling/census-s11.json` to `census-s14.json`.
+  - Pooled with `docs/research/peopling/census.py`.
 - `npm test` runs one world for 800 years and prints the chronicle (a readable story of a world).
 
 ### 6.2 Measurement code
