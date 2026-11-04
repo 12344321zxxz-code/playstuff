@@ -71,6 +71,14 @@ A system-by-system search for rules that block or favour realms categorically:
 | 30 | Carriers count the realm's population plus trade partners' whole populations | Size gate on holding arts | `FX.know`: carriers are townspeople (scaled) |
 | 31 | The engines cap holds knowledge below age 6 until a realm has engines | Age 6 is mostly a coal contest | measure first-use per art (done); revisit with knowledge domains |
 
+## Screen results (Nov 4; 10 worlds each, paired against `fs-base2`; * = 90% interval excludes 0)
+- **Kept:** `coal` (age 6 31 years earlier*, coal gate −2,766*), `law` (biggest first at age 5 −0.43*), `market` (distinct first entrants +0.5*), `supply` (biggest first holder of key arts −0.22*, repeat leader −0.24*, land behind −5.7*), misc (`mills`, `council`, `allies`, `bastion`: land behind −3.3*), `towns` (peak population +0.23*).
+- **Rejected:** `cap` (largest share +0.03*), `KN.use = 1` (biggest first in ages 6–8 +0.36*).
+- **Redesigned:** `fisc` first version made the biggest first holder of key arts more often (+0.30*); rebuilt Nov 4 (towns and trade taxed more easily than fields, agency loss with the layers of officials, credit for councils and banking, herders not floored).
+- **Structural set** (`fisc`, `econ`, `know`, `inst` on top of the quick set): distinct first entrants +0.6*, land behind −4.2*, peak population +0.79*, internal turnover +6.8*.
+- **Unmoved in every arm:** biggest realm first into ages 6–8 (about 0.38–0.40); 3 of 10 worlds never reach age 6 by 2000.
+- **Confirmation (32 worlds):** `cf-base`, `cf-quick` (quick set), `cf-struct` (quick set plus structural set).
+
 ## Status (updated Nov 3, evening)
 Every item now has a switch, except 13 (minor early-arts district gates), 23 (the faith cap, narrative) and 31 (the engines cap, which is reasonable once coal trades).
 
