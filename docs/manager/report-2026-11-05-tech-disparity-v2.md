@@ -1,6 +1,6 @@
 # Formicarium report: tech disparity v2, "know fast, build slow" (Nov 5, 2026)
 
-**Main:** MAIN_LINE
+**Main:** merged (fast-forward from `capital`), on by default and live. Old main kept as `backup/main-2026-11-05-pre-capital`.
 
 **Bottom line:**
 - The modern ages no longer converge. A century into each modern age (6–8), 23% of people live two or more ages behind the frontier. It was 1.3% before; the target band was 15–30%.
@@ -37,7 +37,7 @@
 Runs:
 - `cap0-32`: base, the game as it was;
 - `cap8-nofood`: the winner;
-- `v2-final-32`: the defaults on main; must match the winner exactly.
+- `v2-final-32`: the defaults on main; identical to the winner in all 32 worlds.
 
 | Gate | Base | v2 | Verdict |
 |---|---|---|---|
@@ -58,7 +58,7 @@ Runs:
 | worlds reaching steam | 0.78 | 0.78 | ✓ |
 | ages 1–5 | | identical | ✓ (by construction) |
 | tick cost (GitHub) | 14.9 ms | 15.2 ms | ✓ (+2%) |
-| replay / save | | | SAVE_LINE |
+| replay / save | | | ✓ (a world saved in the steam age reloads and runs identically) |
 | switched off | | | identical to the old game, bit for bit |
 
 **How the winner was found:**

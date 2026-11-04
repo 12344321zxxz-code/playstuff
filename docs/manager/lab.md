@@ -67,7 +67,7 @@
 
 ## Seeds and baselines
 - **Seeds:** 11–18, 31–38, 51–58, 71–78 for confirmation (32 worlds); 10 worlds (11–18, 31–32) for screens.
-- **Current-defaults baseline:** `runs/2026-11-05-v2-final-32` (or `2026-11-04-cap8-nofood`, identical), the defaults with `FX.capital` on. The game before it: `runs/2026-11-04-cap0-32`.
+- **Current-defaults baseline:** `runs/2026-11-04-v2-final-32` (or `2026-11-04-cap8-nofood`, identical), the defaults with `FX.capital` on. The game before it: `runs/2026-11-04-cap0-32`.
 - **Old-rules baseline:** `fs-base2` plus `cf-base` (all switches off).
 
 ## The scoreboard on the current defaults (cf-struct, means over 32 worlds)
