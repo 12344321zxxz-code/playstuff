@@ -1,8 +1,8 @@
-# Formicarium: independent review brief for ChatGPT: tech disparity and peopling (Nov 4, 2026)
+# Formicarium: independent review brief for ChatGPT: tech disparity (Nov 4, 2026)
 
-You are asked for an **independent** diagnosis and fix proposal for two linked problems in a world-history
-simulation game: too little technological disparity between parts of the world, and a world peopled
-unlike Earth. Another model (Claude) has done its own diagnosis and proposals. You will not see them,
+You are asked for an **independent** diagnosis and fix proposal for one problem in a world-history simulation
+game: **too little technological disparity between parts of the world**. How the world is peopled is in
+scope only as far as it causes that problem or would help fix it. Another model (Claude) has done its own diagnosis and proposals. You will not see them,
 so your conclusions stay independent. Both will go to a review council afterwards. Read the code yourself
 and come to your own conclusions. Where this brief states a measured fact, check it if you can.
 
@@ -92,7 +92,7 @@ diverged. The ancient misses are smaller and the benchmark is weak there.
 
 The world-level tables are internally consistent and are the usable part.
 
-### The peopling problem
+### Peopling, as it bears on disparity
 **The designer's observation and hypothesis** (please weigh it):
 - Worlds start from about 11 bands placed on an empty map (`initPeople` in `src/people.js`).
 - Each people splits into many small states but keeps one tongue family for a long time.
@@ -161,12 +161,17 @@ it's fine to read.
 Please find **more such blind spots** if you see them. Say for each of your proposals which targets it
 should be judged on, given these differences.
 
+**Out of scope for now:** changing the length of each age, the map's size, or the population scale. The
+designer may improve these later. Don't propose them here unless you think one is essential to fixing the
+disparity; if so, say why.
+
 ## 4. What we'd like from you
 1. **Diagnose** why the sim's disparity collapses from the steam age on, and why the modern frontier
    doesn't accelerate. Point to the mechanisms in the code (file and function, with line numbers on
    branch `tech-disparity`), and say how sure you are.
-2. **Peopling.** The sim can afford a few dozen peoples, not thousands. Propose the best
-   **approximation**:
+2. **Peopling, only as it bears on disparity.** Does the way the world is peopled cause the disparity
+   problem, or would changing it help fix it? If so, the sim can afford a few dozen peoples, not thousands.
+   Propose the best **approximation** that serves the disparity fix:
    - What should one sim "people" stand for?
    - How do we get several unrelated families on every landmass?
    - How do we get foragers over most habitable land before farming, and mobile peoples at historical
@@ -177,8 +182,8 @@ should be judged on, given these differences.
      form), and rule over other tongues as the norm?
    - Say what it costs in tick time and code (the band cap is 420, the town cap 700, the realm cap 54–58).
    - Say how it would show on the map and in the chronicle.
-   - Does the peopling feed the tech-disparity problem, and how should the two be fixed together?
-3. **Propose fixes,** ranked by expected effect. For each:
+   - Rank peopling changes by how much they would help the disparity fix, not by realism alone.
+3. **Propose fixes for the disparity,** ranked by expected effect. For each:
    - the mechanism, in plain words;
    - where it goes in the code;
    - which existing correction patches it would retire;

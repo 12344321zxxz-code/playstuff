@@ -2,6 +2,12 @@
 
 For the council, together with ChatGPT's independent review. Nothing here is built.
 
+**Scope (Ariel, Nov 4):**
+- The problem is the tech disparity. Peopling changes are here only because they cause it or would help
+  fix it.
+- Some blind spots (the length of each age, the map's size, the population scale) may be improved later,
+  not as part of this work.
+
 **Evidence:**
 - `formicarium-tech-disparity-targets` and `formicarium-peopling-targets` (the two research reports, checked);
 - `formicarium-report-2026-11-04-tech-disparity` (the sim against the first report);
