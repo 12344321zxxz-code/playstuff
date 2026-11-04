@@ -107,6 +107,9 @@ export const carriersFor = (tier) => (tier >= 6 ? MODERN_CARRY[Math.min(10, tier
 export const boomOf = (A) => (A.engines ? 1.5 : 1) * (A.railways ? 1.6 : 1) * (A.oil ? 2.2 : 1) * (A.electricity ? 1.4 : 1) * (A.dynamite ? 1.8 : 1) * (A.genetics ? 1.8 : 1) * (A.automation ? 1.2 : 1) * (A.computers ? 1.4 : 1);   /* dynamite: the same chemistry makes fertiliser */   /* (Oct 31) computers: the green revolution (bred seed, tractors, sprays) */
 // (Nov 2, holistic) where a realm's knowledge comes from: own finds, contact, letters, migrants, conquest, ruins (a ledger for the tools; cheap)
 export const kl = (c, k, v) => { if (v > 0) { const L = c.kl || (c.kl = {}); L[k] = (L[k] || 0) + v; } return v; };
+// (Nov 4, tech-disparity Step 1) a realm can take in only so much from outside each year (FX.recv): every outside channel draws on one
+// yearly allowance (c._ra, set in cultYear); gifts of the gods are exempt. With no allowance set it is the plain ledger above.
+export const rk = (c, k, v) => { if (v > 0 && c._ra != null) { v = Math.min(v, Math.max(0, c._ra)); c._ra -= v; } return kl(c, k, v); };
 export const techOf = (k) => { let t = 0; while (t < TECH.length && k >= TECH[t]) t++; return t; };
 
 export function canLearn(c, k, easy) {

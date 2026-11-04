@@ -66,7 +66,8 @@ export function bench2Year(w, D) {
   if (w.year % 100 !== 0) return;
   let hab = 0, pol = 0, cat = 0; for (let i = 0; i < N; i++) { if (w.water[i] || w.ice[i] || w.gCap[i] < 0.3) continue; hab++; if (w.polity && w.polity[i] >= 0) pol++; const k = w.owner[i]; if (k >= 0 && w.sets[k] && !w.sets[k].dead) cat++; }
   let all = 0, herd = 0, band = 0; for (const s of w.sets) { if (s.dead) continue; all += s.pop; if (s.nomad) { const c = w.cults[s.cult]; if (c && c.grazer) herd += s.pop; else band += s.pop; } }
-  D.f05.push({ y: w.year, F1: F, F05: frontierAt(w, 0.005) });
+  { const v = w.cults.filter((c) => settled(c) && c.tech >= 5 && c._dkrL > 0).map((c) => c._dkrL).sort((x, y) => x - y), q = (f) => (v.length ? +v[Math.min(v.length - 1, Math.floor(f * v.length))].toPrecision(3) : null);
+    D.f05.push({ y: w.year, F1: F, F05: frontierAt(w, 0.005), dkRef: w.dkRef ? +w.dkRef.toPrecision(3) : null, raw: [q(0.25), q(0.5), q(0.9)] }); }
   D.cent2.push({ y: w.year, F, tc: lagOf(w, F, true), polity: +(pol / (hab || 1)).toFixed(3), catch: +(cat / (hab || 1)).toFixed(3), mobile: { herders: +(herd / (all || 1)).toFixed(3), other: +(band / (all || 1)).toFixed(3) } });
 }
 export function bench2Summary(D) {
