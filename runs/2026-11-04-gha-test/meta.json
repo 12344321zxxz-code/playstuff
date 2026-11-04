@@ -1,0 +1,20 @@
+{
+ "name": "gha-test",
+ "note": "Workflow test (50 years, 2 worlds)",
+ "commit": "6ecfde2f896791f23d4744a6684a7e15131bafcf",
+ "branch": "main",
+ "dirty": false,
+ "patch": null,
+ "seeds": [
+  11,
+  12
+ ],
+ "years": 50,
+ "started": "2026-11-04T11:23:35.420Z",
+ "where": "github-actions",
+ "worlds": 2,
+ "seedsDone": [
+  11,
+  12
+ ]
+}
