@@ -1,0 +1,47 @@
+{
+ "name": "cap12",
+ "note": "cap8 + new seed without works",
+ "commit": "7997f03933a0297db619b97cdaf2b7bbd4c5a56f",
+ "branch": "capital",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.capital": 1
+  },
+  "people.js": {
+   "KN.c6": 3,
+   "KN.cg": 2.5,
+   "KN.cd": 0.04,
+   "KN.cRk": 0.3,
+   "KN.cheap": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T21:35:43.584Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
