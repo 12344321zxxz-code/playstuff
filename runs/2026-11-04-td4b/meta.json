@@ -1,0 +1,45 @@
+{
+ "name": "td4b",
+ "note": "Step 2b: anchored finds with intensity (245 raw^0.5 x town share), pull on",
+ "commit": "450c638f65504ce95d9e007e585d485481ca694a",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.anchor": 1
+  },
+  "people.js": {
+   "KN.aL": 0.5,
+   "KN.aI": 1,
+   "KN.ak": 245
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T18:51:30.156Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
