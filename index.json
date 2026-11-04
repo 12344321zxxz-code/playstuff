@@ -1879,5 +1879,57 @@
    "NaN worlds": 1,
    "ms per tick": 22.2
   }
+ },
+ {
+  "dir": "runs/2026-11-04-cf-struct",
+  "date": "2026-11-04",
+  "name": "cf-struct",
+  "commit": "535859e",
+  "dirty": false,
+  "worlds": 32,
+  "years": 2000,
+  "patch": {
+   "flags.js": {
+    "FX.coal": 1,
+    "FX.supply": 1,
+    "FX.law": 1,
+    "FX.market": 1,
+    "FX.mills": 1,
+    "FX.council": 1,
+    "FX.allies": 1,
+    "FX.bastion": 1,
+    "FX.towns": 1,
+    "FX.fisc": 1,
+    "FX.econ": 1,
+    "FX.know": 1,
+    "FX.inst": 1
+   }
+  },
+  "note": "Confirmation on 32 worlds: quick fixes + structural (fiscal state with commercial taxation, agency loss and council credit; econ; knowledge through districts without KN.use; institutions)",
+  "summary": {
+   "biggest first, ages 5-8 pooled": 0.505,
+   "outside top 3 by people and land first, 5-8": 0.113,
+   "rho(size,know) ages 5-8 (median century)": 0.68,
+   "tall share of frontier (decades)": 0.7,
+   "land 2+ behind, ages 5-8 (median century %)": 16.1,
+   "people 2+ behind, ages 5-8": 3,
+   "within-realm 1+ behind, ages 5-8": 5.2,
+   "median year into age 5": 1231,
+   "median year into age 6": 1480,
+   "median year into age 7": 1662,
+   "median year into age 8": 1765,
+   "worlds reaching age 8 / 9": "22 / 9",
+   "peak pop, all worlds (bn)": 4.292,
+   "peak pop, info-age worlds (bn)": 5.521,
+   "steam-age colonial % (pooled)": 11.883,
+   "steam-age foreign / internal % (pooled)": "32 / 24",
+   "largest realm share of people, ages 5-8": 0.224,
+   "top-3 realms share, ages 5-8": 0.507,
+   "realms with 1%+ of people, ages 5-8": 14,
+   "living realms, ages 5-8": 51,
+   "first into 5-8: median share of people": 0.179,
+   "NaN worlds": 0,
+   "ms per tick": 31.9
+  }
  }
 ]
