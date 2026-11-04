@@ -99,6 +99,15 @@ The world-level tables are internally consistent and are the usable part.
 - So a continent can be 40 tribal states of one nation, with much empty land and many nomads.
 - He knows the sim can't hold thousands of peoples. He wants an **approximation or simplification** that
   makes it behave more like Earth.
+- **A different starting point:**
+  - Earth's history began after a long prehistory, with people everywhere and farming arising slowly at a
+    few small centres.
+  - A sim world starts at the dawn: about 11 bands, crops placed in each world's own cradles (7 crop
+    kinds, 1–2 home regions each, see `src/cradles.js` and `src/origins.js`), and farming learned as soon
+    as a people has a crop.
+  - The designer does **not** want Earth's crop map copied. Treat the Earth numbers that depend on
+    prehistory (how many peoples and families, how fast farming spreads, how much land is empty early) as
+    direction, not targets. Worlds with different crop geography should differ.
 
 **What a census of 4 worlds shows** (`tools/peopling.mjs`, seeds 11–14, pooled by the world's highest
 age; history from the second benchmark):

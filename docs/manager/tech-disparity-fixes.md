@@ -71,6 +71,14 @@ make the few dozen behave like Earth's structure. Concretely:
 - **Polities:** the sim's realms (up to about 58, 90 tested) match the state count of one real region at
   its peak (20–80). The hundreds of chiefdoms belong in the substrate.
 
+**A different starting point** (Ariel, Nov 4):
+- Earth's numbers assume a long prehistory and Earth's own crop geography. A sim world starts at the dawn
+  with a few bands, its own cradles, and quick farming.
+- So don't make the sim match Earth's crop map or its counts. Use the Earth targets as direction:
+  structure, shares and dynamics once farming and states exist.
+- Judge prehistory-dependent numbers (how many peoples, how fast farming spreads, how much land is empty
+  early) loosely. Expect worlds with different crop geography to differ.
+
 ## 3. Proposals
 ### P1. More founders, spread by landmass (cheap; build first)
 - `initPeople` places 11 bands at least 34 cells apart, preferring empty landmasses. Instead, seed

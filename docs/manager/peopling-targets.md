@@ -21,6 +21,26 @@ Companion doc: `formicarium-tech-disparity-targets`.
 - **Firmest parts:** the direction of change, the world land-use and way-of-life tables, the farmer-front
   speeds (the European Neolithic figure is well measured), and modern counts.
 
+## A different starting point (read every target with this in mind)
+- **Earth's history began after a long prehistory.** People had spread over every continent for tens of
+  thousands of years. Families were already deep and many, and farming arose slowly at a handful of small
+  centres set by Earth's own geography.
+- **A sim world starts at the dawn:** a few founding bands, crops placed by each world's own cradles, and
+  farming picked up quickly.
+- **So the targets that depend on prehistory are direction, not numbers:**
+  - how many peoples and families there are;
+  - how fast farming spreads and where;
+  - how much land is empty early;
+  - who farms first.
+
+  A world with different crop geography should differ, and that's fine (the creed: worlds must differ).
+- **Firmer:** targets about later dynamics:
+  - how expanding farmers absorb others;
+  - how the political map fills;
+  - rule over other tongues;
+  - the tech-gap shares once states exist.
+- **Line up by stage, not calendar,** as in the tech-disparity targets.
+
 ## 1. The world was full before farming
 - **10,000 BC:**
   - land: foragers used about 75% of habitable land; about 25% was effectively empty (ice-edge, deep
