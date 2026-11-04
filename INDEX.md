@@ -58,5 +58,6 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-04 | [gha-test](runs/2026-11-04-gha-test) | 6ecfde2 | 2 | Workflow test (50 years, 2 worlds) | – | – | – | – | – | 0 | – | 0 |
 | 2026-11-04 | [ko-adopt-half](runs/2026-11-04-ko-adopt-half) | feaac24 | 10 | knock-out: provinces adopt half as fast (patch: `{"people.js":{"KN.adopt":0.015}}`) | 0.48 | 0.21 | 15 | 1553 | 1795 | 4.03 | 27 / 25 | 0 |
 | 2026-11-04 | [ko-base](runs/2026-11-04-ko-base) | feaac24 | 10 | knock-out baseline on main (tech-disparity diagnosis) | 0.46 | 0.21 | 16 | 1510 | 1815 | 4.29 | 30 / 26 | 0 |
+| 2026-11-04 | [ko-lam1](runs/2026-11-04-ko-lam1) | feaac24 | 10 | knock-out: no diminishing returns cap on own discovery (patch: `{"people.js":{"KN.lam":1}}`) | 0.76 | 0.28 | 14 | 1389 | 1481 | 2.72 | 37 / 19 | 0 |
 | 2026-11-04 | [ko-pull0](runs/2026-11-04-ko-pull0) | feaac24 | 10 | knock-out: no pull toward tied rivals (patch: `{"people.js":{"KN.pull":0}}`) | 0.6 | 0.2 | 17 | 1646 | 1912 | 3.86 | 39 / 31 | 0 |
 | 2026-11-04 | [ko-pull0-lam1](runs/2026-11-04-ko-pull0-lam1) | feaac24 | 10 | knock-out: both (patch: `{"people.js":{"KN.pull":0,"KN.lam":1}}`) | 0.88 | 0.33 | 14 | 1449 | 1541 | 2.76 | 38 / 25 | 0 |
