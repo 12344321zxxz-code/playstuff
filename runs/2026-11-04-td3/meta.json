@@ -1,0 +1,45 @@
+{
+ "name": "td3",
+ "note": "Step 3 joint: 1b (Mb 3) + anchor 0.5",
+ "commit": "eb6c639f58d42401c04cb25a7076bcee782b492d",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.recv": 2,
+   "FX.anchor": 1
+  },
+  "people.js": {
+   "KN.ak": 74,
+   "KN.aL": 0.5
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T18:28:05.225Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
