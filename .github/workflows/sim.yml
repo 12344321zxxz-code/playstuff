@@ -1,0 +1,72 @@
+# (Nov 4) Run a batch of worlds on GitHub's machines and archive the results to the `runs` branch, like tools/run.mjs,
+# but one runner per seed (all in parallel) and safe from the chat's machine going to sleep.
+#   gh workflow run sim.yml -f name=cf-realms -f set='flags.js:FX.realms=1' -f note='...' [-f seeds=11-18,31-38] [-f ref=holistic]
+name: Run worlds
+on:
+  workflow_dispatch:
+    inputs:
+      name: { description: 'run name (folder on the runs branch)', required: true }
+      seeds: { description: 'seeds, e.g. 11-18,31-38', default: '11-18,31-38,51-58,71-78' }
+      years: { description: 'years per world', default: '2000' }
+      set: { description: "patch, e.g. flags.js:FX.realms=1,people.js:KN.lam=0.1", default: '' }
+      note: { description: 'what this tests', default: '' }
+      ref: { description: 'branch or commit to run', default: 'main' }
+permissions:
+  contents: write
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      seeds: ${{ steps.p.outputs.seeds }}
+      sha: ${{ steps.p.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ inputs.ref }}' }
+      - id: p
+        env: { SEEDS: '${{ inputs.seeds }}' }
+        run: |
+          node -e 'const s=process.env.SEEDS.split(",").flatMap(r=>{const[a,b]=r.split("-").map(Number);const o=[];for(let x=a;x<=(b||a);x++)o.push(x);return o});console.log("seeds="+JSON.stringify(s))' >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  world:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        seed: ${{ fromJSON(needs.plan.outputs.seeds) }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ needs.plan.outputs.sha }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Write the patch
+        env: { SET: '${{ inputs.set }}' }
+        run: node -e 'const p={};for(const kv of (process.env.SET||"").split(",").filter(Boolean)){const[mk,v]=kv.split("=");const[m,k]=mk.split(":");(p[m]||={})[k]=JSON.parse(v)}require("fs").writeFileSync("p.json",JSON.stringify(p))'
+      - name: Run the world
+        run: |
+          mkdir -p out
+          if [ "$(cat p.json)" = "{}" ]; then P=""; else P="p.json"; fi
+          node tools/stats.mjs ${{ matrix.seed }} ${{ inputs.years }} $P > out/b${{ matrix.seed }}.json 2> out/e${{ matrix.seed }} || true
+          tail -c 300 out/b${{ matrix.seed }}.json
+      - uses: actions/upload-artifact@v4
+        with: { name: 'w${{ matrix.seed }}', path: out, retention-days: 7 }
+  archive:
+    needs: [plan, world]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ needs.plan.outputs.sha }}', fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with: { path: work/out, merge-multiple: true }
+      - name: Archive to the runs branch
+        env: { NAME: '${{ inputs.name }}', NOTE: '${{ inputs.note }}', SET: '${{ inputs.set }}', SEEDS: '${{ needs.plan.outputs.seeds }}', YEARS: '${{ inputs.years }}', SHA: '${{ needs.plan.outputs.sha }}', REF: '${{ inputs.ref }}' }
+        run: |
+          git config user.name "formicarium-runs"; git config user.email "actions@users.noreply.github.com"
+          git worktree add ../playstuff-runs origin/runs && (cd ../playstuff-runs && git checkout -B runs origin/runs)
+          node -e 'const e=process.env,p={};for(const kv of (e.SET||"").split(",").filter(Boolean)){const[mk,v]=kv.split("=");const[m,k]=mk.split(":");(p[m]||={})[k]=JSON.parse(v)}const fs=require("fs");if(Object.keys(p).length)fs.writeFileSync("work/p.json",JSON.stringify(p));fs.writeFileSync("work/meta.json",JSON.stringify({name:e.NAME,note:e.NOTE,commit:e.SHA,branch:e.REF,dirty:false,patch:Object.keys(p).length?p:null,seeds:JSON.parse(e.SEEDS),years:+e.YEARS,started:new Date().toISOString(),where:"github-actions"},null,1))'
+          node tools/archive.mjs work
