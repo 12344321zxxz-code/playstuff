@@ -2567,6 +2567,46 @@
   }
  },
  {
+  "dir": "runs/2026-11-04-td1b3",
+  "date": "2026-11-04",
+  "name": "td1b3",
+  "commit": "1dbb6b7",
+  "dirty": false,
+  "worlds": 10,
+  "years": 2000,
+  "patch": {
+   "flags.js": {
+    "FX.recv": 2
+   }
+  },
+  "note": "Step 1b: allowance 3 x what own towns could find",
+  "summary": {
+   "biggest first, ages 5-8 pooled": 0.542,
+   "outside top 3 by people and land first, 5-8": 0.083,
+   "rho(size,know) ages 5-8 (median century)": 0.74,
+   "tall share of frontier (decades)": 0.6,
+   "land 2+ behind, ages 5-8 (median century %)": 20.6,
+   "people 2+ behind, ages 5-8": 7.7,
+   "within-realm 1+ behind, ages 5-8": 6.7,
+   "median year into age 5": 1340,
+   "median year into age 6": 1666,
+   "median year into age 7": 1844,
+   "median year into age 8": 1872,
+   "worlds reaching age 8 / 9": "3 / 1",
+   "peak pop, all worlds (bn)": 4.006,
+   "peak pop, info-age worlds (bn)": null,
+   "steam-age colonial % (pooled)": 17.972,
+   "steam-age foreign / internal % (pooled)": "34 / 18",
+   "largest realm share of people, ages 5-8": 0.22,
+   "top-3 realms share, ages 5-8": 0.475,
+   "realms with 1%+ of people, ages 5-8": 15,
+   "living realms, ages 5-8": 46,
+   "first into 5-8: median share of people": 0.18,
+   "NaN worlds": 0,
+   "ms per tick": 14.2
+  }
+ },
+ {
   "dir": "runs/2026-11-04-td3",
   "date": "2026-11-04",
   "name": "td3",
