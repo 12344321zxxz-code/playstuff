@@ -68,6 +68,13 @@ export function bench2Year(w, D) {
   let all = 0, herd = 0, band = 0; for (const s of w.sets) { if (s.dead) continue; all += s.pop; if (s.nomad) { const c = w.cults[s.cult]; if (c && c.grazer) herd += s.pop; else band += s.pop; } }
   { const v = w.cults.filter((c) => settled(c) && c.tech >= 5 && c._dkrL > 0).map((c) => c._dkrL).sort((x, y) => x - y), q = (f) => (v.length ? +v[Math.min(v.length - 1, Math.floor(f * v.length))].toPrecision(3) : null);
     D.f05.push({ y: w.year, F1: F, F05: frontierAt(w, 0.005), dkRef: w.dkRef ? +w.dkRef.toPrecision(3) : null, raw: [q(0.25), q(0.5), q(0.9)] }); }
+  // (v2, capital) knowledge lag next to the use lag; people living below what they know; works per head (quintiles, realms with engines);
+  // town-and-trade output per head (quintiles, the feasibility check); the largest realm's share of people
+  const KP = [0, 0, 0, 0]; let below = 0, allP = 0; const kq = [], oq = []; for (const s of w.sets) { if (s.dead || s.nomad) continue; const c = w.cults[s.cult]; if (!live(c)) continue; const kv = s.klvl ?? s.lvl ?? c.tech; KP[Math.max(0, Math.min(3, F - kv))] += s.pop; allP += s.pop; if (s.lvl != null && kv > s.lvl) below += s.pop;
+    if (c.tech >= 6) { oq.push([2.5 * (s.urb ?? 0.06) + (0.5 * (s.wealth || 0)) / Math.max(1, s.pop), s.pop]); if (s.K != null) kq.push([s.K / Math.max(1, s.pop), s.pop]); } }
+  const wq = (v) => { if (!v.length) return null; v.sort((a, b) => a[0] - b[0]); const t = v.reduce((a, x) => a + x[1], 0); const r = []; let acc = 0, j = 0; for (const f of [0.1, 0.3, 0.5, 0.7, 0.9]) { while (j < v.length - 1 && acc + v[j][1] < f * t) acc += v[j++][1]; r.push(+v[j][0].toPrecision(3)); } return r; };
+  let topP = 0, totP = 0; for (const c of w.cults) if (settled(c)) { totP += c.pop; if (c.pop > topP) topP = c.pop; }
+  D.cap = D.cap || []; D.cap.push({ y: w.year, F, klag: pc(KP), below: +(below / (allP || 1)).toFixed(3), works: wq(kq), comPH: wq(oq), top: +(topP / (totP || 1)).toFixed(3) });
   D.cent2.push({ y: w.year, F, tc: lagOf(w, F, true), polity: +(pol / (hab || 1)).toFixed(3), catch: +(cat / (hab || 1)).toFixed(3), mobile: { herders: +(herd / (all || 1)).toFixed(3), other: +(band / (all || 1)).toFixed(3) } });
 }
 export function bench2Summary(D) {
@@ -77,5 +84,5 @@ export function bench2Summary(D) {
   const C = D.contact || {}, a4 = D.ageEntry[4] ? D.ageEntry[4].y : Infinity;
   const isolated = Object.values(C).filter((o) => o.share >= 0.05 && (o.tie == null || o.tie > a4)).length;
   const largest = Math.max(0, ...Object.values(C).map((o) => o.share));
-  return { cent2: D.cent2, lag10: D.lag10, ageEntry: D.ageEntry, contact: C, geo: { largest, isolated }, recv, gate, cohort, f05: D.f05, entrants: D.entrants };
+  return { cent2: D.cent2, lag10: D.lag10, ageEntry: D.ageEntry, contact: C, geo: { largest, isolated }, recv, gate, cohort, f05: D.f05, entrants: D.entrants, cap: D.cap || [] };
 }

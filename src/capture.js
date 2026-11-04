@@ -264,12 +264,12 @@ function settle(w, o, x, y, natives) {
 // settler colonies far from the crown break away when the take runs high or the tongue has drifted
 function independence(w, o) {
   { let n = 0; for (const c of w.cults) if (c.alive && !c.power) n++; if (n >= realmCap(w)) return; }   /* no more realms than the splits may make */
-  const away = w.sets.filter((s) => !s.dead && s.cult === o.id && !s.nomad && overseas(w, o, s)); const L = w.leadAge || 0, devS = away.length ? away.filter((s) => (s.lvl ?? 0) >= 6).length / away.length : 0, decol = FX.inst ? 0.1 * devS : L >= 8 ? 0.1 : L === 7 ? 0.015 : 0, minG = (FX.inst ? devS >= 0.5 : L >= 8) ? 2 : 4;   /* (Oct 29) decolonisation: in the age of the bomb colonies go (FX.inst: as the colonies' own towns reach the age of rails and wires) */
+  const away = w.sets.filter((s) => !s.dead && s.cult === o.id && !s.nomad && overseas(w, o, s)); const L = w.leadAge || 0, devS = away.length ? away.filter((s) => ((FX.capital ? s.klvl ?? s.lvl : s.lvl) ?? 0) >= 6).length / away.length : 0, decol = FX.inst ? 0.1 * devS : L >= 8 ? 0.1 : L === 7 ? 0.015 : 0, minG = (FX.inst ? devS >= 0.5 : L >= 8) ? 2 : 4;   /* (Oct 29) decolonisation: in the age of the bomb colonies go (FX.inst: as the colonies' own towns reach the age of rails and wires) */
   if (away.length < minG) return;
   const drift = away.filter((s) => tongueGap(w, s.lang, o.langId) > 0).length / away.length, X = o.hub ? o.hub.X : 0.15;
   // (Oct 29) a colony breaks away when it can: by how far its own towns have come (a colony two ages behind rarely
   // wins alone), and when the crown is in no state to hold it (beaten in a war, divided, at war)
-  let lv = 0; for (const s of away) lv += s.lvl != null ? s.lvl : o.tech; lv /= away.length; const lag = o.tech - lv, able = lag <= 0.5 ? 1 : lag <= 1.5 ? 0.45 : 0.12;
+  let lv = 0; for (const s of away) lv += (FX.capital ? s.klvl ?? s.lvl : s.lvl) ?? o.tech;   /* (FX.capital) a colony agitates by what it knows, not what it has built */ lv /= away.length; const lag = o.tech - lv, able = lag <= 0.5 ? 1 : lag <= 1.5 ? 0.45 : 0.12;
   const window = (o.hub && o.hub.st === 'civil' ? 5 : o.hub && o.hub.st === 'factions' ? 2 : 1) * (o.shaken != null && w.year - o.shaken < 15 ? 5 : 1) * (o.war ? 2 : 1);
   if (w.rnd() > (0.0012 + 0.025 * Math.max(0, X - 0.2) + 0.006 * drift) * able * window + decol) return;
   const byMass = new Map(); for (const s of away) { const m = w.mass[s.y * W + s.x]; (byMass.get(m) || byMass.set(m, []).get(m)).push(s); }
