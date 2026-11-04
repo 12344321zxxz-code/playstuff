@@ -1,0 +1,41 @@
+{
+ "name": "td4e",
+ "note": "Step 2c: pull off, crowding halved (lam 0.5)",
+ "commit": "450c638f65504ce95d9e007e585d485481ca694a",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "people.js": {
+   "KN.pull": 0,
+   "KN.lam": 0.5
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T18:57:06.755Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
