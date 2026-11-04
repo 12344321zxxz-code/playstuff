@@ -1,0 +1,46 @@
+{
+ "name": "cap7",
+ "note": "v2 capital, smooth returns 0.15 (poverty traps)",
+ "commit": "9cf3f64025285191e54759432a338227c964a029",
+ "branch": "capital",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.capital": 1
+  },
+  "people.js": {
+   "KN.c6": 3,
+   "KN.cg": 2.5,
+   "KN.cd": 0.04,
+   "KN.cRk": 0.15
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T21:16:02.635Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
