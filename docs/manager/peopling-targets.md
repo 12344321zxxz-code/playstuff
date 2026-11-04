@@ -5,6 +5,10 @@ languages, land use and polities, 10,000 BC–2000 AD" (Nov 4). The full text is
 `docs/research/peopling/chatgpt-report-2026-11-04.md`, with its matrix as `report-matrix.csv`.
 Companion doc: `formicarium-tech-disparity-targets`.
 
+> **Before using any target here, read `formicarium-earth-vs-sim-blind-spots`.** It says, target by target,
+> whether to compare directly, compare the shape only, convert first, compare only on comparable worlds, or
+> drop it.
+
 ## How far to trust it
 - **Nearly every cell is the author's judgement** (†), with low confidence before 1 AD.
 - **The world tables are internally consistent:** land uses sum to about 100%, regional populations sum to

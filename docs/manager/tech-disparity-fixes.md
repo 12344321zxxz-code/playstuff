@@ -7,6 +7,15 @@ For the council, together with ChatGPT's independent review. Nothing here is bui
 - `formicarium-report-2026-11-04-tech-disparity` (the sim against the first report);
 - the peopling census below (`tools/peopling.mjs`, 4 worlds).
 
+**Read with `formicarium-earth-vs-sim-blind-spots`.** Some of the gaps below are partly definitional or
+come from Earth's conditions:
+- one age per district undercounts people behind;
+- the sim's world is small and connected, with no long-isolated world-islands;
+- most bench worlds have magic and over half have nuclear war;
+- the calendar runs fast before steam and slow after.
+
+The modern convergence and the peopling gaps survive those corrections. The exact numbers to aim for don't.
+
 ## 1. What's wrong
 Sim: `tools/peopling.mjs`, 4 worlds (seeds 11–14), pooled by the world's highest age, mean [range].
 History: `formicarium-peopling-targets`.
@@ -185,6 +194,8 @@ make the few dozen behave like Earth's structure. Concretely:
 
 ## 4. Order and tests
 1. **Measurements.**
+   - the bench additions in the blind-spots doc: stratification flags (magic, nuclear, geography),
+     definition-matched measures, stage checkpoints, Earth-in-spread tests;
    - the census across 32 worlds via GitHub Actions: lag by family, landmass and tie, and the
      minority-ruler share (already in the tool, not yet run);
    - realm-map coverage, not only town catchments;

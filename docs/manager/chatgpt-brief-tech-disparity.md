@@ -139,6 +139,28 @@ age; history from the second benchmark):
 | on the frontier's landmass | 8–18% | 0–2% |
 | on other landmasses | 39–49% | 3–15% |
 
+### Conditions that differ from Earth (read before using any target)
+We found these blind spots. The full list, with numbers, is in `docs/manager/earth-vs-sim-blind-spots.md`;
+it's fine to read.
+- **The calendar is bent.** The sim's frontier enters ages 1–9 at the median sim years
+  200 / 400 / 700 / 1050 / 1300 / 1500 / 1700 / 1800 / 1900. That runs 3–30 times faster than Earth
+  before steam and 2–20 times slower after it, while people live at human speed. Times must be converted
+  per age, except human-tempo measures such as turnover per century.
+- **The world is small and connected.** Almost every landmass is peopled from year 0. From steam on, arts
+  reach untied realms on other landmasses within 2–4 years. Earth had world-islands sealed off for over
+  10,000 years.
+- **A globe in population, a region in grain:** at most 700 districts, 54–58 realms, about 10 families.
+- **One age per district:** no rural–urban gap inside a district, so the sim undercounts people behind.
+- **Magic** rises in 26 of 32 worlds, and is meant to brake progress. **Nuclear launches** happen in 19 of
+  32 worlds.
+- **Earth is one draw:** compare it with the sim's spread over worlds, not the mean.
+- **Definitions differ:** frontier, claimed land, mobile people, family, state, "behind".
+- **Geography and resources differ per world**, as do the run's 2,000-year endpoint, the display scale of
+  population (1,000 per counted person) and the lack of a km scale.
+
+Please find **more such blind spots** if you see them. Say for each of your proposals which targets it
+should be judged on, given these differences.
+
 ## 4. What we'd like from you
 1. **Diagnose** why the sim's disparity collapses from the steam age on, and why the modern frontier
    doesn't accelerate. Point to the mechanisms in the code (file and function, with line numbers on
@@ -166,7 +188,7 @@ age; history from the second benchmark):
    - how the player would see it (map, Look panel, chronicle).
 4. **Measurements:** what you'd measure before changing anything.
 5. **Anything else** in the benchmark the sim misses that isn't listed above, and where the benchmark is
-   too weak to calibrate against.
+   too weak, or too tied to Earth's conditions, to calibrate against.
 6. **Also challenge the framing** if you think the real problem is elsewhere (for example, the ages
    themselves as one knowledge number against fixed thresholds).
 

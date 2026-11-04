@@ -4,6 +4,10 @@ Benchmarks for how unequal technology should be across a world: how far laggards
 frontier, how many people and how much land that covers, and who holds the frontier. Use them as
 soft ranges, not a script.
 
+> **Before using any target here, read `formicarium-earth-vs-sim-blind-spots`.** It says, target by target,
+> whether to compare directly, compare the shape only, convert first, compare only on comparable worlds, or
+> drop it.
+
 ## Source and how far to trust it
 - **Source:** a ChatGPT deep-research report, "Global technology inequality, 3000 BC–2000 AD: a numerical
   calibration" (Nov 4). It is a 23-region × 15-date matrix of population and the share of each region's
