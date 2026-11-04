@@ -1,6 +1,6 @@
 # Formicarium report: tech-disparity check (Nov 4, 2026)
 
-**Main:** not merged. The work is on branch `tech-disparity`, docs and analysis only, with no game or tool changes.
+**Main:** not merged. The work is on branch `tech-disparity` (commit efffa3b), docs and analysis only, with no game or tool changes.
 - `docs/research/tech-disparity/`:
   - the ChatGPT report (`chatgpt-report-2026-11-04.md`);
   - its matrix (`report-matrix.csv`);
@@ -157,6 +157,7 @@ Add three measurements first:
 
 ## For the manager
 - New doc: `formicarium-tech-disparity-targets` (benchmarks, the stage mapping, caveats).
-- Backlog: "Now" item 1 closed; new items added for the fixes.
-- `formicarium-game` section 5 "Not": add that the modern ages converge (98% at the frontier a century in)
-  and that the frontier never accelerates.
+- Backlog updated: "Now" item 1 (the benchmark) is closed and replaced by "Modern ages converge", with the
+  fixes and measurements.
+- `formicarium-game` section 5 updated: two new "Not" lines (modern convergence; the art shows the court's
+  age), and the "Wanted" line on unevenness now says the benchmark is in.
