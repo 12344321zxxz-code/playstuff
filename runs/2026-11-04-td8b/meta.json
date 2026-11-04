@@ -1,0 +1,50 @@
+{
+ "name": "td8b",
+ "note": "Step 3f: td7c + age-size 1.3",
+ "commit": "56527763b3b1f6f1f03f701c7f089fca3e263927",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.anchor": 1,
+   "FX.recv": 1
+  },
+  "people.js": {
+   "KN.aL": 0.15,
+   "KN.aI": 1,
+   "KN.ak": 35000,
+   "KN.pull": 0,
+   "KN.M": 2,
+   "KN.aO": 2,
+   "KN.aS": 1.3
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T19:54:33.925Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
