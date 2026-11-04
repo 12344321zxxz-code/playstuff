@@ -1,0 +1,48 @@
+{
+ "name": "cap17",
+ "note": "cheaper steam (2.5) + both",
+ "commit": "30cf3c1daa9dfafdf4c101eee5c137e0756c41da",
+ "branch": "capital",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.capital": 1
+  },
+  "people.js": {
+   "KN.c6": 2.5,
+   "KN.cg": 2.5,
+   "KN.cd": 0.04,
+   "KN.cRk": 0.3,
+   "KN.cA": 1,
+   "KN.cheap": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T21:41:23.617Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
