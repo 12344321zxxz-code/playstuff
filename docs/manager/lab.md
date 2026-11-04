@@ -48,10 +48,16 @@
   - `tools/invariance.mjs <seed> <year> [--merge [--behind]]`: does changing only who rules some districts change what they know? It should not;
   - `tools/probe.mjs` and `q.mjs`: read a running world as data;
   - `tools/lever.mjs`: geography census.
+  - `tools/bench2.mjs` (inside `stats.mjs`, Nov 4), from the blind-spots audit:
+    - `cent2`: people behind with each district split by town share; realm-map and catchment coverage of habitable land; herders and other bands;
+    - `lag10`: decade sampling from the age of print;
+    - `ageEntry`: the year and people when the frontier enters each age;
+    - `contact` and `geo`: landmass contact timing and isolated landmasses.
+  - `tools/peopling.mjs <seed> <years>`: peoples, families per landmass, who is behind (by family, landmass and tie), minority-ruler realms.
 
 ## Seeds and baselines
 - **Seeds:** 11–18, 31–38, 51–58, 71–78 for confirmation (32 worlds); 10 worlds (11–18, 31–32) for screens.
-- **Current-defaults baseline:** `runs/2026-11-04-cf-struct` (32 worlds). Compare new arms against it, or re-run a baseline on the same commit.
+- **Current-defaults baseline:** `runs/2026-11-04-b2-base` (32 worlds, main dec8f1f). It is identical to `cf-struct` in every older field and adds the `bench2` measurements. Compare new arms against it, or re-run a baseline on the same commit.
 - **Old-rules baseline:** `fs-base2` plus `cf-base` (all switches off).
 
 ## The scoreboard on the current defaults (cf-struct, means over 32 worlds)
@@ -103,4 +109,6 @@ Real-world targets live in `formicarium-foundations-audit` section 5, `formicari
   - never `git stash`;
   - long local runs launch detached (`setsid nohup ... &`) from the frozen copy;
   - don't edit `src/` between queuing a local run and its launch, since it freezes whatever is there.
+- **Archive cancellations:** the archive job runs in one concurrency group. If several runs finish together, a waiting archive can be cancelled. The worlds are safe as artifacts for 7 days, but this machine can't download artifacts (the storage host is blocked). Re-run the archive with `gh api -X POST repos/12344321zxxz-code/playstuff/actions/runs/<id>/rerun-failed-jobs`. Better: space out dispatches, or check every run's archive job.
+- **Read targets with `formicarium-earth-vs-sim-blind-spots`** before comparing the sim with Earth.
 - **ChatGPT reports:** a docx from ChatGPT may hold only a link into ChatGPT's own sandbox. Ask Ariel for the real file or the pasted text. Share links (`chatgpt.com/share/...`) can't be read by fetch.
