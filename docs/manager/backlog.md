@@ -55,6 +55,9 @@ The manager keeps this in order. Each item: what, why, status, where to read. A 
    - Re-measure on the new defaults first; they raised steam-age turnover.
    - Read: `formicarium-turnover-status`.
 
+## For the manager chat (Ariel, Nov 4)
+- The game may have grown too complicated for its own good. Every change needs a look at its second- and third-order effects. Ariel wants to discuss this in the manager chat. It is out of scope for the tech-disparity worker, which applies it only to its own plan (`formicarium-tech-disparity-plan-v2`).
+
 ## Ideas from the audits, not yet scheduled
 - Technology domains (naval, financial, military, industrial) instead of one knowledge number (foundations audit 4.E).
 - Defensible geography (mountains, islands, marshes) feeding the cost of conquest (4.F).

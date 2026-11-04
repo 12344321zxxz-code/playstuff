@@ -32,6 +32,31 @@ Keep the knowledge system exactly as it is today: same pull, same pace, same lea
 - Chronicle lines: "The first railway in X", and "X knows how to build engines but cannot pay for them".
 - The Look panel says why a district lags: no surplus, too far from the court, drained by an overlord.
 
+## Second- and third-order effects (Ariel, Nov 4: "start considering second and third order effects")
+The district's age (`s.lvl`, through `artsHere`) is read in more places than it looks. A capital gate on it reaches all of them. The effects, traced through the code:
+
+| Where the district's age is read | What capital would change first | What that changes next, and after | Decision |
+|---|---|---|---|
+| **Food and population.** Railways, sanitation, irrigation, genetics and the rest lift a district's harvest. | Backward districts grow less. | The leader's core booms while laggards don't, so the leader becomes the *biggest by people* without conquering anything. "Biggest first" gets worse through population alone. Migration then pulls people into the industrial core and the periphery empties (the stop rule's "starving periphery"). | **Keep** (it is what use means). Watch it: the leader's people share, migration into cores and periphery population are on the gate list. |
+| **Towns.** Line 844: urban growth reads the arts in use. | Backward districts stay rural. | Rural districts find less (discovery counts townspeople), so laggard *courts* learn slower as well. The knowledge gap widens on its own, a feedback loop. | **Keep, but watch**: if the knowledge gap grows by itself, leadership metrics can drift. |
+| **Discovery.** Schools, printing, computers and networks multiply what a district finds. | The best-equipped realm finds faster. | Equipment feeds knowledge, and knowledge feeds equipment: a loop that favours whoever industrialises first, which is often the big core. | **Cut**: discovery reads what the district *knows*, not what it has built. This keeps who-leads separate from who-builds. |
+| **Arms.** A district fights with its own age's weapons (`KN.arm`). | Armies raised in backward provinces are weaker. | Giants get weaker, which is good. But a leader with a fully equipped core beats laggards more easily: colonial conquest. That makes big empires *stronger*. | **Keep, and watch** conquests per century and the largest realm's share. If conquests rise, the fix is on the defence side: districts defend with their own arms, so this cuts both ways. |
+| **Colonial independence** (`capture.js`: a colony breaks away by its own development). | Colonies stay backward. | Decolonisation freezes and colonial empires never break up: big empires last forever, and turnover drops. | **Cut**: independence reads the knowledge age, not the use age. Colonies learn and agitate even when they are poor (history agrees). |
+| **Fiscal state.** Towns and trade are taxed more easily. | Industrial districts pay more. | Rich realms get richer, so they field bigger armies and build more capital. A loop for the leader. | **Watch.** The cap is that court investment competes with armies for the same revenue, so a realm at war builds less. |
+| **Trade** (coal and goods demand). | Backward districts buy less coal. | Fewer trade ties mean less catch-up and fewer carriers for the laggards, so their *knowledge* falls behind too. | **Watch** ties per realm in the screens. |
+| **Smoke, nuclear, magic** | Less smoke where nothing is built. Nuclear arms are realm-level, so no change. Magic reads the realm's age, so no change. | Minor. | Nothing to do; confirm in the screens. |
+
+**Rules this adds to the plan:**
+1. **One new number, the fewest readers.** The capital stock feeds only food, towns and arms (what "use" means). Discovery and colonial independence keep reading knowledge. Every reader is listed in the code comment and in `formicarium-game`.
+2. **Replace, don't stack.** Province catch-up already has its own brake (`uptake`: town share, cohesion, orthodoxy), and capital covers the same ground. From the age of steam, the capital gate replaces `uptake` instead of adding to it. If v2 passes, the v1 code (`FX.recv`, `FX.anchor` and their knobs) is deleted, not kept switched off.
+3. **Every chain gets a meter.** The screens report, for each row above:
+   - the leader's people share and the periphery's population;
+   - migration into cores and the urban share by quintile;
+   - conquests per century and colonial independences;
+   - revenue per head by quintile and ties per realm.
+   A gate passing while one of these drifts badly is a fail.
+4. **Knock out each link once.** At the 32-world stage, run the winner with each kept reader off in turn (food, towns, arms). That shows which chain does the work and which only adds side effects; cut the ones that only add side effects.
+
 ## Steps
 0. **Feasibility check, measurement only (one short session).**
    - At the frontier's ages 6–8, measure how much district surplus, town share, trade and tie vary.
@@ -52,6 +77,7 @@ Keep the knowledge system exactly as it is today: same pull, same pace, same lea
 - **Disparity:**
   - people 2+ ages behind *in use* a century into ages 6–8: 15–30%;
   - a gap in the use of railways, electricity and computers between the top and bottom fifths that lasts beyond a century.
+- **Side-effect meters:** the list in rule 3 above, none drifting badly.
 - **Big-realm guard** (new; each must be no worse than today, within noise):
   - biggest realm first into ages 6–8: today 0.36, fail above 0.41;
   - distinct leaders, ages 4–9: today 2.43, fail below 2.3;
