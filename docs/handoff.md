@@ -7,7 +7,9 @@ Read this first in any new chat on the game. Then read project memory (`areas/go
 - **Main status:** say plainly whether work is in `main` (and its commit) every time you report.
 - **Branches:** unvalidated work stays on a branch. Merge to `main` only after it is validated on the scoreboard; for sim changes that means the 32-world confirmation.
 - **Git:** never `git stash`. Before big changes, keep a backup or archive version so it can be restored. Commits end with the attribution lines the session supplies.
-- **Long runs:** launch detached from a frozen copy (`setsid nohup node tools/run.mjs <name> ... &`). `run.mjs` freezes the code at launch and resumes if interrupted.
+- **Long runs:** run them on GitHub Actions, not on the chat's machine, which shuts down when the chat sits idle. The workflow `.github/workflows/sim.yml` gives one runner per seed and archives to `runs`. `gh workflow run` fails here (no GraphQL); dispatch through REST:
+  `gh api -X POST repos/12344321zxxz-code/playstuff/actions/workflows/sim.yml/dispatches -f ref=main -f 'inputs[name]=<name>' -f 'inputs[set]=flags.js:FX.x=1' -f 'inputs[note]=...' [-f 'inputs[seeds]=11-18'] [-f 'inputs[ref]=<branch>']`
+  The local `tools/run.mjs` still works for short runs (it freezes the code and resumes).
 - **Data:** save every test run to GitHub. `run.mjs` archives to the `runs` branch automatically.
 - **Design creed:**
   - no scripting: history-like patterns must emerge from interacting systems and each world's start, and differ between worlds;
@@ -47,7 +49,7 @@ Read this first in any new chat on the game. Then read project memory (`areas/go
   - more worlds reach age 8;
   - peak population +0.65bn;
   - more steam-age turnover.
-- **Running at handoff:** `cf-realms`, the realm cap at 90 on the new defaults, to remove +60 defections per world. Score it with `board-compact.mjs` against `cf-struct` (archived on `runs`). If it holds, set `FX.realms: 1`, run the tests, merge.
+- **Running at handoff:** `cf-realms` (on GitHub Actions), the realm cap at 90 on the new defaults, to remove +60 defections per world. Score it with `board-compact.mjs` against `cf-struct` (archived on `runs`). If it holds, set `FX.realms: 1`, run the tests, merge.
 - **Open:**
   1. Item #29: a realm two ages behind that merges into a bigger one gains about 9 arts in 5 years (`invariance.mjs 12 1300 --merge --behind`).
   2. Pace: about a quarter of worlds never reach age 6 by 2000.
