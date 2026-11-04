@@ -1,0 +1,48 @@
+{
+ "name": "td5c",
+ "note": "Step 3c: anchored 4000 raw^0.3 x town share^2, pull off, allowance 1 x towns",
+ "commit": "450c638f65504ce95d9e007e585d485481ca694a",
+ "branch": "tech-disparity",
+ "dirty": false,
+ "patch": {
+  "flags.js": {
+   "FX.anchor": 1,
+   "FX.recv": 2
+  },
+  "people.js": {
+   "KN.aL": 0.3,
+   "KN.aI": 2,
+   "KN.ak": 4000,
+   "KN.pull": 0,
+   "KN.Mb": 1
+  }
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ],
+ "years": 2000,
+ "started": "2026-11-04T19:05:29.521Z",
+ "where": "github-actions",
+ "worlds": 10,
+ "seedsDone": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  31,
+  32
+ ]
+}
