@@ -3583,6 +3583,55 @@
   }
  },
  {
+  "dir": "runs/2026-11-04-td7c-32",
+  "date": "2026-11-04",
+  "name": "td7c-32",
+  "commit": "5652776",
+  "dirty": false,
+  "worlds": 32,
+  "years": 2000,
+  "patch": {
+   "flags.js": {
+    "FX.anchor": 1,
+    "FX.recv": 1
+   },
+   "people.js": {
+    "KN.aL": 0.15,
+    "KN.aI": 1,
+    "KN.ak": 35000,
+    "KN.pull": 0,
+    "KN.M": 2,
+    "KN.aO": 2
+   }
+  },
+  "note": "32-world confirmation of the best candidate (td7c)",
+  "summary": {
+   "biggest first, ages 5-8 pooled": 0.587,
+   "outside top 3 by people and land first, 5-8": 0.058,
+   "rho(size,know) ages 5-8 (median century)": 0.71,
+   "tall share of frontier (decades)": 0.359,
+   "land 2+ behind, ages 5-8 (median century %)": 44.9,
+   "people 2+ behind, ages 5-8": 17.8,
+   "within-realm 1+ behind, ages 5-8": 19.2,
+   "median year into age 5": 1229,
+   "median year into age 6": 1340,
+   "median year into age 7": 1450,
+   "median year into age 8": 1543,
+   "worlds reaching age 8 / 9": "23 / 20",
+   "peak pop, all worlds (bn)": 3.105,
+   "peak pop, info-age worlds (bn)": 3.579,
+   "steam-age colonial % (pooled)": 27.889,
+   "steam-age foreign / internal % (pooled)": "40 / 21",
+   "largest realm share of people, ages 5-8": 0.328,
+   "top-3 realms share, ages 5-8": 0.644,
+   "realms with 1%+ of people, ages 5-8": 11,
+   "living realms, ages 5-8": 48,
+   "first into 5-8: median share of people": 0.245,
+   "NaN worlds": 0,
+   "ms per tick": 14.9
+  }
+ },
+ {
   "dir": "runs/2026-11-04-td7d",
   "date": "2026-11-04",
   "name": "td7d",
