@@ -62,3 +62,4 @@ Each folder holds one experiment: `meta.json` (commit, patch, seeds, years, note
 | 2026-11-04 | [ko-lam1](runs/2026-11-04-ko-lam1) | feaac24 | 10 | knock-out: no diminishing returns cap on own discovery (patch: `{"people.js":{"KN.lam":1}}`) | 0.76 | 0.28 | 14 | 1389 | 1481 | 2.72 | 37 / 19 | 0 |
 | 2026-11-04 | [ko-pull0](runs/2026-11-04-ko-pull0) | feaac24 | 10 | knock-out: no pull toward tied rivals (patch: `{"people.js":{"KN.pull":0}}`) | 0.6 | 0.2 | 17 | 1646 | 1912 | 3.86 | 39 / 31 | 0 |
 | 2026-11-04 | [ko-pull0-lam1](runs/2026-11-04-ko-pull0-lam1) | feaac24 | 10 | knock-out: both (patch: `{"people.js":{"KN.pull":0,"KN.lam":1}}`) | 0.88 | 0.33 | 14 | 1449 | 1541 | 2.76 | 38 / 25 | 0 |
+| 2026-11-04 | [td0-base](runs/2026-11-04-td0-base) | 1dbb6b7 | 32 | Step 0 base with receipt ledger, gates, cohorts (32 worlds) | 0.51 | 0.22 | 14 | 1480 | 1765 | 4.29 | 32 / 24 | 0 |
