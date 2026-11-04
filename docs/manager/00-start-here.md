@@ -1,6 +1,6 @@
 # Formicarium: start here (manager chat)
 
-Last updated Nov 4, 2026 (evening). This is the entry point for the **manager chat**: the one chat that sees everything about Formicarium and hands work out to worker chats. The "games" project also holds other games; ignore them, and ignore any doc whose name doesn't start with `formicarium-`.
+Last updated Nov 5, 2026. This is the entry point for the **manager chat**: the one chat that sees everything about Formicarium and hands work out to worker chats. The "games" project also holds other games; ignore them, and ignore any doc whose name doesn't start with `formicarium-`.
 
 ## How the work is organised
 - **Manager chat:**
@@ -46,10 +46,7 @@ Last updated Nov 4, 2026 (evening). This is the entry point for the **manager ch
   - the foundations fixes (on by default).
 - **Live game:** https://12344321zxxz-code.github.io/playstuff (published from `main` by `.github/workflows/pages.yml`).
 - **Repo:** github.com/12344321zxxz-code/playstuff; working branch `holistic`, now level with `main`.
-- **Tech disparity (Nov 4):**
-  - main also holds the tech-disparity measurements and mechanisms, all switched off (the game plays as before);
-  - the best arm gives history-sized modern gaps but fails three gates (distinct leaders, pace, use gap);
-  - see `formicarium-report-2026-11-04-tech-disparity-build`.
+- **Tech disparity (Nov 5):** know fast, build slow (`FX.capital`) is on. A century into each modern age about 23% of people live two or more ages behind, with no stronger big realms. See `formicarium-report-2026-11-05-tech-disparity-v2`.
 - **Latest result:**
   - the biggest realm is now first into ages 6–8 about 30% of the time (was 54%);
   - more realms lead, and less land sits two or more ages behind;
@@ -65,7 +62,8 @@ Last updated Nov 4, 2026 (evening). This is the entry point for the **manager ch
 | `formicarium-backlog` | open items and queued sub-projects, in order | current |
 | `formicarium-templates` | worker brief and post-action report templates | current |
 | `formicarium-report-*` | worker reports, newest last | history |
-| `formicarium-tech-disparity-plan` | the tech-disparity plan (Steps 0–4, gates, stop rule) and its Nov 4 results | current; Step 4 next |
+| `formicarium-tech-disparity-plan-v2` | know fast, build slow: the plan, its effect map and its results | done Nov 5 |
+| `formicarium-tech-disparity-plan` | v1 plan (Steps 0–4) and its Nov 4 results | history; v1 deleted |
 | `formicarium-tech-disparity-evidence` | knock-outs, Step 0 receipts, splits | reference |
 | `formicarium-earth-vs-sim-blind-spots` | where Earth targets mean something else in the sim (A–R) | reference; read before comparing with Earth |
 | `formicarium-stuck-rules-audit` | 31 size gates, quotas and world-age switches, the fixes, the 32-world results | current reference |

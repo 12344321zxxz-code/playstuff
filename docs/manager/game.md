@@ -106,6 +106,8 @@ For each system: **In** is what the game does now (on `main`). **Not** is what's
     - a ledger records where each realm's knowledge comes from;
     - **know vs use:** from the age of print, an art works in a district only once that district reaches the art's age, so deployment lags;
     - districts an age behind fight with the previous age's arms.
+    - **know fast, build slow** (`FX.capital`, Nov 5): from the age of steam a district lives in an industrial age only once it has built the works for it (steam 3 a head, each later age 2.5 times more, wearing 4% a year). Works come from its own towns and trade, plus court revenue spread by how well tied it is, with returns on works already built; banking helps, war slows, colonies keep 60%, sacks burn half. Works decide town growth and soldiers' arms; discovery, food and a colony's push for independence follow knowledge. A century into each modern age about 23% of people live two or more ages behind (was 1.3%), without stronger big realms (`formicarium-report-2026-11-05-tech-disparity-v2`).
+    - towns are drawn in the age they live in, the realm page says how much of the realm lives in its age, and the Look panel says why a district lags (`FX.lagShow`).
   - Setbacks:
     - dark ages after nuclear war or a population crash;
     - ruins give back a little lost knowledge.
@@ -115,15 +117,10 @@ For each system: **In** is what the game does now (on `main`). **Not** is what's
   - early arts spread too slowly between neighbours (100–250 years vs about 15–80 historically);
   - a backward realm merged into a bigger one gains about 9 arts within 5 years (item 29 in the stuck-rules audit);
   - about a quarter of worlds never reach age 6 by 2000;
-  - from the steam age the world converges: a century into each modern age about 98% of people are at the frontier age (history: 41–69% two or more ages behind in 1950–2000), because the frontier never accelerates and catch-up is nearly unconditional (Nov 4 check, `formicarium-tech-disparity-targets`);
-  - town art and realm pages show the court's age, not the district's (only the Knowledge lens and Look show provinces lagging). `FX.lagShow` (off; Nov 4) draws towns in their own age and adds a realm-page line on how much of the realm lives in its age;
-  - built Nov 4 and switched off:
-    - `FX.recv`, one yearly allowance for everything a realm takes in from outside;
-    - `FX.anchor`, a realm's own finds depending only on itself (its townspeople and town share, and the orthodoxy brake);
-    - with them the modern gaps reach history's size, but leaders become giants and keep the lead (`formicarium-report-2026-11-04-tech-disparity-build`).
+  - a few worlds still converge in the modern ages (0–2% two or more ages behind); why is not checked yet.
 - **Wanted:**
   - small states, or clusters of them, can reproduce Europe's rise; the biggest realm is not best at everything (much improved Nov 4);
-  - tech unevenness across the world matching real data (benchmark in; the sim matches through the age of print and misses from steam on);
+  - tech unevenness across the world matching real data (in since Nov 5: about 23% two or more ages behind a century into each modern age; history 41–69%, partly the rural gap the sim doesn't model);
   - Guns, Germs and Steel in every system (in).
 
 ## 6. States, institutions and diplomacy

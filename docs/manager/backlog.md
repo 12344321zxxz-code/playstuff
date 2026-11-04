@@ -3,25 +3,8 @@
 The manager keeps this in order. Each item: what, why, status, where to read. A worker that closes or opens an item updates this doc.
 
 ## Now: finish the play-tall and foundations work
-1. **Modern ages converge (tech disparity).**
-   - **Plan:** `formicarium-tech-disparity-plan` (Nov 4: council plus ChatGPT's critical review).
-   - **Status (Nov 4, `formicarium-report-2026-11-04-tech-disparity-build`):**
-     - Steps 0–3 are built and on main, all switched off (`FX.recv`, `FX.anchor`, `FX.lagShow`).
-     - The best arm, td7b, gives history-sized gaps (23%) but fails three gates: distinct leaders, the 6→7 pace and the use gap.
-     - Next: Step 4 (a use gap through installed capital), then retest td7b.
-     - Waiting on Ariel: look at the display, and decide whether td7b goes on as it is.
-   - Causes confirmed by knock-outs (`formicarium-tech-disparity-evidence`): `lam` stops the frontier accelerating, `pull` closes the gaps; removing both brings back history-sized gaps but also big-realm dominance.
-   - Checked Nov 4 against a numeric benchmark (`formicarium-tech-disparity-targets`; report `formicarium-report-2026-11-04-tech-disparity`).
-   - Through the age of print the sim is about right. From steam on, about 98% of people reach the frontier age within a century; history had 41–69% two or more ages behind in 1950–2000.
-   - Causes:
-     - the frontier never accelerates (`KN.lam`/`ref` cap every court near an ordinary realm's pace);
-     - catch-up is nearly unconditional (`KN.pull`, `absorb` depends only on the gap);
-     - provinces catch up with their court within a century.
-   - Proposed fixes, for Ariel to choose:
-     1. catch-up that needs capacity (schools, towns, an open court, own engines);
-     2. let intensity compound instead of size (replace the `lam` cap with friction from extent);
-     3. provinces modernise only with investment (fiscal state).
-   - Measurements (isolated landmasses, decade sampling, receipts, cohorts) and the display fix (`FX.lagShow`) are done (Nov 4).
+1. **Tech disparity: done Nov 5** (`formicarium-report-2026-11-05-tech-disparity-v2`). Know fast, build slow (`FX.capital`) is on.
+   - Open: Ariel's eye test; why a few worlds stay converged; the rural gap (blind spot D).
 2. **Extra defections.**
    - Breakaway regions defect to a neighbour about 92 times per world (32 under the old rules), because more realms press against the realm cap.
    - Raising the cap to 90 (`FX.realms`) cut this by a third but slightly helped the biggest realm, so it stays off.
@@ -66,6 +49,7 @@ The manager keeps this in order. Each item: what, why, status, where to read. A 
 - Early arts spread too slowly between neighbours (100–250 years vs about 15–80 historically).
 
 ## Done recently (for context)
+- Nov 5: tech disparity v2 (know fast, build slow) on by default; v1 (`FX.recv`, `FX.anchor`) deleted.
 - Nov 4:
   - foundations fixes on by default and merged (32-world confirmation);
   - long runs moved to GitHub Actions;

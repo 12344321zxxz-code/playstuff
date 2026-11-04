@@ -1,6 +1,6 @@
 # Formicarium: tech disparity, plan v2 (Nov 4, 2026, for Ariel's approval)
 
-**Status:** proposal only; nothing below is built. On main the v1 work is all switched off and the game plays as before.
+**Status:** approved by Ariel on Nov 4 and built on Nov 5. It is on by default (`FX.capital`), and every gate passed on 32 worlds. Results are at the end and in `formicarium-report-2026-11-05-tech-disparity-v2`.
 
 ## Why v1 got stuck
 - Every v1 arm made the gap by slowing how fast knowledge spreads between realms: less pull, a cap on what a realm takes in, discovery that depends only on the realm itself.
@@ -100,3 +100,19 @@ The district's age (`s.lvl`, through `artsHere`) is read in more places than it 
 - Step 0: about an hour.
 - Steps 1–2: one session plus 10-world screens (about 25 minutes each on GitHub).
 - Step 4: a 32-world run (about 30 minutes) plus the display work.
+
+## Results (Nov 5)
+- **Winner:** steam costs 3 a head, each later age 2.5 times more; wear 4% a year; smooth returns 0.3.
+  - Food reads knowledge: the knock-out showed the food reader cost 13% of population and added no gap.
+  - Town growth does the work (without it the gap is 12%); arms add a little.
+- **32 worlds:**
+  - people 2+ ages behind a century in: 23%;
+  - biggest first: 0.30, against 0.36;
+  - distinct leaders: 2.40, against 2.43;
+  - playing tall: 0.67, against 0.66;
+  - colonial turnover slightly up; peak population unchanged; turnover +2.6 points.
+- **Rules followed:**
+  - `uptake` is replaced from the age of steam;
+  - v1 is deleted;
+  - every reader has a knock-out switch.
+

@@ -31,12 +31,12 @@
   - each dir holds the `b<seed>.json` files of a run, extracted from `runs`;
   - it prints every gate of `formicarium-tech-disparity-plan`;
   - compare on the same seeds: the 10-world screen seeds are 11–18 and 31–32.
-- **Tech-disparity switches** (all off on main):
-  - `flags.js:FX.recv` (1/2) with `people.js:KN.M` / `KN.Mb`;
-  - `FX.anchor` (1/2) with `KN.ak, aL, aI, aO, aS, ak4`;
+- **Tech-disparity switches:**
+  - `flags.js:FX.capital` (on): know fast, build slow, with `people.js:KN.cI, cC, cd, c6, cg, cR, cRk, cX`;
+  - reader switches `KN.cFood` (0), `KN.cTown` (1), `KN.cArm` (1): each reader follows the works (1) or knowledge (0);
   - knock-outs `KN.meet` and `KN.prov` (0 = off);
-  - `FX.lagShow` (display).
-  - The best candidate is td7b: `FX.recv=2, FX.anchor=1, KN.ak=4000, aL=0.3, aI=1, Mb=1, aO=2`.
+  - `FX.lagShow` (on, display only).
+  - The v1 switches `FX.recv` and `FX.anchor` were deleted on Nov 5.
 - **Batches locally** (short runs only): `node tools/run.mjs <name> --seeds ... --set ... --note ...`.
   - It freezes a copy of the code at launch, resumes interrupted runs and archives to `runs`. It needs the `runs` worktree at `../playstuff-runs`.
   - A chat machine has 2 cores and **shuts down when the chat sits idle**; long local runs die with it.
@@ -67,7 +67,7 @@
 
 ## Seeds and baselines
 - **Seeds:** 11–18, 31–38, 51–58, 71–78 for confirmation (32 worlds); 10 worlds (11–18, 31–32) for screens.
-- **Current-defaults baseline:** `runs/2026-11-04-b2-base` (32 worlds, main dec8f1f). It is identical to `cf-struct` in every older field and adds the `bench2` measurements. Compare new arms against it, or re-run a baseline on the same commit.
+- **Current-defaults baseline:** `runs/2026-11-05-v2-final-32` (or `2026-11-04-cap8-nofood`, identical), the defaults with `FX.capital` on. The game before it: `runs/2026-11-04-cap0-32`.
 - **Old-rules baseline:** `fs-base2` plus `cf-base` (all switches off).
 
 ## The scoreboard on the current defaults (cf-struct, means over 32 worlds)
