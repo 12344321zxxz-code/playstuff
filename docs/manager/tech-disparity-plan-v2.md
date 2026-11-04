@@ -1,6 +1,6 @@
 # Formicarium: tech disparity, plan v2 (Nov 4, 2026, for Ariel's approval)
 
-**Status:** proposal only. Nothing below is built. Main is at f127ba4: the v1 work is all switched off and the game plays as before.
+**Status:** proposal only; nothing below is built. On main the v1 work is all switched off and the game plays as before.
 
 ## Why v1 got stuck
 - Every v1 arm made the gap by slowing how fast knowledge spreads between realms: less pull, a cap on what a realm takes in, discovery that depends only on the realm itself.
