@@ -30,4 +30,4 @@
 //           age (to open societies one knows) instead of only from the steam age
 //   realms: the realm cap is 90 at every age (was 54-58 by the world's age, bounded by 64 map colours): a colour may be worn
 //           by two realms far apart; and the world-wide cap on travellers grows with the town cap
-export const FX = { coal: 1, law: 1, market: 1, cap: 0, supply: 1, mills: 1, council: 1, allies: 1, bastion: 1, towns: 1, fisc: 1, econ: 1, know: 1, inst: 1, realms: 0, recv: 0, anchor: 0, lagShow: 1 };
+export const FX = { coal: 1, law: 1, market: 1, cap: 0, supply: 1, mills: 1, council: 1, allies: 1, bastion: 1, towns: 1, fisc: 1, econ: 1, know: 1, inst: 1, realms: 0, recv: 0, anchor: 0, lagShow: 0 };   // (Nov 4, tech-disparity) recv, anchor: the receipt allowance and anchored discovery, off until an arm passes the gates; lagShow: towns drawn in their own age and the realm-page age line (display only), off until Ariel has looked
