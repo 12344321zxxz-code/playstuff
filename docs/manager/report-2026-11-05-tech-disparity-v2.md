@@ -1,6 +1,6 @@
 # Formicarium report: tech disparity v2, "know fast, build slow" (Nov 5, 2026)
 
-**Main:** merged (fast-forward from `capital`), on by default and live. Old main kept as `backup/main-2026-11-05-pre-capital`.
+**Main:** merged at a6b1867 (fast-forward from `capital`), on by default and live. Old main kept as `backup/main-2026-11-05-pre-capital`.
 
 **Bottom line:**
 - The modern ages no longer converge. A century into each modern age (6–8), 23% of people live two or more ages behind the frontier. It was 1.3% before; the target band was 15–30%.
