@@ -8,7 +8,7 @@ A system-by-system search for rules that block or favour realms categorically:
 - switches keyed to the world's age;
 - value created from nothing.
 
-"Binding" counts come from one world (seed 12, 2,000 years, branch defaults) and are realm-years or town-years blocked. Each fix sits behind a switch in `src/flags.js` (all off by default) and is scored on the screen runs (`runs` branch, `fs-*`).
+"Binding" counts come from one world (seed 12, 2,000 years, branch defaults) and are realm-years or town-years blocked. Each fix sits behind a switch in `src/flags.js` (off during the screens; the confirmed set is on by default since Nov 4) and is scored on the screen runs (`runs` branch, `fs-*`).
 
 ## Trade and resources (trade.js, tech.js)
 
@@ -77,7 +77,15 @@ A system-by-system search for rules that block or favour realms categorically:
 - **Redesigned:** `fisc` first version made the biggest first holder of key arts more often (+0.30*); rebuilt Nov 4 (towns and trade taxed more easily than fields, agency loss with the layers of officials, credit for councils and banking, herders not floored).
 - **Structural set** (`fisc`, `econ`, `know`, `inst` on top of the quick set): distinct first entrants +0.6*, land behind −4.2*, peak population +0.79*, internal turnover +6.8*.
 - **Unmoved in every arm:** biggest realm first into ages 6–8 (about 0.38–0.40); 3 of 10 worlds never reach age 6 by 2000.
-- **Confirmation (32 worlds):** `cf-base`, `cf-quick` (quick set), `cf-struct` (quick set plus structural set).
+- **Confirmation (32 worlds, Nov 4):** `cf-struct` (quick set plus structural set) vs `cf-base` + `fs-base2`:
+  - biggest realm first into ages 6–8 −0.24* (0.54 → 0.30), the measure no screen arm had moved;
+  - distinct first entrants +0.31*, largest realm's share of people −0.06*, industry held by the top realm −0.07*;
+  - land 2+ ages behind −5.7*, reached age 8 by 2000 +0.16*, peak population +0.65bn*;
+  - steam-age turnover: foreign +5.9*, internal +5.3*;
+  - costs: about 48% more time per tick (the larger town cap); breakaways defecting to a neighbour +60 per world (more realms press on the realm cap).
+  - `cf-quick` (quick set alone, 27 of 32 worlds): biggest first in ages 6–8 −0.16*, but land behind, population and internal turnover did not move.
+- **Decision:** the structural set is on by default from commit 69d30c7, merged to main Nov 4. `cap` stays off; `realms` (cap 90) is being tested on the new defaults (`cf-realms`) against the extra defections.
+- **Still open:** item 29 (a realm two ages behind that merges into a bigger one gains about 9 arts within 5 years; seed 12, year 1300); pace (about a quarter of worlds never reach age 6 by 2000).
 
 ## Status (updated Nov 3, evening)
 Every item now has a switch, except 13 (minor early-arts district gates), 23 (the faith cap, narrative) and 31 (the engines cap, which is reasonable once coal trades).
